@@ -11,6 +11,11 @@ import androidx.compose.material.icons.filled.SettingsVoice // Added
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.AccessTime
+import com.example.app.data.createdAtFormattedDate
+import com.example.app.data.createdAtFormattedTime
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -144,41 +149,48 @@ fun NoteCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(modifier = Modifier.fillMaxWidth()) {
-            if (note.isFavorite) {
-                Box(
-                    modifier = Modifier
-                        .width(6.dp)
-                        .fillMaxHeight()
-                        .background(Color(0xFFFFC107))
-                )
-            }
-            Column(modifier = Modifier.padding(16.dp).weight(1f)) {
-                Text(
-                    text = note.title,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
-                Text(
-                    text = note.snippet,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    maxLines = 1
-                )
-                if (showTranscript && note.transcript.isNotBlank()) {
-                    Spacer(modifier = Modifier.height(8.dp))
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Top: Title
+            Text(
+                text = note.title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            // Middle: Summary
+            Text(
+                text = note.snippet,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 20.sp
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            // Bottom: Metadata
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = note.transcript,
-                        color = Color(0xFFB0B0B0),
-                        fontSize = 14.sp,
-                        maxLines = 2
+                        text = note.createdAtFormattedDate(),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal
                     )
                 }
-                if (showPlayButton && note.audioPath != null) {
-                    // Removed play icon and functionality
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = note.createdAtFormattedTime(),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal
+                    )
                 }
             }
         }

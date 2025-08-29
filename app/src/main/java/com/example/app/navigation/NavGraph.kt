@@ -1,3 +1,5 @@
+
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.example.app.navigation
 
 import androidx.compose.runtime.Composable

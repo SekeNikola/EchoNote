@@ -125,7 +125,13 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
 
     // AUDIO + AI
     fun startRecording(context: Context) {
+        if (audioRecorder == null) {
+            Log.d("NoteViewModel", "audioRecorder was null, initializing.")
+            audioRecorder = com.example.app.audio.AudioRecorder(context)
+        }
+        Log.d("NoteViewModel", "startRecording called")
         val appDir = getApplication<Application>().applicationContext.getExternalFilesDir(Environment.DIRECTORY_MUSIC)
+        Log.d("NoteViewModel", "appDir: $appDir")
         if (appDir == null) {
             Log.e("NoteViewModel", "Failed to get external files directory for audio recording.")
             isRecording.value = false
@@ -134,8 +140,10 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
         }
         val audioFile = File(appDir, "audio_record_${System.currentTimeMillis()}.wav")
         currentAudioPath = audioFile.absolutePath
+        Log.d("NoteViewModel", "audioFile: ${audioFile.absolutePath}")
 
         val started = audioRecorder?.startRecording(audioFile) ?: false
+        Log.d("NoteViewModel", "audioRecorder?.startRecording returned: $started")
         if (started) {
             isRecording.value = true
             liveTranscript.value = ""
