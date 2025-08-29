@@ -4,7 +4,6 @@ import androidx.lifecycle.*
 import com.example.app.data.Note
 import com.example.app.data.NoteRepository
 import kotlinx.coroutines.launch
-
 import android.app.Application
 import android.content.Context
 import android.os.Environment
@@ -22,11 +21,16 @@ import java.util.Locale
 import com.example.app.util.NetworkUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class NoteViewModel(private val repository: NoteRepository, app: Application) : AndroidViewModel(app), TextToSpeech.OnInitListener {
+
+    fun deleteNote(id: Long) = viewModelScope.launch {
+        repository.noteDao.deleteById(id)
+    }
     val notes = repository.getAllNotes().asLiveData()
     val searchQuery = MutableLiveData("")
     val isRecording = MutableLiveData(false)
@@ -40,19 +44,17 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     private var tts: TextToSpeech? = null
     private var ttsReady: Boolean = false
 
+    suspend fun generateTitle(summary: String): String = withContext(Dispatchers.IO) {
+        val prompt = "Generate a concise, relevant title for this note: $summary"
+        val request = GPTRequest(
+            model = "gpt-3.5-turbo",
+            messages = listOf(Message(role = "user", content = prompt))
+        )
+        val response = RetrofitInstance.api.summarizeText(request)
+        response.body()?.choices?.firstOrNull()?.message?.content?.trim('"', '\n', ' ', '.') ?: "Untitled"
+    }
     init {
         tts = TextToSpeech(app.applicationContext, this)
-        audioRecorder = AudioRecorder(app.applicationContext)
-        audioRecorder?.setOnAmplitudeListener(object : AudioRecorder.AmplitudeListener {
-            override fun onAmplitude(amplitudeValue: Int) {
-                amplitude.postValue(amplitudeValue)
-            }
-        })
-    }
-
-    fun updateSearchQuery(query: String) {
-        searchQuery.value = query
-        repository.searchNotes(query)
     }
 
     fun toggleFavorite(note: Note) = viewModelScope.launch {
@@ -130,7 +132,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             liveTranscript.value = "Error: Cannot access storage for audio recording."
             return
         }
-        val audioFile = File(appDir, "audio_record_${System.currentTimeMillis()}.m4a")
+        val audioFile = File(appDir, "audio_record_${System.currentTimeMillis()}.wav")
         currentAudioPath = audioFile.absolutePath
 
         val started = audioRecorder?.startRecording(audioFile) ?: false
@@ -163,33 +165,42 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             } else {
                 try {
                     transcript = uploadAndTranscribe(path)
+                    Log.d("NoteViewModel", "Transcription result: $transcript")
                     liveTranscript.value = transcript
+                    // Always generate summary from transcript, even if short or blank
                     summary = summarizeTranscript(transcript)
-                    noteTitle = summary.ifBlank { "Voice Note" }
+                    Log.d("NoteViewModel", "Summary result: $summary")
+                    noteTitle = if (summary.isNotBlank()) generateTitle(summary) else "Voice Note"
                     noteSnippet = summary
                 } catch (e: Exception) {
-                    Log.e("NoteViewModel", "Transcription failed", e)
+                    Log.e("NoteViewModel", "Transcription or summarization failed", e)
                 }
             }
         }
+        // If generateTitle is suspend, call it properly
+        val finalTitle = if (summary.isNotBlank()) generateTitle(summary) else "Voice Note"
         val note = com.example.app.data.Note(
-            title = noteTitle,
-            snippet = noteSnippet,
+            title = finalTitle,
+            snippet = summary,
             transcript = transcript,
             audioPath = path ?: "",
             createdAt = System.currentTimeMillis()
         )
-        viewModelScope.launch {
-            repository.noteDao.insert(note)
-        }
+        repository.noteDao.insert(note)
     }
 
     private suspend fun uploadAndTranscribe(path: String): String = withContext(Dispatchers.IO) {
-        val file = getAudioFileForUpload(path) // This function expects a path String
-        val reqFile = file.asRequestBody("audio/m4a".toMediaTypeOrNull())
+        val file = getAudioFileForUpload(path)
+        val reqFile = file.asRequestBody("audio/wav".toMediaType())
         val body = MultipartBody.Part.createFormData("file", file.name, reqFile)
-        val response = RetrofitInstance.api.transcribeAudio(body)
-        response.body()?.text ?: ""
+        val model = "whisper-1".toRequestBody("text/plain".toMediaType())
+        val response = RetrofitInstance.api.transcribeAudio(body, model)
+        if (!response.isSuccessful) {
+            Log.e("NoteViewModel", "Transcription API error: ${response.code()} ${response.message()}")
+        }
+        val text = response.body()?.text ?: ""
+        Log.d("NoteViewModel", "Transcription API response: $text")
+        text
     }
 
     private suspend fun summarizeTranscript(transcript: String): String = withContext(Dispatchers.IO) {
@@ -200,7 +211,12 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             )
         )
         val response = RetrofitInstance.api.summarizeText(req)
-        response.body()?.choices?.firstOrNull()?.message?.content ?: ""
+        if (!response.isSuccessful) {
+            Log.e("NoteViewModel", "Summarization API error: ${response.code()} ${response.message()}")
+        }
+        val summary = response.body()?.choices?.firstOrNull()?.message?.content ?: ""
+        Log.d("NoteViewModel", "Summarization API response: $summary")
+        summary
     }
 
     // Voice command overlay logic

@@ -1,6 +1,7 @@
 package com.example.app.network
 
 import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.Headers
@@ -12,8 +13,8 @@ interface OpenAIService {
     @Multipart
     @POST("/v1/audio/transcriptions")
     suspend fun transcribeAudio(
-        @Part audio: MultipartBody.Part,
-        @Part("model") model: String = "whisper-1"
+        @Part file: MultipartBody.Part,
+        @Part("model") model: RequestBody
     ): Response<TranscriptionResponse>
 
     @Headers("Content-Type: application/json")

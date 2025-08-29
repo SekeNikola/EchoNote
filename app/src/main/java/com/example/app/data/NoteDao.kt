@@ -1,3 +1,20 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 package com.example.app.data
 
 import androidx.room.*
@@ -16,6 +33,9 @@ interface NoteDao {
 
     @Query("SELECT * FROM notes WHERE id = :id")
     fun getNoteById(id: Long): Flow<Note?>
+
+    @Query("DELETE FROM notes WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
     @Transaction
     @Query("SELECT * FROM notes WHERE id = :id")

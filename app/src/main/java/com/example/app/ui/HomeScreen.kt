@@ -47,7 +47,7 @@ fun HomeScreen(
         ) {
             SearchBar(
                 query = searchQuery,
-                onQueryChange = { viewModel.updateSearchQuery(it) }
+                onQueryChange = { viewModel.searchQuery.value = it }
             )
             LazyColumn(
                 modifier = Modifier.weight(1f)
@@ -146,52 +146,39 @@ fun NoteCard(
             .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = note.title,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                    Text(
-                        text = note.snippet,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        maxLines = 1
-                    )
-                }
-                IconButton(onClick = onFavorite) {
-                    Icon(
-                        imageVector = Icons.Default.Star,
-                        contentDescription = "Favorite",
-                        tint = if (note.isFavorite) Color(0xFFFFC107) else Color(0xFFB0B0B0)
-                    )
-                }
-            }
-            if (showTranscript && note.transcript.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = note.transcript,
-                    color = Color(0xFFB0B0B0),
-                    fontSize = 14.sp,
-                    maxLines = 2
+        Row(modifier = Modifier.fillMaxWidth()) {
+            if (note.isFavorite) {
+                Box(
+                    modifier = Modifier
+                        .width(6.dp)
+                        .fillMaxHeight()
+                        .background(Color(0xFFFFC107))
                 )
             }
-            if (showPlayButton && note.audioPath != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = {
-                        val player = MediaPlayer()
-                        player.setDataSource(note.audioPath)
-                        player.prepare()
-                        player.start()
-                        player.setOnCompletionListener { it.release() }
-                    }) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = "Play Audio", tint = Color(0xFF03DAC6))
-                    }
-                    Text("Play recording", color = Color.White, fontSize = 14.sp)
+            Column(modifier = Modifier.padding(16.dp).weight(1f)) {
+                Text(
+                    text = note.title,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+                Text(
+                    text = note.snippet,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    maxLines = 1
+                )
+                if (showTranscript && note.transcript.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = note.transcript,
+                        color = Color(0xFFB0B0B0),
+                        fontSize = 14.sp,
+                        maxLines = 2
+                    )
+                }
+                if (showPlayButton && note.audioPath != null) {
+                    // Removed play icon and functionality
                 }
             }
         }

@@ -97,6 +97,18 @@ class AudioRecorder(private val context: Context) {
         updateWavHeaderInPlace(raf, totalAudioLen)
         raf.close()
         Log.d("AudioRecorder", "WAV file written: ${file.absolutePath}, size: ${file.length()} bytes")
+
+        // Log the first 44 bytes (WAV header) for debugging
+        try {
+            val headerBytes = ByteArray(44)
+            val fis = java.io.FileInputStream(file)
+            fis.read(headerBytes)
+            fis.close()
+            val headerHex = headerBytes.joinToString(" ") { String.format("%02X", it) }
+            Log.d("AudioRecorder", "WAV header: $headerHex")
+        } catch (e: Exception) {
+            Log.e("AudioRecorder", "Failed to read WAV header for debug", e)
+        }
     }
 
     private fun updateWavHeaderInPlace(raf: java.io.RandomAccessFile, totalAudioLen: Int) {
