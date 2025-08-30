@@ -18,7 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Archive
-import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.Stop
@@ -74,18 +74,23 @@ fun NoteDetailScreen(
                 .background(Color(0xFF222222))
                 .padding(horizontal = 8.dp, vertical = 12.dp)
         ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.Outlined.Check, contentDescription = "Back", tint = Color.White)
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                color = Color.White,
-                maxLines = 1,
-                modifier = Modifier.weight(1f)
-            )
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Outlined.ArrowBack, contentDescription = "Back", tint = Color.White)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                if (note != null) {
+                    BasicTextField(
+                        value = note!!.title,
+                        onValueChange = { viewModel.updateNoteTitle(note!!.id, it) },
+                        textStyle = TextStyle(
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        ),
+                        maxLines = 2,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
         }
         // Date and time
         Row(
