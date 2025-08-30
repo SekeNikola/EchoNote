@@ -1,4 +1,7 @@
+
 package com.example.app.ui
+import com.example.app.data.createdAtFormattedDate
+import com.example.app.data.createdAtFormattedTime
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -8,18 +11,20 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.Stop
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
@@ -50,200 +55,138 @@ fun NoteDetailScreen(
     val note by viewModel.getNoteById(noteId).observeAsState()
     val title = note?.title ?: ""
     val transcript = note?.transcript ?: ""
-    val highlights = note?.highlights ?: emptyList()
     val audioPath = note?.audioPath
     val context = LocalContext.current
-
-    // Move playback state and player to top-level composable scope
-    val playbackState = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(PlaybackState.Idle) }
-    val player = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<MediaPlayer?>(null) }
-
+    val date = note?.createdAtFormattedDate() ?: ""
+    val time = note?.createdAtFormattedTime() ?: ""
     val scrollState = rememberScrollState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF121212))
     ) {
-        androidx.compose.material3.TopAppBar(
-            title = { Text("Note Detail", color = Color.White) },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.Check, contentDescription = "Back", tint = Color(0xFFBB86FC))
-                }
-            },
-            colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF222222)
-            )
-        )
-        Column(
+        // Top bar: Back arrow and title
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(scrollState)
-                .padding(16.dp)
+                .fillMaxWidth()
+                .background(Color(0xFF222222))
+                .padding(horizontal = 8.dp, vertical = 12.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                BasicTextField(
-                    value = title,
-                    onValueChange = { viewModel.updateNoteTitle(noteId, it) },
-                    textStyle = TextStyle(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
+            IconButton(onClick = onBack) {
+                Icon(Icons.Outlined.Check, contentDescription = "Back", tint = Color.White)
             }
-        Spacer(modifier = Modifier.height(16.dp))
-        // Release player if audioPath changes
-        androidx.compose.runtime.LaunchedEffect(audioPath) {
-            player.value?.release()
-            player.value = null
-            playbackState.value = PlaybackState.Idle
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                color = Color.White,
+                maxLines = 1,
+                modifier = Modifier.weight(1f)
+            )
         }
-
-        fun startPlayback() {
-            if (audioPath == null) return
-            try {
-                val mp = MediaPlayer()
-                mp.setDataSource(audioPath)
-                mp.prepare()
-                mp.start()
-                playbackState.value = PlaybackState.Playing
-                player.value = mp
-                Toast.makeText(context, "Playing audio...", Toast.LENGTH_SHORT).show()
-                mp.setOnCompletionListener {
-                    playbackState.value = PlaybackState.Idle
-                    it.release()
-                    player.value = null
-                }
-            } catch (e: Exception) {
-                Toast.makeText(context, "Could not play audio", Toast.LENGTH_SHORT).show()
-                playbackState.value = PlaybackState.Idle
-            }
+        // Date and time
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = date,
+                color = Color(0xFFB0B0B0),
+                fontSize = 14.sp
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = time,
+                color = Color(0xFFB0B0B0),
+                fontSize = 14.sp
+            )
         }
-
-        fun pausePlayback() {
-            player.value?.let {
-                if (it.isPlaying) {
-                    it.pause()
-                    playbackState.value = PlaybackState.Paused
-                }
-            }
-        }
-
-        fun resumePlayback() {
-            player.value?.let {
-                it.start()
-                playbackState.value = PlaybackState.Playing
-            }
-        }
-
-        fun stopPlayback() {
-            player.value?.let {
-                it.stop()
-                it.release()
-                player.value = null
-                playbackState.value = PlaybackState.Idle
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            when (playbackState.value) {
-                PlaybackState.Idle -> {
-                    IconButton(onClick = { startPlayback() }, enabled = audioPath != null) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Play Audio", tint = Color(0xFF03DAC6))
-                    }
-                    Text("Play recording", color = Color.White, fontSize = 16.sp)
-                }
-                PlaybackState.Playing -> {
-                    IconButton(onClick = { pausePlayback() }, enabled = audioPath != null) {
-                        Icon(Icons.Default.Pause, contentDescription = "Pause Audio", tint = Color(0xFF03DAC6))
-                    }
-                    IconButton(onClick = { stopPlayback() }, enabled = audioPath != null) {
-                        Icon(Icons.Default.Stop, contentDescription = "Stop Audio", tint = Color(0xFF03DAC6))
-                    }
-                    Text("Playing...", color = Color.White, fontSize = 16.sp)
-                }
-                PlaybackState.Paused -> {
-                    IconButton(onClick = { resumePlayback() }, enabled = audioPath != null) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Resume Audio", tint = Color(0xFF03DAC6))
-                    }
-                    IconButton(onClick = { stopPlayback() }, enabled = audioPath != null) {
-                        Icon(Icons.Default.Stop, contentDescription = "Stop Audio", tint = Color(0xFF03DAC6))
-                    }
-                    Text("Paused", color = Color.White, fontSize = 16.sp)
-                }
-            }
-        }
-    // ...existing code...
-        // Summarized text (assume note.snippet is summary)
+    Spacer(modifier = Modifier.height(16.dp))
+        // Summary section
+        Text(
+            text = "Summary",
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
         if (note?.snippet?.isNotBlank() == true) {
             Text(
                 text = note!!.snippet,
                 color = Color(0xFFB0B0B0),
                 fontSize = 16.sp,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
-            Spacer(modifier = Modifier.height(8.dp))
         }
-        // Voice/Audio controls (already present above)
-        // Transcript
+        Spacer(modifier = Modifier.height(16.dp))
+        // Transcript section
+        Text(
+            text = "Transcript",
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            color = Color.White,
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
         if (transcript.isNotBlank()) {
             Text(
                 text = transcript,
                 color = Color(0xFFB0B0B0),
                 fontSize = 16.sp,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
-        if (highlights.isNotEmpty()) {
-            Text("Highlights:", color = Color(0xFFFFC107), fontWeight = FontWeight.Bold)
-            highlights.forEach { highlight ->
-                Text("- $highlight", color = Color(0xFFFFC107))
-            }
-        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.weight(1f))
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF222222))
+                .padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { viewModel.readAloud(noteId) }) {
-                    Icon(Icons.Default.PlayArrow, contentDescription = "Read Aloud", tint = Color(0xFF03DAC6))
+                    Icon(Icons.Outlined.PlayArrow, contentDescription = "Read Aloud", tint = Color.White)
                 }
                 Text("Read", color = Color.White, fontSize = 12.sp)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { viewModel.setReminder(noteId) }) {
-                    Icon(Icons.Default.Schedule, contentDescription = "Set Reminder", tint = Color(0xFFBB86FC))
+                    Icon(Icons.Outlined.Schedule, contentDescription = "Set Reminder", tint = Color.White)
                 }
                 Text("Remind", color = Color.White, fontSize = 12.sp)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { viewModel.archiveNote(noteId) }) {
-                    Icon(Icons.Default.Archive, contentDescription = "Archive", tint = Color(0xFFB0B0B0))
+                    Icon(Icons.Outlined.Archive, contentDescription = "Archive", tint = Color.White)
                 }
                 Text("Archive", color = Color.White, fontSize = 12.sp)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { viewModel.toggleFavorite(note!!) }) {
                     Icon(
-                        imageVector = Icons.Default.Star,
+                        imageVector = Icons.Outlined.Star,
                         contentDescription = "Favorite",
-                        tint = if (note?.isFavorite == true) Color(0xFFFFC107) else Color(0xFFB0B0B0)
+                        tint = if (note?.isFavorite == true) Color(0xFFFFC107) else Color.White
                     )
                 }
                 Text("Star", color = Color.White, fontSize = 12.sp)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 IconButton(onClick = { note?.let { viewModel.deleteNote(it.id); onBack() } }) {
-                    Icon(Icons.Default.Archive, contentDescription = "Delete", tint = Color(0xFFFF5252))
+                    Icon(Icons.Outlined.Delete, contentDescription = "Delete", tint = Color(0xFFFF5252))
                 }
                 Text("Delete", color = Color.White, fontSize = 12.sp)
             }
         }
-        }
     }
 }
+
+
 
 
