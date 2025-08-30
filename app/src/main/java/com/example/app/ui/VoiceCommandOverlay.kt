@@ -6,7 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,7 +48,7 @@ fun VoiceCommandOverlay(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(Icons.Default.Mic, contentDescription = "Mic", tint = Color(0xFF03DAC6), modifier = Modifier.size(48.dp))
+                    Icon(Icons.Outlined.Mic, contentDescription = "Mic", tint = Color.White, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = aiResponse,

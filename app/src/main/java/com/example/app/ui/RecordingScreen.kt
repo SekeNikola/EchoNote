@@ -1,15 +1,16 @@
 
 package com.example.app.ui
 
+import androidx.compose.material.icons.Icons
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,15 +46,16 @@ fun RecordingScreen(
         ) {
             // Recording indicator
             if (isRecording) {
-                // Animate mic icon size based on real amplitude
+                // Animate outlined mic icon size based on real amplitude
                 val minSize = 24f
                 val maxSize = 64f
                 val norm = (amplitude / 32767f).coerceIn(0f, 1f)
                 val size = minSize + (maxSize - minSize) * norm
-                Box(
-                    modifier = Modifier
-                        .size(size.dp)
-                        .background(Color.Red, shape = MaterialTheme.shapes.small)
+                Icon(
+                    imageVector = Icons.Outlined.Mic,
+                    contentDescription = "Recording",
+                    tint = Color.White,
+                    modifier = Modifier.size(size.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
             }

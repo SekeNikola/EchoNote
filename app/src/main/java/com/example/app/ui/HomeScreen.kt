@@ -6,14 +6,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.RadioButtonChecked // Added
-import androidx.compose.material.icons.filled.SettingsVoice // Added
+import androidx.compose.material.icons.outlined.RadioButtonChecked
+import androidx.compose.material.icons.outlined.SettingsVoice
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.AccessTime
 import com.example.app.data.createdAtFormattedDate
 import com.example.app.data.createdAtFormattedTime
 import androidx.compose.runtime.getValue
@@ -23,7 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import android.media.MediaPlayer
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.viewmodel.NoteViewModel
@@ -75,16 +75,14 @@ fun HomeScreen(
                 .align(Alignment.BottomEnd),
             contentAlignment = Alignment.BottomEnd
         ) {
-            FloatingActionButton(
+            IconButton(
                 onClick = {
                     onRecordClick?.invoke()
                 },
-                containerColor = Color(0xFFBB86FC),
-                contentColor = Color.White,
                 modifier = Modifier
                     .padding(24.dp)
             ) {
-                Icon(Icons.Filled.RadioButtonChecked, contentDescription = "Start Recording") // Changed icon and description
+                Icon(Icons.Outlined.RadioButtonChecked, contentDescription = "Start Recording", tint = Color.White)
             }
         }
         // Floating voice command mic
@@ -95,17 +93,15 @@ fun HomeScreen(
                 .align(Alignment.BottomEnd),
             contentAlignment = Alignment.BottomEnd
         ) {
-            FloatingActionButton(
+            IconButton(
                 onClick = {
                     // For demo: show overlay with a sample query
                     viewModel.showVoiceOverlay("What did I record this week?")
                 },
-                containerColor = Color(0xFF03DAC6),
-                contentColor = Color.White,
                 modifier = Modifier
                     .padding(24.dp)
             ) {
-                Icon(Icons.Filled.SettingsVoice, contentDescription = "Voice Command Search") // Changed icon and description
+                Icon(Icons.Outlined.SettingsVoice, contentDescription = "Voice Command Search", tint = Color.White)
             }
         }
         // Voice command overlay
@@ -128,8 +124,11 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        colors = TextFieldDefaults.colors( // Changed to colors
-            // containerColor = Color(0xFF1F1F1F) // Commented out due to No parameter with name 'containerColor' found
+        shape = RoundedCornerShape(50),
+        colors = TextFieldDefaults.colors(
+            unfocusedIndicatorColor = Color.Transparent,
+            focusedIndicatorColor = Color.Transparent,
+            disabledIndicatorColor = Color.Transparent
         )
     )
 }
@@ -175,7 +174,7 @@ fun NoteCard(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.CalendarToday, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = note.createdAtFormattedDate(),
@@ -184,7 +183,7 @@ fun NoteCard(
                     )
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.AccessTime, contentDescription = null, modifier = Modifier.size(16.dp), tint = Color.White)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = note.createdAtFormattedTime(),
