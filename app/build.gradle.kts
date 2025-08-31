@@ -5,7 +5,7 @@ kapt {
 
 
 plugins {
-    id("com.android.application") version "8.12.1"
+    id("com.android.application") version "8.12.2"
         kotlin("android") version "1.9.23"
         id("org.jetbrains.kotlin.kapt") version "1.9.23"
 }

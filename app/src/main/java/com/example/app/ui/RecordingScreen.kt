@@ -1,7 +1,7 @@
-
 package com.example.app.ui
 
-import androidx.compose.material.icons.Icons
+import android.Manifest
+import android.os.Build
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -10,11 +10,16 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -23,6 +28,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.viewmodel.NoteViewModel
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.core.app.ActivityCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 @Composable
 fun RecordingScreen(
@@ -38,15 +47,33 @@ fun RecordingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF121212)),
-        contentAlignment = Alignment.Center
+            .background(Color(0xFF121212))
     ) {
+        // Transcript at the top
         Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .padding(top = 32.dp, start = 16.dp, end = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Recording indicator
+            Text(
+                text = liveTranscript,
+                color = Color.White,
+                fontSize = 16.sp,
+                modifier = Modifier
+                    .background(Color(0xFF1F1F1F))
+                    .padding(16.dp)
+                    .fillMaxWidth()
+            )
+        }
+
+        // Recording indicator and status in the center
+        Column(
+            modifier = Modifier.align(Alignment.Center),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             if (isRecording) {
-                // Animate outlined mic icon size based on real amplitude
                 val minSize = 24f
                 val maxSize = 64f
                 val norm = (amplitude / 32767f).coerceIn(0f, 1f)
@@ -65,44 +92,41 @@ fun RecordingScreen(
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp
             )
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = liveTranscript,
-                color = Color.White,
-                fontSize = 16.sp,
-                modifier = Modifier
-                    .background(Color(0xFF1F1F1F))
-                    .padding(16.dp)
-                    .fillMaxWidth()
-            )
-            Spacer(modifier = Modifier.height(32.dp))
-            Row {
+        }
+
+        // Actions at the bottom
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Button(
+                onClick = onHighlight,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFC107)),
+                modifier = Modifier.padding(end = 16.dp)
+            ) {
+                Text("Highlight", color = Color.White)
+            }
+            if (isRecording) {
                 Button(
-                    onClick = onHighlight,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFC107)),
-                    modifier = Modifier.padding(end = 16.dp)
+                    onClick = {
+                        viewModel.stopAndSaveNote()
+                        onStopRecording()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC))
                 ) {
-                    Text("Highlight", color = Color.White)
+                    Text("Stop", color = Color.White)
                 }
-                if (isRecording) {
-                    Button(
-                        onClick = {
-                            viewModel.stopRecordingAndTranscribe()
-                            onStopRecording()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC))
-                    ) {
-                        Text("Stop", color = Color.White)
-                    }
-                } else {
-                    Button(
-                        onClick = {
-                            viewModel.startRecording(context)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC))
-                    ) {
-                        Text("Start", color = Color.White)
-                    }
+            } else {
+                Button(
+                    onClick = {
+                        viewModel.liveTranscript.value = ""
+                        viewModel.startSpeechRecognition(context)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC))
+                ) {
+                    Text("Start", color = Color.White)
                 }
             }
         }
