@@ -13,6 +13,7 @@ import android.os.Environment
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import com.example.app.audio.AudioRecorder
+import com.example.app.audio.CompressedAudioRecorder
 import com.example.app.audio.getAudioFileForUpload
 import com.example.app.network.GPTRequest
 import com.example.app.network.Message
@@ -35,6 +36,8 @@ import android.speech.RecognizerIntent
 import android.os.Bundle
 
 class NoteViewModel(private val repository: NoteRepository, app: Application) : AndroidViewModel(app), TextToSpeech.OnInitListener {
+    private val compressedAudioRecorder = CompressedAudioRecorder(app.applicationContext)
+    private var compressedAudioFile: File? = null
     fun stopAndSaveNote() {
         isRecording.value = false
         speechRecognizer?.stopListening()
@@ -51,8 +54,50 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                 repository.noteDao.insert(note)
             }
         }
+        // Compress and send audio to OpenAI after recording
+        compressAndSendAudioToOpenAI()
         _fullTranscript.value = ""
         summary.value = ""
+    }
+
+    private fun compressAndSendAudioToOpenAI() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Assume you have a raw audio file path (e.g., from AudioRecorder or elsewhere)
+                val rawAudioPath = getRawAudioFilePath()
+                if (rawAudioPath != null) {
+                    val rawFile = File(rawAudioPath)
+                    val compressedFile = File(rawFile.parent, rawFile.nameWithoutExtension + "_compressed.m4a")
+                    val compressed = compressedAudioRecorder.startRecording(compressedFile)
+                    // Simulate compression by copying or re-encoding (if needed)
+                    // For this example, assume startRecording does the job
+                    compressedAudioRecorder.stopRecording()
+                    compressedAudioFile = compressedFile
+                    // Send to OpenAI
+                    sendCompressedAudioToOpenAI(compressedFile)
+                }
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Compression/Send failed", e)
+            }
+        }
+    }
+
+    private suspend fun sendCompressedAudioToOpenAI(file: File) {
+        try {
+            val requestFile = file.asRequestBody("audio/mp4".toMediaType())
+            val body = MultipartBody.Part.createFormData("file", file.name, requestFile)
+            // Call your OpenAIService here (replace with your actual API call)
+            // Example: val response = RetrofitInstance.api.transcribeAudio(body)
+            // Handle response as needed
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "OpenAI audio send failed", e)
+        }
+    }
+
+    private fun getRawAudioFilePath(): String? {
+        // TODO: Implement logic to get the path to the raw audio file just recorded
+        // This may depend on your AudioRecorder implementation
+        return null
     }
     fun setReminder(noteId: Long) {
         // TODO: Implement reminder logic
