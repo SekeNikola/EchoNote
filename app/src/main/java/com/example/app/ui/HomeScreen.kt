@@ -1,4 +1,7 @@
+
+
 package com.example.app.ui
+
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,9 +14,12 @@ import androidx.compose.material.icons.outlined.SettingsVoice
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.CheckBoxOutlineBlank
 import com.example.app.data.createdAtFormattedDate
 import com.example.app.data.createdAtFormattedTime
 import androidx.compose.runtime.getValue
@@ -160,13 +166,40 @@ fun NoteCard(
                 maxLines = 1
             )
             Spacer(modifier = Modifier.height(8.dp))
-            // Middle: Summary
-            Text(
-                text = note.snippet,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp
-            )
+            // Middle: Summary/Checklist
+            val summaryText = note.snippet
+            if (!summaryText.isNullOrBlank()) {
+                val tasks = remember(summaryText) {
+                    try {
+                        val json = org.json.JSONObject(summaryText)
+                        if (json.has("tasks")) {
+                            val arr = json.getJSONArray("tasks")
+                            List(arr.length()) { arr.getString(it) }
+                        } else null
+                    } catch (e: Exception) { null }
+                }
+                val summaryOnly = remember(summaryText) {
+                    try {
+                        val json = org.json.JSONObject(summaryText)
+                        if (json.has("summary")) json.getString("summary") else null
+                    } catch (e: Exception) { null }
+                }
+                if (tasks != null) {
+                    Column {
+                        tasks.forEach { task: String ->
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
+                                Icon(Icons.Outlined.CheckBoxOutlineBlank, contentDescription = null, tint = Color(0xFFB0B0B0), modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(text = task, color = Color(0xFFB0B0B0), fontSize = 14.sp, fontWeight = FontWeight.Normal)
+                            }
+                        }
+                    }
+                } else if (summaryOnly != null) {
+                    Text(text = summaryOnly, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp)
+                } else {
+                    Text(text = summaryText, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp)
+                }
+            }
             Spacer(modifier = Modifier.height(12.dp))
             // Bottom: Metadata
             Row(

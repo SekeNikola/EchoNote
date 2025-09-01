@@ -213,17 +213,45 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                 val data = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 data?.firstOrNull()?.let { finalResult ->
                     appendTranscript(finalResult, isFinal = true)
-                    // Generate summary using OpenAI API
-                    viewModelScope.launch {
-                        val req = GPTRequest(
-                            messages = listOf(
-                                Message(role = "system", content = "Summarize this note transcript in 1-2 sentences."),
-                                Message(role = "user", content = _fullTranscript.value)
-                            )
-                        )
-                        val response = RetrofitInstance.api.summarizeText(req)
-                        summary.value = response.body()?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
-                    }
+                                        // Generate summary using OpenAI API, always as JSON
+                                        viewModelScope.launch {
+                                                val rules = """
+You are an assistant that reformats transcripts into JSON for a note-taking app.
+
+Rules:
+1. If the transcript contains action items like 'I need to...', 'remind me to...', 'buy...', 'call...', 'go to...', or similar, ALWAYS extract them into a JSON array called 'tasks'.
+2. If the transcript has general conversation or thoughts but no clear tasks, return a JSON object with a single 'summary' field.
+3. The JSON must be valid and contain ONLY the JSON object — no explanations, no extra text.
+4. Do NOT skip any tasks mentioned.
+5. Each task must be a short, clear string.
+
+Examples:
+
+Input:
+"I need to buy bread and milk and also call mom."
+
+Output:
+{
+    \"tasks\": [\"Buy bread\", \"Buy milk\", \"Call mom\"]
+}
+
+Input:
+"Today I met John and we discussed the project timeline."
+
+Output:
+{
+    \"summary\": \"Met John and discussed the project timeline.\"
+}
+""".trimIndent()
+                                                val req = GPTRequest(
+                                                        messages = listOf(
+                                                                Message(role = "system", content = rules),
+                                                                Message(role = "user", content = _fullTranscript.value)
+                                                        )
+                                                )
+                                                val response = RetrofitInstance.api.summarizeText(req)
+                                                summary.value = response.body()?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
+                                        }
                 }
                 if (isRecording.value == true) {
                     speechRecognizer?.startListening(createRecognizerIntent())

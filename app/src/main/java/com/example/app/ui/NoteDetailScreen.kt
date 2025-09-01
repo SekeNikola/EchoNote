@@ -2,6 +2,7 @@ package com.example.app.ui
 
 import android.media.MediaPlayer
 import android.widget.Toast
+import org.json.JSONObject
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -144,11 +145,48 @@ fun NoteDetailScreen(
                                     )
                                     val summaryText = note?.snippet?.takeIf { it.isNotBlank() } ?: summary
                                     if (!summaryText.isNullOrBlank()) {
-                                        Text(
-                                            text = summaryText,
-                                            color = Color(0xFFB0B0B0),
-                                            fontSize = 16.sp
-                                        )
+                                        // Try to parse as JSON for tasks or summary
+                                        val tasks = remember(summaryText) {
+                                            try {
+                                                val json = org.json.JSONObject(summaryText)
+                                                if (json.has("tasks")) {
+                                                    val arr = json.getJSONArray("tasks")
+                                                    List(arr.length()) { arr.getString(it) }
+                                                } else null
+                                            } catch (e: Exception) { null }
+                                        }
+                                        val summaryOnly = remember(summaryText) {
+                                            try {
+                                                val json = org.json.JSONObject(summaryText)
+                                                if (json.has("summary")) json.getString("summary") else null
+                                            } catch (e: Exception) { null }
+                                        }
+                                        if (tasks != null) {
+                                            // Interactive checklist with local state (for demo; replace with ViewModel persistence for real app)
+                                            val checkedStates = remember(tasks) { mutableStateListOf(*Array(tasks.size) { false }) }
+                                            Column {
+                                                Text("Tasks", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                                                tasks.forEachIndexed { idx, task ->
+                                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+                                                        Checkbox(
+                                                            checked = checkedStates[idx],
+                                                            onCheckedChange = { checked -> checkedStates[idx] = checked },
+                                                            colors = CheckboxDefaults.colors(
+                                                                checkedColor = Color(0xFF4CAF50),
+                                                                uncheckedColor = Color(0xFFB0B0B0),
+                                                                checkmarkColor = Color.White
+                                                            )
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(task, color = Color(0xFFB0B0B0), fontSize = 16.sp)
+                                                    }
+                                                }
+                                            }
+                                        } else if (summaryOnly != null) {
+                                            Text(summaryOnly, color = Color(0xFFB0B0B0), fontSize = 16.sp)
+                                        } else {
+                                            Text(summaryText, color = Color(0xFFB0B0B0), fontSize = 16.sp)
+                                        }
                                     }
                                 }
                                 // Custom scrollbar indicator (gray, only if scrollable)
@@ -195,7 +233,7 @@ fun NoteDetailScreen(
                                         color = Color.White,
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
-                                    val transcriptText = if (viewModel.isRecording.value == true) transcript else note?.transcript.orEmpty()
+                                    val transcriptText = if (transcript.isNotBlank()) transcript else note?.transcript.orEmpty()
                                     if (transcriptText.isNotBlank()) {
                                         Text(
                                             text = transcriptText,
