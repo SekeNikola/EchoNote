@@ -139,78 +139,145 @@ fun NoteDetailScreen(
                                         .verticalScroll(scrollState)
                                         .padding(16.dp)
                                 ) {
-                                    Text(
-                                        text = "Summary",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 18.sp,
-                                        color = Color.White,
-                                        modifier = Modifier.padding(bottom = 8.dp)
+                                    // Removed duplicate "Summary" title
+                                    // --- Begin: Mixed summary and checklist support ---
+                                    // Parse snippet as JSON with optional "text" and "tasks" fields
+                                    var editableText by remember(note?.snippet) {
+                                        mutableStateOf(
+                                            try {
+                                                val json = org.json.JSONObject(note?.snippet ?: "")
+                                                json.optString("text", "")
+                                            } catch (e: Exception) { note?.snippet ?: "" }
+                                        )
+                                    }
+                                    val initialTasks: List<String> = try {
+                                        val json = org.json.JSONObject(note?.snippet ?: "")
+                                        if (json.has("tasks")) {
+                                            val arr = json.getJSONArray("tasks")
+                                            List(arr.length()) { arr.getString(it) }
+                                        } else emptyList()
+                                    } catch (e: Exception) { emptyList() }
+                                    var editableTasks by remember(note?.snippet) { mutableStateOf(initialTasks.toMutableList()) }
+                                    val initialChecked = remember(note?.checklistState to initialTasks) {
+                                        try {
+                                            note?.checklistState?.let { stateStr ->
+                                                val arr = org.json.JSONArray(stateStr)
+                                                MutableList(initialTasks.size) { idx ->
+                                                    if (idx < arr.length()) arr.getBoolean(idx) else false
+                                                }
+                                            } ?: MutableList(initialTasks.size) { false }
+                                        } catch (e: Exception) { MutableList(initialTasks.size) { false } }
+                                    }
+                                    val checkedStates = remember(note?.snippet) { mutableStateListOf<Boolean>().apply { addAll(initialChecked) } }
+                                    var newTask by remember { mutableStateOf("") }
+                                    // Always extract and show the summary if it exists, never show raw JSON
+                                    val summaryContent: String? = try {
+                                        val json = org.json.JSONObject(note?.snippet ?: "")
+                                        when {
+                                            json.has("summary") && json.getString("summary").isNotBlank() -> json.getString("summary")
+                                            json.has("text") && json.getString("text").isNotBlank() -> json.getString("text")
+                                            else -> null
+                                        }
+                                    } catch (e: Exception) { null }
+                                    if (!summaryContent.isNullOrBlank()) {
+                                        Text(
+                                            text = summaryContent,
+                                            color = Color(0xFFB0B0B0),
+                                            fontSize = 16.sp,
+                                            modifier = Modifier.padding(bottom = 8.dp)
+                                        )
+                                    }
+                                    BasicTextField(
+                                        value = editableText,
+                                        onValueChange = { editableText = it },
+                                        textStyle = TextStyle(color = Color(0xFFB0B0B0), fontSize = 16.sp),
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color.Transparent),
+                                        decorationBox = { innerTextField ->
+                                            Box(Modifier.fillMaxWidth()) {
+                                                if (editableText.isEmpty()) {
+                                                    Text(
+                                                        text = "Your thoughts...",
+                                                        color = Color(0xFF888888),
+                                                        fontSize = 16.sp,
+                                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                                                    )
+                                                }
+                                                innerTextField()
+                                            }
+                                        }
                                     )
-                                    val summaryText = note?.snippet?.takeIf { it.isNotBlank() } ?: summary
-                                    if (!summaryText.isNullOrBlank()) {
-                                        // Try to parse as JSON for tasks or summary
-                                        val tasks = remember(summaryText) {
-                                            try {
-                                                val json = org.json.JSONObject(summaryText)
-                                                if (json.has("tasks")) {
-                                                    val arr = json.getJSONArray("tasks")
-                                                    List(arr.length()) { arr.getString(it) }
-                                                } else null
-                                            } catch (e: Exception) { null }
-                                        }
-                                        val summaryOnly = remember(summaryText) {
-                                            try {
-                                                val json = org.json.JSONObject(summaryText)
-                                                if (json.has("summary")) json.getString("summary") else null
-                                            } catch (e: Exception) { null }
-                                        }
-                                        if (tasks != null && note != null) {
-                                            // Restore checklist state from note.checklistState (JSON array of booleans)
-                                            val initialChecked = remember(note!!.checklistState to tasks) {
-                                                try {
-                                                    note!!.checklistState?.let { stateStr ->
-                                                        val arr = org.json.JSONArray(stateStr)
-                                                        MutableList(tasks.size) { idx ->
-                                                            if (idx < arr.length()) arr.getBoolean(idx) else false
-                                                        }
-                                                    } ?: MutableList(tasks.size) { false }
-                                                } catch (e: Exception) { MutableList(tasks.size) { false } }
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    // Editable checklist UI (if any tasks or always show)
+                                    Text("Tasks", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                                    editableTasks.forEachIndexed { idx, task ->
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
+                                            Checkbox(
+                                                checked = checkedStates.getOrNull(idx) ?: false,
+                                                onCheckedChange = { checked ->
+                                                    if (idx < checkedStates.size) checkedStates[idx] = checked
+                                                    // Optionally persist checklist state here
+                                                },
+                                                colors = CheckboxDefaults.colors(
+                                                    checkedColor = Color(0xFF4CAF50),
+                                                    uncheckedColor = Color(0xFFB0B0B0),
+                                                    checkmarkColor = Color.White
+                                                )
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            BasicTextField(
+                                                value = task,
+                                                onValueChange = { newText ->
+                                                    editableTasks[idx] = newText
+                                                },
+                                                textStyle = TextStyle(color = Color(0xFFB0B0B0), fontSize = 16.sp),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            IconButton(onClick = {
+                                                editableTasks.removeAt(idx)
+                                                if (idx < checkedStates.size) checkedStates.removeAt(idx)
+                                            }) {
+                                                Icon(Icons.Outlined.Delete, contentDescription = "Delete Task", tint = Color(0xFFFF5252))
                                             }
-                                            val checkedStates = remember { mutableStateListOf<Boolean>().apply { addAll(initialChecked) } }
-                                            // Save checklist state on change
-                                            fun persistChecklist() {
-                                                val json = org.json.JSONArray(checkedStates)
-                                                coroutineScope.launch {
-                                                    viewModel.updateChecklistState(note!!.id, json.toString())
-                                                }
-                                            }
-                                            Column {
-                                                Text("Tasks", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
-                                                tasks.forEachIndexed { idx, task ->
-                                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
-                                                        Checkbox(
-                                                            checked = checkedStates[idx],
-                                                            onCheckedChange = { checked ->
-                                                                checkedStates[idx] = checked
-                                                                persistChecklist()
-                                                            },
-                                                            colors = CheckboxDefaults.colors(
-                                                                checkedColor = Color(0xFF4CAF50),
-                                                                uncheckedColor = Color(0xFFB0B0B0),
-                                                                checkmarkColor = Color.White
-                                                            )
-                                                        )
-                                                        Spacer(modifier = Modifier.width(8.dp))
-                                                        Text(task, color = Color(0xFFB0B0B0), fontSize = 16.sp)
-                                                    }
-                                                }
-                                            }
-                                        } else if (summaryOnly != null) {
-                                            Text(summaryOnly, color = Color(0xFFB0B0B0), fontSize = 16.sp)
-                                        } else {
-                                            Text(summaryText, color = Color(0xFFB0B0B0), fontSize = 16.sp)
                                         }
                                     }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        BasicTextField(
+                                            value = newTask,
+                                            onValueChange = { newTask = it },
+                                            textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Button(onClick = {
+                                            if (newTask.isNotBlank()) {
+                                                editableTasks.add(newTask)
+                                                checkedStates.add(false)
+                                                newTask = ""
+                                            }
+                                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
+                                            Text("Add Task", color = Color.White)
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    // Save both text and tasks as JSON
+                                    Button(onClick = {
+                                        note?.let { n ->
+                                            val json = JSONObject()
+                                            json.put("text", editableText)
+                                            json.put("tasks", org.json.JSONArray(editableTasks))
+                                            coroutineScope.launch {
+                                                viewModel.updateNoteSnippet(n.id, json.toString())
+                                                // Save checklist state as before
+                                                val checkedJson = org.json.JSONArray(checkedStates)
+                                                viewModel.updateChecklistState(n.id, checkedJson.toString())
+                                            }
+                                        }
+                                    }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
+                                        Text("Save Summary & Tasks", color = Color.White)
+                                    }
+                                    // --- End: Mixed summary and checklist support ---
                                 }
                                 // Custom scrollbar indicator (gray, only if scrollable)
                                                         if (scrollState.maxValue > 1) {

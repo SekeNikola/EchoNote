@@ -45,6 +45,8 @@ public final class NoteDao_Impl implements NoteDao {
 
   private final EntityDeletionOrUpdateAdapter<Note> __updateAdapterOfNote;
 
+  private final SharedSQLiteStatement __preparedStmtOfUpdateSnippet;
+
   private final SharedSQLiteStatement __preparedStmtOfUpdateChecklistState;
 
   private final SharedSQLiteStatement __preparedStmtOfDeleteById;
@@ -178,6 +180,14 @@ public final class NoteDao_Impl implements NoteDao {
         statement.bindLong(12, entity.getId());
       }
     };
+    this.__preparedStmtOfUpdateSnippet = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "UPDATE notes SET snippet = ? WHERE id = ?";
+        return _query;
+      }
+    };
     this.__preparedStmtOfUpdateChecklistState = new SharedSQLiteStatement(__db) {
       @Override
       @NonNull
@@ -262,6 +272,38 @@ public final class NoteDao_Impl implements NoteDao {
           return Unit.INSTANCE;
         } finally {
           __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object updateSnippet(final long id, final String snippet,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfUpdateSnippet.acquire();
+        int _argIndex = 1;
+        if (snippet == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindString(_argIndex, snippet);
+        }
+        _argIndex = 2;
+        _stmt.bindLong(_argIndex, id);
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfUpdateSnippet.release(_stmt);
         }
       }
     }, $completion);

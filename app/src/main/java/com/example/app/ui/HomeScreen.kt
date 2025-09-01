@@ -19,6 +19,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.CheckBox
 import androidx.compose.material.icons.outlined.CheckBoxOutlineBlank
 import com.example.app.data.createdAtFormattedDate
 import com.example.app.data.createdAtFormattedTime
@@ -181,23 +182,57 @@ fun NoteCard(
                 val summaryOnly = remember(summaryText) {
                     try {
                         val json = org.json.JSONObject(summaryText)
-                        if (json.has("summary")) json.getString("summary") else null
+                        when {
+                            json.has("summary") && json.getString("summary").isNotBlank() -> json.getString("summary")
+                            json.has("text") && json.getString("text").isNotBlank() -> json.getString("text")
+                            else -> null
+                        }
                     } catch (e: Exception) { null }
                 }
+                // Always show placeholder under title and above checklist
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Your thoughts...",
+                    color = Color(0xFF888888),
+                    fontSize = 13.sp,
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    modifier = Modifier.padding(start = 2.dp, bottom = 4.dp)
+                )
+                // Show summary if present (even if tasks exist)
+                if (summaryOnly != null && summaryOnly.isNotBlank()) {
+                    Text(
+                        text = summaryOnly,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal,
+                        lineHeight = 20.sp,
+                        color = Color(0xFFEEEEEE),
+                        modifier = Modifier.padding(bottom = if (tasks != null) 6.dp else 0.dp)
+                    )
+                }
+                // Show checklist if present
                 if (tasks != null) {
+                    val checkedStates = try {
+                        note.checklistState?.let { stateStr ->
+                            val arr = org.json.JSONArray(stateStr)
+                            List(tasks.size) { idx ->
+                                if (idx < arr.length()) arr.getBoolean(idx) else false
+                            }
+                        } ?: List(tasks.size) { false }
+                    } catch (e: Exception) { List(tasks.size) { false } }
                     Column {
-                        tasks.forEach { task: String ->
+                        tasks.forEachIndexed { idx, task ->
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 2.dp)) {
-                                Icon(Icons.Outlined.CheckBoxOutlineBlank, contentDescription = null, tint = Color(0xFFB0B0B0), modifier = Modifier.size(16.dp))
+                                Icon(
+                                    imageVector = if (checkedStates[idx]) Icons.Outlined.CheckBox else Icons.Outlined.CheckBoxOutlineBlank,
+                                    contentDescription = null,
+                                    tint = if (checkedStates[idx]) Color(0xFF4CAF50) else Color(0xFFB0B0B0),
+                                    modifier = Modifier.size(16.dp)
+                                )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(text = task, color = Color(0xFFB0B0B0), fontSize = 14.sp, fontWeight = FontWeight.Normal)
                             }
                         }
                     }
-                } else if (summaryOnly != null) {
-                    Text(text = summaryOnly, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp)
-                } else {
-                    Text(text = summaryText, fontSize = 14.sp, fontWeight = FontWeight.Normal, lineHeight = 20.sp)
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))

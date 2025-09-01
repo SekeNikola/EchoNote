@@ -36,6 +36,9 @@ import android.speech.RecognizerIntent
 import android.os.Bundle
 
 class NoteViewModel(private val repository: NoteRepository, app: Application) : AndroidViewModel(app), TextToSpeech.OnInitListener {
+    fun updateNoteSnippet(noteId: Long, snippet: String) = viewModelScope.launch {
+        repository.updateNoteSnippet(noteId, snippet)
+    }
 
     fun updateChecklistState(noteId: Long, checklistState: String) = viewModelScope.launch {
         repository.updateChecklistState(noteId, checklistState)
@@ -48,11 +51,30 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
         val transcript = fullTranscript.value
         val summaryText = summary.value ?: ""
         if (transcript.isNotBlank()) {
+            // --- Begin: Extract tasks and summary from transcript ---
+            val taskRegex = Regex("(?i)(?:\\b(?:todo|to-do|remind(?: me)? to|i need to|i have to|i must|i should|buy|purchase|call|email|message|schedule|meet|pay|send|write|create|finish|complete|submit|order|pick up|get|shop for|remember to)\\b)(.*?)([.?!]|$)")
+            val tasks = mutableListOf<String>()
+            val lines = transcript.split("\n", ".", "?", "!")
+            val nonTaskLines = mutableListOf<String>()
+            for (line in lines) {
+                val match = taskRegex.find(line)
+                if (match != null) {
+                    val task = match.groupValues[1].trim().replaceFirst(Regex("^(to|that|for|to |and |then )"), "").replaceFirst(Regex("^(buy|purchase|call|email|message|schedule|meet|pay|send|write|create|finish|complete|submit|order|pick up|get|shop for|remember to|remind(?: me)? to|i need to|i have to|i must|i should) ", RegexOption.IGNORE_CASE), "").capitalize()
+                    if (task.isNotBlank()) tasks.add(task)
+                } else if (line.isNotBlank()) {
+                    nonTaskLines.add(line.trim())
+                }
+            }
+            val summaryOut = if (nonTaskLines.isNotEmpty()) nonTaskLines.joinToString(". ") else summaryText
+            val json = org.json.JSONObject()
+            json.put("summary", summaryOut)
+            if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
+            // --- End: Extract tasks and summary from transcript ---
             viewModelScope.launch {
-                val title = generateTitle(summaryText)
+                val title = generateTitle(summaryOut)
                 val note = Note(
                     title = title,
-                    snippet = summaryText,
+                    snippet = json.toString(),
                     transcript = transcript
                 )
                 repository.noteDao.insert(note)
