@@ -36,6 +36,39 @@ import android.speech.RecognizerIntent
 import android.os.Bundle
 
 class NoteViewModel(private val repository: NoteRepository, app: Application) : AndroidViewModel(app), TextToSpeech.OnInitListener {
+    /**
+     * Use OpenAI GPT to extract summary and tasks from transcript.
+     * The prompt asks for a JSON response: {"summary": "...", "tasks": [ ... ]}
+     */
+    suspend fun extractSummaryAndTasksWithOpenAI(transcript: String): Pair<String, List<String>>? {
+        val prompt = """
+            Summarize the following text and extract any tasks as a checklist. Respond in JSON: {\"summary\": \"...\", \"tasks\": [ ... ]}\n\nText:\n$transcript
+        """.trimIndent()
+        val request = com.example.app.network.GPTRequest(
+            model = "gpt-3.5-turbo",
+            messages = listOf(
+                com.example.app.network.Message(role = "system", content = "You are a helpful assistant that summarizes notes and extracts tasks as a checklist."),
+                com.example.app.network.Message(role = "user", content = prompt)
+            )
+        )
+        return try {
+            val response = com.example.app.network.RetrofitInstance.api.summarizeText(request)
+            if (response.isSuccessful) {
+                val content = response.body()?.choices?.firstOrNull()?.message?.content
+                if (!content.isNullOrBlank()) {
+                    val json = org.json.JSONObject(content)
+                    val summary = json.optString("summary", "")
+                    val tasks = if (json.has("tasks")) {
+                        val arr = json.getJSONArray("tasks")
+                        List(arr.length()) { arr.getString(it) }
+                    } else emptyList()
+                    Pair(summary, tasks)
+                } else null
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
     fun updateNoteSnippet(noteId: Long, snippet: String) = viewModelScope.launch {
         repository.updateNoteSnippet(noteId, snippet)
     }
@@ -49,28 +82,14 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
         isRecording.value = false
         speechRecognizer?.stopListening()
         val transcript = fullTranscript.value
-        val summaryText = summary.value ?: ""
         if (transcript.isNotBlank()) {
-            // --- Begin: Extract tasks and summary from transcript ---
-            val taskRegex = Regex("(?i)(?:\\b(?:todo|to-do|remind(?: me)? to|i need to|i have to|i must|i should|buy|purchase|call|email|message|schedule|meet|pay|send|write|create|finish|complete|submit|order|pick up|get|shop for|remember to)\\b)(.*?)([.?!]|$)")
-            val tasks = mutableListOf<String>()
-            val lines = transcript.split("\n", ".", "?", "!")
-            val nonTaskLines = mutableListOf<String>()
-            for (line in lines) {
-                val match = taskRegex.find(line)
-                if (match != null) {
-                    val task = match.groupValues[1].trim().replaceFirst(Regex("^(to|that|for|to |and |then )"), "").replaceFirst(Regex("^(buy|purchase|call|email|message|schedule|meet|pay|send|write|create|finish|complete|submit|order|pick up|get|shop for|remember to|remind(?: me)? to|i need to|i have to|i must|i should) ", RegexOption.IGNORE_CASE), "").capitalize()
-                    if (task.isNotBlank()) tasks.add(task)
-                } else if (line.isNotBlank()) {
-                    nonTaskLines.add(line.trim())
-                }
-            }
-            val summaryOut = if (nonTaskLines.isNotEmpty()) nonTaskLines.joinToString(". ") else summaryText
-            val json = org.json.JSONObject()
-            json.put("summary", summaryOut)
-            if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
-            // --- End: Extract tasks and summary from transcript ---
             viewModelScope.launch {
+                val result = extractSummaryAndTasksWithOpenAI(transcript)
+                val summaryOut = result?.first ?: ""
+                val tasks = result?.second ?: emptyList<String>()
+                val json = org.json.JSONObject()
+                json.put("summary", summaryOut)
+                if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
                 val title = generateTitle(summaryOut)
                 val note = Note(
                     title = title,
