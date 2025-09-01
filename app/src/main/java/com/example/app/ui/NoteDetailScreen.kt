@@ -28,6 +28,8 @@ import com.example.app.data.createdAtFormattedDate
 import com.example.app.data.createdAtFormattedTime
 import com.example.app.viewmodel.NoteViewModel
 
+import kotlinx.coroutines.launch
+
 enum class PlaybackState { Idle, Playing, Paused }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,6 +39,7 @@ fun NoteDetailScreen(
     viewModel: NoteViewModel,
     onBack: () -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val note by viewModel.getNoteById(noteId).observeAsState()
     val transcript by viewModel.fullTranscript.collectAsState()
     val summary by viewModel.summary.observeAsState("")
@@ -161,16 +164,36 @@ fun NoteDetailScreen(
                                                 if (json.has("summary")) json.getString("summary") else null
                                             } catch (e: Exception) { null }
                                         }
-                                        if (tasks != null) {
-                                            // Interactive checklist with local state (for demo; replace with ViewModel persistence for real app)
-                                            val checkedStates = remember(tasks) { mutableStateListOf(*Array(tasks.size) { false }) }
+                                        if (tasks != null && note != null) {
+                                            // Restore checklist state from note.checklistState (JSON array of booleans)
+                                            val initialChecked = remember(note!!.checklistState to tasks) {
+                                                try {
+                                                    note!!.checklistState?.let { stateStr ->
+                                                        val arr = org.json.JSONArray(stateStr)
+                                                        MutableList(tasks.size) { idx ->
+                                                            if (idx < arr.length()) arr.getBoolean(idx) else false
+                                                        }
+                                                    } ?: MutableList(tasks.size) { false }
+                                                } catch (e: Exception) { MutableList(tasks.size) { false } }
+                                            }
+                                            val checkedStates = remember { mutableStateListOf<Boolean>().apply { addAll(initialChecked) } }
+                                            // Save checklist state on change
+                                            fun persistChecklist() {
+                                                val json = org.json.JSONArray(checkedStates)
+                                                coroutineScope.launch {
+                                                    viewModel.updateChecklistState(note!!.id, json.toString())
+                                                }
+                                            }
                                             Column {
                                                 Text("Tasks", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                                                 tasks.forEachIndexed { idx, task ->
                                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 4.dp)) {
                                                         Checkbox(
                                                             checked = checkedStates[idx],
-                                                            onCheckedChange = { checked -> checkedStates[idx] = checked },
+                                                            onCheckedChange = { checked ->
+                                                                checkedStates[idx] = checked
+                                                                persistChecklist()
+                                                            },
                                                             colors = CheckboxDefaults.colors(
                                                                 checkedColor = Color(0xFF4CAF50),
                                                                 uncheckedColor = Color(0xFFB0B0B0),

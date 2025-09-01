@@ -36,6 +36,10 @@ import android.speech.RecognizerIntent
 import android.os.Bundle
 
 class NoteViewModel(private val repository: NoteRepository, app: Application) : AndroidViewModel(app), TextToSpeech.OnInitListener {
+
+    fun updateChecklistState(noteId: Long, checklistState: String) = viewModelScope.launch {
+        repository.updateChecklistState(noteId, checklistState)
+    }
     private val compressedAudioRecorder = CompressedAudioRecorder(app.applicationContext)
     private var compressedAudioFile: File? = null
     fun stopAndSaveNote() {

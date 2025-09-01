@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NoteDao {
+    @Query("UPDATE notes SET checklistState = :checklistState WHERE id = :id")
+    suspend fun updateChecklistState(id: Long, checklistState: String)
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(note: Note)
 

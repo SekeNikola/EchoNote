@@ -45,6 +45,8 @@ public final class NoteDao_Impl implements NoteDao {
 
   private final EntityDeletionOrUpdateAdapter<Note> __updateAdapterOfNote;
 
+  private final SharedSQLiteStatement __preparedStmtOfUpdateChecklistState;
+
   private final SharedSQLiteStatement __preparedStmtOfDeleteById;
 
   private final SharedSQLiteStatement __preparedStmtOfUpdateTitle;
@@ -57,7 +59,7 @@ public final class NoteDao_Impl implements NoteDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `notes` (`id`,`title`,`snippet`,`transcript`,`audioPath`,`highlights`,`isFavorite`,`isArchived`,`createdAt`,`reminderTime`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `notes` (`id`,`title`,`snippet`,`transcript`,`audioPath`,`highlights`,`isFavorite`,`isArchived`,`createdAt`,`reminderTime`,`checklistState`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -99,6 +101,11 @@ public final class NoteDao_Impl implements NoteDao {
           statement.bindNull(10);
         } else {
           statement.bindLong(10, entity.getReminderTime());
+        }
+        if (entity.getChecklistState() == null) {
+          statement.bindNull(11);
+        } else {
+          statement.bindString(11, entity.getChecklistState());
         }
       }
     };
@@ -120,7 +127,7 @@ public final class NoteDao_Impl implements NoteDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `notes` SET `id` = ?,`title` = ?,`snippet` = ?,`transcript` = ?,`audioPath` = ?,`highlights` = ?,`isFavorite` = ?,`isArchived` = ?,`createdAt` = ?,`reminderTime` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `notes` SET `id` = ?,`title` = ?,`snippet` = ?,`transcript` = ?,`audioPath` = ?,`highlights` = ?,`isFavorite` = ?,`isArchived` = ?,`createdAt` = ?,`reminderTime` = ?,`checklistState` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -163,7 +170,20 @@ public final class NoteDao_Impl implements NoteDao {
         } else {
           statement.bindLong(10, entity.getReminderTime());
         }
-        statement.bindLong(11, entity.getId());
+        if (entity.getChecklistState() == null) {
+          statement.bindNull(11);
+        } else {
+          statement.bindString(11, entity.getChecklistState());
+        }
+        statement.bindLong(12, entity.getId());
+      }
+    };
+    this.__preparedStmtOfUpdateChecklistState = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "UPDATE notes SET checklistState = ? WHERE id = ?";
+        return _query;
       }
     };
     this.__preparedStmtOfDeleteById = new SharedSQLiteStatement(__db) {
@@ -242,6 +262,38 @@ public final class NoteDao_Impl implements NoteDao {
           return Unit.INSTANCE;
         } finally {
           __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object updateChecklistState(final long id, final String checklistState,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfUpdateChecklistState.acquire();
+        int _argIndex = 1;
+        if (checklistState == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindString(_argIndex, checklistState);
+        }
+        _argIndex = 2;
+        _stmt.bindLong(_argIndex, id);
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfUpdateChecklistState.release(_stmt);
         }
       }
     }, $completion);
@@ -349,6 +401,7 @@ public final class NoteDao_Impl implements NoteDao {
           final int _cursorIndexOfIsArchived = CursorUtil.getColumnIndexOrThrow(_cursor, "isArchived");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfChecklistState = CursorUtil.getColumnIndexOrThrow(_cursor, "checklistState");
           final List<Note> _result = new ArrayList<Note>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Note _item;
@@ -402,7 +455,13 @@ public final class NoteDao_Impl implements NoteDao {
             } else {
               _tmpReminderTime = _cursor.getLong(_cursorIndexOfReminderTime);
             }
-            _item = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime);
+            final String _tmpChecklistState;
+            if (_cursor.isNull(_cursorIndexOfChecklistState)) {
+              _tmpChecklistState = null;
+            } else {
+              _tmpChecklistState = _cursor.getString(_cursorIndexOfChecklistState);
+            }
+            _item = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime,_tmpChecklistState);
             _result.add(_item);
           }
           return _result;
@@ -450,6 +509,7 @@ public final class NoteDao_Impl implements NoteDao {
           final int _cursorIndexOfIsArchived = CursorUtil.getColumnIndexOrThrow(_cursor, "isArchived");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfChecklistState = CursorUtil.getColumnIndexOrThrow(_cursor, "checklistState");
           final List<Note> _result = new ArrayList<Note>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Note _item;
@@ -503,7 +563,13 @@ public final class NoteDao_Impl implements NoteDao {
             } else {
               _tmpReminderTime = _cursor.getLong(_cursorIndexOfReminderTime);
             }
-            _item = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime);
+            final String _tmpChecklistState;
+            if (_cursor.isNull(_cursorIndexOfChecklistState)) {
+              _tmpChecklistState = null;
+            } else {
+              _tmpChecklistState = _cursor.getString(_cursorIndexOfChecklistState);
+            }
+            _item = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime,_tmpChecklistState);
             _result.add(_item);
           }
           return _result;
@@ -541,6 +607,7 @@ public final class NoteDao_Impl implements NoteDao {
           final int _cursorIndexOfIsArchived = CursorUtil.getColumnIndexOrThrow(_cursor, "isArchived");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfChecklistState = CursorUtil.getColumnIndexOrThrow(_cursor, "checklistState");
           final Note _result;
           if (_cursor.moveToFirst()) {
             final long _tmpId;
@@ -593,7 +660,13 @@ public final class NoteDao_Impl implements NoteDao {
             } else {
               _tmpReminderTime = _cursor.getLong(_cursorIndexOfReminderTime);
             }
-            _result = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime);
+            final String _tmpChecklistState;
+            if (_cursor.isNull(_cursorIndexOfChecklistState)) {
+              _tmpChecklistState = null;
+            } else {
+              _tmpChecklistState = _cursor.getString(_cursorIndexOfChecklistState);
+            }
+            _result = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime,_tmpChecklistState);
           } else {
             _result = null;
           }
@@ -635,6 +708,7 @@ public final class NoteDao_Impl implements NoteDao {
             final int _cursorIndexOfIsArchived = CursorUtil.getColumnIndexOrThrow(_cursor, "isArchived");
             final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
             final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+            final int _cursorIndexOfChecklistState = CursorUtil.getColumnIndexOrThrow(_cursor, "checklistState");
             final LongSparseArray<ArrayList<Note>> _collectionRelatedNotes = new LongSparseArray<ArrayList<Note>>();
             while (_cursor.moveToNext()) {
               final long _tmpKey;
@@ -698,7 +772,13 @@ public final class NoteDao_Impl implements NoteDao {
               } else {
                 _tmpReminderTime = _cursor.getLong(_cursorIndexOfReminderTime);
               }
-              _tmpNote = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime);
+              final String _tmpChecklistState;
+              if (_cursor.isNull(_cursorIndexOfChecklistState)) {
+                _tmpChecklistState = null;
+              } else {
+                _tmpChecklistState = _cursor.getString(_cursorIndexOfChecklistState);
+              }
+              _tmpNote = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime,_tmpChecklistState);
               final ArrayList<Note> _tmpRelatedNotesCollection;
               final long _tmpKey_1;
               _tmpKey_1 = _cursor.getLong(_cursorIndexOfId);
@@ -742,7 +822,7 @@ public final class NoteDao_Impl implements NoteDao {
       return;
     }
     final StringBuilder _stringBuilder = StringUtil.newStringBuilder();
-    _stringBuilder.append("SELECT `notes`.`id` AS `id`,`notes`.`title` AS `title`,`notes`.`snippet` AS `snippet`,`notes`.`transcript` AS `transcript`,`notes`.`audioPath` AS `audioPath`,`notes`.`highlights` AS `highlights`,`notes`.`isFavorite` AS `isFavorite`,`notes`.`isArchived` AS `isArchived`,`notes`.`createdAt` AS `createdAt`,`notes`.`reminderTime` AS `reminderTime`,_junction.`noteId` FROM `note_cross_refs` AS _junction INNER JOIN `notes` ON (_junction.`relatedNoteId` = `notes`.`id`) WHERE _junction.`noteId` IN (");
+    _stringBuilder.append("SELECT `notes`.`id` AS `id`,`notes`.`title` AS `title`,`notes`.`snippet` AS `snippet`,`notes`.`transcript` AS `transcript`,`notes`.`audioPath` AS `audioPath`,`notes`.`highlights` AS `highlights`,`notes`.`isFavorite` AS `isFavorite`,`notes`.`isArchived` AS `isArchived`,`notes`.`createdAt` AS `createdAt`,`notes`.`reminderTime` AS `reminderTime`,`notes`.`checklistState` AS `checklistState`,_junction.`noteId` FROM `note_cross_refs` AS _junction INNER JOIN `notes` ON (_junction.`relatedNoteId` = `notes`.`id`) WHERE _junction.`noteId` IN (");
     final int _inputSize = _map.size();
     StringUtil.appendPlaceholders(_stringBuilder, _inputSize);
     _stringBuilder.append(")");
@@ -758,7 +838,7 @@ public final class NoteDao_Impl implements NoteDao {
     final Cursor _cursor = DBUtil.query(__db, _stmt, false, null);
     try {
       // _junction.noteId;
-      final int _itemKeyIndex = 10;
+      final int _itemKeyIndex = 11;
       if (_itemKeyIndex == -1) {
         return;
       }
@@ -772,6 +852,7 @@ public final class NoteDao_Impl implements NoteDao {
       final int _cursorIndexOfIsArchived = 7;
       final int _cursorIndexOfCreatedAt = 8;
       final int _cursorIndexOfReminderTime = 9;
+      final int _cursorIndexOfChecklistState = 10;
       while (_cursor.moveToNext()) {
         final long _tmpKey;
         _tmpKey = _cursor.getLong(_itemKeyIndex);
@@ -828,7 +909,13 @@ public final class NoteDao_Impl implements NoteDao {
           } else {
             _tmpReminderTime = _cursor.getLong(_cursorIndexOfReminderTime);
           }
-          _item_1 = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime);
+          final String _tmpChecklistState;
+          if (_cursor.isNull(_cursorIndexOfChecklistState)) {
+            _tmpChecklistState = null;
+          } else {
+            _tmpChecklistState = _cursor.getString(_cursorIndexOfChecklistState);
+          }
+          _item_1 = new Note(_tmpId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime,_tmpChecklistState);
           _tmpRelation.add(_item_1);
         }
       }
