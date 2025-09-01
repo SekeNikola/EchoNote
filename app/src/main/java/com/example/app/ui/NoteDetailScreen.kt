@@ -37,11 +37,11 @@ fun NoteDetailScreen(
     onBack: () -> Unit
 ) {
     val note by viewModel.getNoteById(noteId).observeAsState()
-    val transcript = note?.transcript ?: ""
+    val transcript by viewModel.fullTranscript.collectAsState()
+    val summary by viewModel.summary.observeAsState("")
     val date = note?.createdAtFormattedDate() ?: ""
     val time = note?.createdAtFormattedTime() ?: ""
     val transcriptScrollState = rememberScrollState()
-    val transcriptLines = transcript.lines()
     val context = LocalContext.current
 
     Box(
@@ -142,9 +142,10 @@ fun NoteDetailScreen(
                                         color = Color.White,
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
-                                    if (!note?.snippet.isNullOrBlank()) {
+                                    val summaryText = note?.snippet?.takeIf { it.isNotBlank() } ?: summary
+                                    if (!summaryText.isNullOrBlank()) {
                                         Text(
-                                            text = note!!.snippet,
+                                            text = summaryText,
                                             color = Color(0xFFB0B0B0),
                                             fontSize = 16.sp
                                         )
@@ -194,9 +195,10 @@ fun NoteDetailScreen(
                                         color = Color.White,
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
-                                    if (transcript.isNotBlank()) {
+                                    val transcriptText = if (viewModel.isRecording.value == true) transcript else note?.transcript.orEmpty()
+                                    if (transcriptText.isNotBlank()) {
                                         Text(
-                                            text = transcript,
+                                            text = transcriptText,
                                             color = Color(0xFFB0B0B0),
                                             fontSize = 16.sp
                                         )

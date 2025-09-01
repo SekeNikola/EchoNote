@@ -1,6 +1,9 @@
 package com.example.app.viewmodel
 
 import androidx.lifecycle.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import com.example.app.data.Note
 import com.example.app.data.NoteRepository
 import kotlinx.coroutines.launch
@@ -35,7 +38,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     fun stopAndSaveNote() {
         isRecording.value = false
         speechRecognizer?.stopListening()
-        val transcript = liveTranscript.value ?: ""
+        val transcript = fullTranscript.value
         val summaryText = summary.value ?: ""
         if (transcript.isNotBlank()) {
             viewModelScope.launch {
@@ -48,7 +51,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                 repository.noteDao.insert(note)
             }
         }
-        liveTranscript.value = ""
+        _fullTranscript.value = ""
         summary.value = ""
     }
     fun setReminder(noteId: Long) {
@@ -61,11 +64,24 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     val notes = repository.getAllNotes().asLiveData()
     val searchQuery = MutableLiveData("")
     val isRecording = MutableLiveData(false)
-    val liveTranscript = MutableLiveData("")
     val summary = MutableLiveData("")
     val isVoiceOverlayVisible = MutableLiveData(false)
     val aiResponse = MutableLiveData("")
     val amplitude = MutableLiveData(0)
+
+    // New transcript handling
+    private val _fullTranscript = MutableStateFlow("")
+    val fullTranscript: StateFlow<String> = _fullTranscript
+
+    fun appendTranscript(newText: String, isFinal: Boolean) {
+        _fullTranscript.update { current ->
+            if (isFinal) {
+                (current + " " + newText).trim()
+            } else {
+                current
+            }
+        }
+    }
 
     private var tts: TextToSpeech? = null
     private var ttsReady: Boolean = false
@@ -127,9 +143,9 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
 
     // AUDIO + AI
     fun startSpeechRecognition(context: Context) {
-        // Clear transcript and summary at start
-        liveTranscript.value = ""
-        summary.value = ""
+    // Clear transcript and summary at start
+    _fullTranscript.value = ""
+    summary.value = ""
         if (speechRecognizer == null) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
         }
@@ -149,20 +165,30 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                 }
             }
             override fun onResults(results: Bundle?) {
-                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                val transcript = matches?.joinToString(" ") ?: ""
-                // Only set transcript to avoid duplication
-                liveTranscript.value = transcript
-                summary.value = generateSummary(transcript)
+                val data = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                data?.firstOrNull()?.let { finalResult ->
+                    appendTranscript(finalResult, isFinal = true)
+                    // Generate summary using OpenAI API
+                    viewModelScope.launch {
+                        val req = GPTRequest(
+                            messages = listOf(
+                                Message(role = "system", content = "Summarize this note transcript in 1-2 sentences."),
+                                Message(role = "user", content = _fullTranscript.value)
+                            )
+                        )
+                        val response = RetrofitInstance.api.summarizeText(req)
+                        summary.value = response.body()?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
+                    }
+                }
                 if (isRecording.value == true) {
                     speechRecognizer?.startListening(createRecognizerIntent())
                 }
             }
             override fun onPartialResults(partialResults: Bundle?) {
-                val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                val partial = matches?.joinToString(" ") ?: ""
-                // Only show partial, do not append to main transcript
-                liveTranscript.value = partial
+                val data = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                data?.firstOrNull()?.let { partial ->
+                    appendTranscript(partial, isFinal = false)
+                }
             }
             override fun onEvent(eventType: Int, params: Bundle?) {}
         }
@@ -183,10 +209,10 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     }
 
     fun stopSpeechRecognition() {
-        isRecording.value = false
-        speechRecognizer?.stopListening()
-        liveTranscript.value = ""
-        summary.value = ""
+    isRecording.value = false
+    speechRecognizer?.stopListening()
+    _fullTranscript.value = ""
+    summary.value = ""
     }
 
     // Voice command overlay logic

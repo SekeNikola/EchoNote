@@ -2,6 +2,7 @@ package com.example.app.ui
 
 import android.Manifest
 import android.os.Build
+import kotlinx.coroutines.delay
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.DisposableEffect
@@ -40,7 +42,7 @@ fun RecordingScreen(
     onHighlight: () -> Unit
 ) {
     val isRecording by viewModel.isRecording.observeAsState(false)
-    val liveTranscript by viewModel.liveTranscript.observeAsState("")
+    val liveTranscript by viewModel.fullTranscript.collectAsState()
     val context = LocalContext.current
     val amplitude by viewModel.amplitude.observeAsState(0)
 
@@ -57,20 +59,36 @@ fun RecordingScreen(
                 .padding(top = 32.dp, start = 16.dp, end = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = liveTranscript,
-                color = Color.White,
-                fontSize = 16.sp,
+            Row(
                 modifier = Modifier
                     .background(Color(0xFF1F1F1F))
                     .padding(16.dp)
-                    .fillMaxWidth()
-            )
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val dotCount = remember { mutableStateOf(1) }
+                LaunchedEffect(isRecording) {
+                    while (isRecording) {
+                        dotCount.value = (dotCount.value % 3) + 1
+                        delay(400)
+                    }
+                    dotCount.value = 1
+                }
+                val dots = (".".repeat(dotCount.value) + "   ").take(3)
+                Text(
+                    text = if (isRecording) liveTranscript + dots else liveTranscript,
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
 
-        // Recording indicator and status in the center
+        // Mic icon and recording text at the bottom, above actions
         Column(
-            modifier = Modifier.align(Alignment.Center),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 96.dp), // leave space for action buttons
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (isRecording) {
@@ -94,7 +112,7 @@ fun RecordingScreen(
             )
         }
 
-        // Actions at the bottom
+        // Actions at the very bottom
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -121,7 +139,8 @@ fun RecordingScreen(
             } else {
                 Button(
                     onClick = {
-                        viewModel.liveTranscript.value = ""
+                        // Clear transcript and summary before starting new recording
+                        viewModel.stopSpeechRecognition()
                         viewModel.startSpeechRecognition(context)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC))
