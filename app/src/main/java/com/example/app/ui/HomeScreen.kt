@@ -1,8 +1,6 @@
-
-
 package com.example.app.ui
 
-
+import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,6 +10,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.SettingsVoice
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -26,7 +26,8 @@ import com.example.app.data.createdAtFormattedTime
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+// Removed explicit Modifier import to resolve ambiguity
+// Removed explicit Modifier import to resolve ambiguity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import android.media.MediaPlayer
@@ -75,49 +76,94 @@ fun HomeScreen(
                 }
             }
         }
-        // Floating record button
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomEnd),
-            contentAlignment = Alignment.BottomEnd
-        ) {
-            IconButton(
-                onClick = {
-                    onRecordClick?.invoke()
-                },
-                modifier = Modifier
-                    .padding(24.dp)
+        // Floating plus button and bottom sheet
+        val showSheet = remember { androidx.compose.runtime.mutableStateOf(false) }
+        if (showSheet.value) {
+            ModalBottomSheet(
+                onDismissRequest = { showSheet.value = false },
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                containerColor = Color(0xFFF8F8F8)
             ) {
-                Icon(Icons.Outlined.RadioButtonChecked, contentDescription = "Start Recording", tint = Color.White)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp, horizontal = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text("Create New Note", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Black)
+                    Spacer(modifier = Modifier.height(20.dp))
+                    // Audio
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        SheetActionButton(icon = Icons.Outlined.SettingsVoice, label = "Record Audio", modifier = Modifier.weight(1f)) { /* TODO */ }
+                        SheetActionButton(icon = Icons.Outlined.RadioButtonChecked, label = "Upload Audio", modifier = Modifier.weight(1f)) { /* TODO */ }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    // Photo
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        SheetActionButton(icon = Icons.Outlined.CalendarToday, label = "Take Picture", modifier = Modifier.weight(1f)) { /* TODO */ }
+                        SheetActionButton(icon = Icons.Outlined.CheckBoxOutlineBlank, label = "Upload Image", modifier = Modifier.weight(1f)) { /* TODO */ }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    // Other
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        SheetActionButton(icon = Icons.Filled.Star, label = "Type Text", modifier = Modifier.weight(1f)) { /* TODO */ }
+                        SheetActionButton(icon = Icons.Outlined.PlayArrow, label = "YouTube Video", modifier = Modifier.weight(1f)) { /* TODO */ }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        SheetActionButton(icon = Icons.Outlined.AccessTime, label = "Web Page URL", modifier = Modifier.weight(1f)) { /* TODO */ }
+                        SheetActionButton(icon = Icons.Outlined.CheckBox, label = "Upload PDF", modifier = Modifier.weight(1f)) { /* TODO */ }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
         }
-        // Floating voice command mic
-        Box(
+        // FloatingActionButton (plus button)
+        FloatingActionButton(
+            onClick = { showSheet.value = true },
+            containerColor = Color(0xFF4CAF50),
+            contentColor = Color.White,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 96.dp)
-                .align(Alignment.BottomEnd),
-            contentAlignment = Alignment.BottomEnd
+                .padding(24.dp)
+                .align(Alignment.BottomEnd)
         ) {
-            IconButton(
-                onClick = {
-                    // For demo: show overlay with a sample query
-                    viewModel.showVoiceOverlay("What did I record this week?")
-                },
-                modifier = Modifier
-                    .padding(24.dp)
-            ) {
-                Icon(Icons.Outlined.SettingsVoice, contentDescription = "Voice Command Search", tint = Color.White)
-            }
+            Icon(Icons.Filled.Add, contentDescription = "Add Note", tint = Color.White)
         }
-        // Voice command overlay
-        if (isVoiceOverlayVisible) {
-            VoiceCommandOverlay( // Removed fully qualified name
-                viewModel = viewModel,
-                onDismiss = { viewModel.hideVoiceOverlay() }
-            )
+        // Floating mic button
+        IconButton(
+            onClick = {
+                // For demo: show overlay with a sample query
+                viewModel.showVoiceOverlay("What did I record this week?")
+            },
+            modifier = Modifier
+                .padding(end = 24.dp, bottom = 96.dp)
+                .align(Alignment.BottomEnd)
+        ) {
+            Icon(Icons.Outlined.SettingsVoice, contentDescription = "Voice Command Search", tint = Color.White)
         }
+    }
+    // Voice command overlay
+    if (isVoiceOverlayVisible) {
+        VoiceCommandOverlay(
+            viewModel = viewModel,
+            onDismiss = { viewModel.hideVoiceOverlay() }
+        )
+    }
+}
+
+@Composable
+fun SheetActionButton(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
+        modifier = modifier.padding(horizontal = 6.dp)
+    ) {
+        Icon(icon, contentDescription = label, tint = Color.Black, modifier = Modifier.size(20.dp))
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(label, color = Color.Black, fontSize = 12.sp)
     }
 }
 
