@@ -12,6 +12,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
+
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
@@ -187,27 +189,33 @@ fun NoteDetailScreen(
                                             modifier = Modifier.padding(bottom = 8.dp)
                                         )
                                     }
-                                    BasicTextField(
-                                        value = editableText,
-                                        onValueChange = { editableText = it },
-                                        textStyle = TextStyle(color = Color(0xFFB0B0B0), fontSize = 16.sp),
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .background(Color.Transparent),
-                                        decorationBox = { innerTextField ->
-                                            Box(Modifier.fillMaxWidth()) {
-                                                if (editableText.isEmpty()) {
-                                                    Text(
-                                                        text = "Your thoughts...",
-                                                        color = Color(0xFF888888),
-                                                        fontSize = 16.sp,
-                                                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                                                    )
-                                                }
-                                                innerTextField()
+                                    var isSummaryFocused by remember { mutableStateOf(false) }
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Box {
+                                            BasicTextField(
+                                                value = editableText,
+                                                onValueChange = { editableText = it },
+                                                textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .onFocusChanged { focusState -> isSummaryFocused = focusState.isFocused },
+                                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White)
+                                            )
+                                            if (editableText.isEmpty() && !isSummaryFocused) {
+                                                Text(
+                                                    text = "Write your thoughts",
+                                                    color = Color.LightGray,
+                                                    fontSize = 16.sp,
+                                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                                                )
                                             }
                                         }
-                                    )
+                                        androidx.compose.material.Divider(
+                                            color = if (isSummaryFocused) Color(0xFF4CAF50) else Color.LightGray,
+                                            thickness = 2.dp
+                                        )
+                                    }
                                     Spacer(modifier = Modifier.height(12.dp))
                                     // Editable checklist UI (if any tasks or always show)
                                     Text("Tasks", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
@@ -244,20 +252,52 @@ fun NoteDetailScreen(
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        BasicTextField(
-                                            value = newTask,
-                                            onValueChange = { newTask = it },
-                                            textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                        Button(onClick = {
-                                            if (newTask.isNotBlank()) {
-                                                editableTasks.add(newTask)
-                                                checkedStates.add(false)
-                                                newTask = ""
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+                                            var isFocused by remember { mutableStateOf(false) }
+                                            Column(modifier = Modifier.fillMaxWidth()) {
+                                                Box {
+                                                    BasicTextField(
+                                                        value = newTask,
+                                                        onValueChange = { newTask = it },
+                                                        textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .onFocusChanged { focusState -> isFocused = focusState.isFocused },
+                                                        cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White)
+                                                    )
+                                                    if (newTask.isEmpty() && !isFocused) {
+                                                        Text(
+                                                            text = "Add task description...",
+                                                            color = Color.LightGray,
+                                                            fontSize = 16.sp,
+                                                            modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                                                        )
+                                                    }
+                                                }
+                                                androidx.compose.material.Divider(
+                                                    color = if (isFocused) Color(0xFF4CAF50) else Color.LightGray,
+                                                    thickness = 2.dp
+                                                )
                                             }
-                                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
-                                            Text("Add Task", color = Color.White)
+                                        }
+                                        Button(
+                                            onClick = {
+                                                if (newTask.isNotBlank()) {
+                                                    editableTasks.add(newTask)
+                                                    checkedStates.add(false)
+                                                    newTask = ""
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                                            contentPadding = PaddingValues(8.dp),
+                                            modifier = Modifier.padding(start = 16.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Add,
+                                                contentDescription = "Add Task",
+                                                tint = Color.White
+                                            )
                                         }
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
