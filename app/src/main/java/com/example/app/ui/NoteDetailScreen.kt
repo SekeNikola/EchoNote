@@ -152,6 +152,7 @@ fun NoteDetailScreen(
                                             } catch (e: Exception) { note?.snippet ?: "" }
                                         )
                                     }
+                                    // ...existing code...
                                     val initialTasks: List<String> = try {
                                         val json = org.json.JSONObject(note?.snippet ?: "")
                                         if (json.has("tasks")) {
@@ -363,15 +364,62 @@ fun NoteDetailScreen(
                                         color = Color.White,
                                         modifier = Modifier.padding(bottom = 8.dp)
                                     )
-                                    val transcriptText = if (transcript.isNotBlank()) transcript else note?.transcript.orEmpty()
-                                    if (transcriptText.isNotBlank()) {
-                                        Text(
-                                            text = transcriptText,
-                                            color = Color(0xFFB0B0B0),
-                                            fontSize = 16.sp
+                                    var editableTranscript by remember { mutableStateOf(
+                                        if (transcript.isNotBlank()) transcript else note?.transcript.orEmpty()
+                                    ) }
+                                    var isTranscriptFocused by remember { mutableStateOf(false) }
+                                    Column(modifier = Modifier.fillMaxWidth()) {
+                                        Box {
+                                            BasicTextField(
+                                                value = editableTranscript,
+                                                onValueChange = { editableTranscript = it },
+                                                textStyle = TextStyle(color = Color.White, fontSize = 16.sp),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .onFocusChanged { focusState -> isTranscriptFocused = focusState.isFocused },
+                                                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White)
+                                            )
+                                            if (editableTranscript.isEmpty() && !isTranscriptFocused) {
+                                                Text(
+                                                    text = "Write transcript...",
+                                                    color = Color.LightGray,
+                                                    fontSize = 16.sp,
+                                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                                    modifier = Modifier.padding(start = 4.dp, top = 2.dp)
+                                                )
+                                            }
+                                        }
+                                        androidx.compose.material.Divider(
+                                            color = if (isTranscriptFocused) Color(0xFF4CAF50) else Color.LightGray,
+                                            thickness = 2.dp
                                         )
-                                    } else {
-                                        Spacer(modifier = Modifier.height(120.dp))
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        val coroutineScope = rememberCoroutineScope()
+                                        Button(
+                                            onClick = {
+                                                note?.let { n ->
+                                                    coroutineScope.launch {
+                                                        // Save the transcript as a snippet JSON (preserving other fields if needed)
+                                                        val snippetJson = try {
+                                                            val json = org.json.JSONObject(n.snippet ?: "{}")
+                                                            json.put("transcript", editableTranscript)
+                                                            json.toString()
+                                                        } catch (e: Exception) {
+                                                            // fallback: just save transcript
+                                                            org.json.JSONObject().put("transcript", editableTranscript).toString()
+                                                        }
+                                                        viewModel.updateNoteSnippet(n.id, snippetJson)
+                                                        viewModel.updateTranscript(n.id, editableTranscript)
+                                                        // Automatically update summary with OpenAI
+                                                        viewModel.updateSummaryWithOpenAI(n.id, editableTranscript)
+                                                    }
+                                                }
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                                            modifier = Modifier.align(Alignment.End)
+                                        ) {
+                                            Text("Save", color = Color.White)
+                                        }
                                     }
                                 }
                                 // Custom scrollbar indicator (gray, only if scrollable)

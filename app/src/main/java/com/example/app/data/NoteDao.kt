@@ -1,20 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 package com.example.app.data
 
 import androidx.room.*
@@ -22,6 +5,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NoteDao {
+    @Query("UPDATE notes SET transcript = :transcript WHERE id = :id")
+    suspend fun updateTranscript(id: Long, transcript: String)
     @Query("UPDATE notes SET snippet = :snippet WHERE id = :id")
     suspend fun updateSnippet(id: Long, snippet: String)
     @Query("UPDATE notes SET checklistState = :checklistState WHERE id = :id")
@@ -57,3 +42,20 @@ interface NoteDao {
     @Query("UPDATE notes SET isArchived = 1 WHERE id = :id")
     suspend fun archiveNote(id: Long)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

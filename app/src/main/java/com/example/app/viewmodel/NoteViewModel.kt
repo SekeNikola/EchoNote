@@ -1,3 +1,6 @@
+
+
+
 package com.example.app.viewmodel
 
 import androidx.lifecycle.*
@@ -36,6 +39,19 @@ import android.speech.RecognizerIntent
 import android.os.Bundle
 
 class NoteViewModel(private val repository: NoteRepository, app: Application) : AndroidViewModel(app), TextToSpeech.OnInitListener {
+    fun updateSummaryWithOpenAI(noteId: Long, transcript: String) = viewModelScope.launch {
+        val result = extractSummaryAndTasksWithOpenAI(transcript)
+        val summaryOut = result?.first ?: ""
+        val tasks = result?.second ?: emptyList<String>()
+        val json = org.json.JSONObject()
+        json.put("summary", summaryOut)
+        if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
+        // Save the new summary and tasks as snippet
+        updateNoteSnippet(noteId, json.toString())
+    }
+    fun updateTranscript(noteId: Long, transcript: String) = viewModelScope.launch {
+        repository.updateTranscript(noteId, transcript)
+    }
     /**
      * Use OpenAI GPT to extract summary and tasks from transcript.
      * The prompt asks for a JSON response: {"summary": "...", "tasks": [ ... ]}

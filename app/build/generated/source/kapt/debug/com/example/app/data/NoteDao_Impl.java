@@ -45,6 +45,8 @@ public final class NoteDao_Impl implements NoteDao {
 
   private final EntityDeletionOrUpdateAdapter<Note> __updateAdapterOfNote;
 
+  private final SharedSQLiteStatement __preparedStmtOfUpdateTranscript;
+
   private final SharedSQLiteStatement __preparedStmtOfUpdateSnippet;
 
   private final SharedSQLiteStatement __preparedStmtOfUpdateChecklistState;
@@ -180,6 +182,14 @@ public final class NoteDao_Impl implements NoteDao {
         statement.bindLong(12, entity.getId());
       }
     };
+    this.__preparedStmtOfUpdateTranscript = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "UPDATE notes SET transcript = ? WHERE id = ?";
+        return _query;
+      }
+    };
     this.__preparedStmtOfUpdateSnippet = new SharedSQLiteStatement(__db) {
       @Override
       @NonNull
@@ -272,6 +282,38 @@ public final class NoteDao_Impl implements NoteDao {
           return Unit.INSTANCE;
         } finally {
           __db.endTransaction();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object updateTranscript(final long id, final String transcript,
+      final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfUpdateTranscript.acquire();
+        int _argIndex = 1;
+        if (transcript == null) {
+          _stmt.bindNull(_argIndex);
+        } else {
+          _stmt.bindString(_argIndex, transcript);
+        }
+        _argIndex = 2;
+        _stmt.bindLong(_argIndex, id);
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfUpdateTranscript.release(_stmt);
         }
       }
     }, $completion);
