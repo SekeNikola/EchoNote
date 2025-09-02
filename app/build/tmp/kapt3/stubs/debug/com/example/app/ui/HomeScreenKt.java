@@ -3,6 +3,7 @@ package com.example.app.ui;
 import androidx.compose.ui.Modifier;
 import androidx.compose.foundation.layout.*;
 import androidx.compose.material.icons.Icons;
+import com.example.app.R;
 import androidx.compose.ui.graphics.vector.ImageVector;
 import androidx.compose.material3.*;
 import androidx.compose.runtime.Composable;

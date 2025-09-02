@@ -9,6 +9,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.SettingsVoice
+import androidx.compose.ui.res.painterResource
+import com.example.app.R
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -16,6 +18,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.AccessTime
@@ -26,12 +31,12 @@ import com.example.app.data.createdAtFormattedTime
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
-// Removed explicit Modifier import to resolve ambiguity
-// Removed explicit Modifier import to resolve ambiguity
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import android.media.MediaPlayer
 import androidx.compose.material.icons.outlined.PlayArrow
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.viewmodel.NoteViewModel
@@ -77,7 +82,12 @@ fun HomeScreen(
             }
         }
         // Floating plus button and bottom sheet
-        val showSheet = remember { androidx.compose.runtime.mutableStateOf(false) }
+    val showSheet = remember { androidx.compose.runtime.mutableStateOf(false) }
+    val showAssistantSheet = remember { androidx.compose.runtime.mutableStateOf(false) }
+    val isRecording by viewModel.isRecording.observeAsState(false)
+    val transcript by viewModel.fullTranscript.collectAsState()
+    val aiResponse by viewModel.aiResponse.observeAsState("")
+    val coroutineScope = rememberCoroutineScope()
         if (showSheet.value) {
             ModalBottomSheet(
                 onDismissRequest = { showSheet.value = false },
@@ -95,7 +105,10 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(20.dp))
                     // Audio
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        SheetActionButton(icon = Icons.Outlined.SettingsVoice, label = "Record Audio", modifier = Modifier.weight(1f)) { /* TODO */ }
+                        SheetActionButton(icon = Icons.Outlined.SettingsVoice, label = "Record Audio", modifier = Modifier.weight(1f)) {
+                            onRecordClick?.invoke()
+                            showSheet.value = false
+                        }
                         SheetActionButton(icon = Icons.Outlined.RadioButtonChecked, label = "Upload Audio", modifier = Modifier.weight(1f)) { /* TODO */ }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
@@ -119,6 +132,64 @@ fun HomeScreen(
                 }
             }
         }
+        if (showAssistantSheet.value) {
+            val context = LocalContext.current
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showAssistantSheet.value = false
+                    viewModel.stopSpeechRecognition()
+                },
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                containerColor = Color(0xFFF8F8F8)
+            ) {
+                androidx.compose.runtime.LaunchedEffect(showAssistantSheet.value) {
+                    if (showAssistantSheet.value) {
+                        viewModel.startSpeechRecognition(context)
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp, horizontal = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(Icons.Outlined.SettingsVoice, contentDescription = "Assistant Mic", tint = if (isRecording) Color(0xFF4CAF50) else Color.Gray, modifier = Modifier.size(48.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = if (isRecording) "Listening..." else "Tap mic to start",
+                        color = Color.Black,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (transcript.isNotBlank()) {
+                        Text("You said:", color = Color.Gray, fontSize = 13.sp)
+                        Text(transcript, color = Color.Black, fontSize = 15.sp, modifier = Modifier.padding(4.dp))
+                    }
+                    if (aiResponse.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Assistant:", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(aiResponse, color = Color.Black, fontSize = 15.sp, modifier = Modifier.padding(4.dp))
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row {
+                        Button(onClick = {
+                            coroutineScope.launch {
+                                if (isRecording) viewModel.stopSpeechRecognition() else viewModel.startSpeechRecognition(context)
+                            }
+                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
+                            Text(if (isRecording) "Stop Listening" else "Start Listening", color = Color.White)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Button(onClick = {
+                            showAssistantSheet.value = false
+                            viewModel.stopSpeechRecognition()
+                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC))) {
+                            Text("Close", color = Color.White)
+                        }
+                    }
+                }
+            }
+        }
         // FloatingActionButton (plus button)
         FloatingActionButton(
             onClick = { showSheet.value = true },
@@ -130,17 +201,25 @@ fun HomeScreen(
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add Note", tint = Color.White)
         }
-        // Floating mic button
-        IconButton(
-            onClick = {
-                // For demo: show overlay with a sample query
-                viewModel.showVoiceOverlay("What did I record this week?")
-            },
+        // Floating AI assistant button with purple background
+        Box(
             modifier = Modifier
                 .padding(end = 24.dp, bottom = 96.dp)
                 .align(Alignment.BottomEnd)
         ) {
-            Icon(Icons.Outlined.SettingsVoice, contentDescription = "Voice Command Search", tint = Color.White)
+            IconButton(
+                onClick = { showAssistantSheet.value = true },
+                modifier = Modifier
+                    .background(Color(0xFFBB86FC), shape = RoundedCornerShape(50))
+                    .size(56.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_sparkle_single),
+                    contentDescription = "Assistant",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
         }
     }
     // Voice command overlay

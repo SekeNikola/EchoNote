@@ -6,6 +6,8 @@ color purple_700
 color teal_200
 color teal_700
 color white
+drawable ic_sparkle
+drawable ic_sparkle_single
 layout activity_main
 mipmap ic_launcher
 mipmap ic_launcher_round

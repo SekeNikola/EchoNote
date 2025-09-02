@@ -2945,6 +2945,8 @@ int drawable ic_mtrl_chip_checked_black 0x7f070094
 int drawable ic_mtrl_chip_checked_circle 0x7f070095
 int drawable ic_mtrl_chip_close_circle 0x7f070096
 int drawable ic_search_black_24 0x7f070097
+int drawable ic_sparkle 0x7f0700e3
+int drawable ic_sparkle_single 0x7f0700e4
 int drawable m3_avd_hide_password 0x7f070098
 int drawable m3_avd_show_password 0x7f070099
 int drawable m3_bottom_sheet_drag_handle 0x7f07009a

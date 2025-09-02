@@ -1,14 +1,26 @@
 [
     {
-        "merged": "com.example.app-debug-74:/mipmap_ic_launcher_round.xml.flat",
-        "source": "com.example.app-main-76:/mipmap/ic_launcher_round.xml"
+        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-74:\\mipmap_ic_launcher_round.xml.flat",
+        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-76:\\mipmap\\ic_launcher_round.xml"
     },
     {
-        "merged": "com.example.app-debug-74:/mipmap_ic_launcher.xml.flat",
-        "source": "com.example.app-main-76:/mipmap/ic_launcher.xml"
+        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-74:\\drawable_ic_sparkle_single.xml.flat",
+        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-76:\\drawable\\ic_sparkle_single.xml"
     },
     {
-        "merged": "com.example.app-debug-74:/layout_activity_main.xml.flat",
-        "source": "com.example.app-main-76:/layout/activity_main.xml"
+        "merged": "com.example.app-debug-74:/drawable_ic_sparkle_single.xml.flat",
+        "source": "com.example.app-main-76:/drawable/ic_sparkle_single.xml"
+    },
+    {
+        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-74:\\layout_activity_main.xml.flat",
+        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-76:\\layout\\activity_main.xml"
+    },
+    {
+        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-74:\\drawable_ic_sparkle.xml.flat",
+        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-76:\\drawable\\ic_sparkle.xml"
+    },
+    {
+        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-74:\\mipmap_ic_launcher.xml.flat",
+        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-76:\\mipmap\\ic_launcher.xml"
     }
 ]
