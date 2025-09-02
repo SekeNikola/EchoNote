@@ -303,20 +303,38 @@ fun NoteDetailScreen(
                                     }
                                     Spacer(modifier = Modifier.height(8.dp))
                                     // Save both text and tasks as JSON
-                                    Button(onClick = {
-                                        note?.let { n ->
-                                            val json = JSONObject()
-                                            json.put("text", editableText)
-                                            json.put("tasks", org.json.JSONArray(editableTasks))
-                                            coroutineScope.launch {
-                                                viewModel.updateNoteSnippet(n.id, json.toString())
-                                                // Save checklist state as before
-                                                val checkedJson = org.json.JSONArray(checkedStates)
-                                                viewModel.updateChecklistState(n.id, checkedJson.toString())
+                                    val originalSummaryText = remember(note?.snippet) {
+                                        try {
+                                            val json = org.json.JSONObject(note?.snippet ?: "")
+                                            json.optString("text", "")
+                                        } catch (e: Exception) { note?.snippet ?: "" }
+                                    }
+                                    val originalTasks = remember(note?.snippet) {
+                                        try {
+                                            val json = org.json.JSONObject(note?.snippet ?: "")
+                                            if (json.has("tasks")) {
+                                                val arr = json.getJSONArray("tasks")
+                                                List(arr.length()) { arr.getString(it) }
+                                            } else emptyList()
+                                        } catch (e: Exception) { emptyList<String>() }
+                                    }
+                                    val hasSummaryChanges = editableText != originalSummaryText || editableTasks != originalTasks
+                                    if (hasSummaryChanges) {
+                                        Button(onClick = {
+                                            note?.let { n ->
+                                                val json = JSONObject()
+                                                json.put("text", editableText)
+                                                json.put("tasks", org.json.JSONArray(editableTasks))
+                                                coroutineScope.launch {
+                                                    viewModel.updateNoteSnippet(n.id, json.toString())
+                                                    // Save checklist state as before
+                                                    val checkedJson = org.json.JSONArray(checkedStates)
+                                                    viewModel.updateChecklistState(n.id, checkedJson.toString())
+                                                }
                                             }
+                                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
+                                            Text("Save changes", color = Color.White)
                                         }
-                                    }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
-                                        Text("Save Summary & Tasks", color = Color.White)
                                     }
                                     // --- End: Mixed summary and checklist support ---
                                 }
@@ -367,6 +385,9 @@ fun NoteDetailScreen(
                                     var editableTranscript by remember { mutableStateOf(
                                         if (transcript.isNotBlank()) transcript else note?.transcript.orEmpty()
                                     ) }
+                                    val originalTranscript = remember(note?.transcript, transcript) {
+                                        if (transcript.isNotBlank()) transcript else note?.transcript.orEmpty()
+                                    }
                                     var isTranscriptFocused by remember { mutableStateOf(false) }
                                     Column(modifier = Modifier.fillMaxWidth()) {
                                         Box {
@@ -395,30 +416,33 @@ fun NoteDetailScreen(
                                         )
                                         Spacer(modifier = Modifier.height(12.dp))
                                         val coroutineScope = rememberCoroutineScope()
-                                        Button(
-                                            onClick = {
-                                                note?.let { n ->
-                                                    coroutineScope.launch {
-                                                        // Save the transcript as a snippet JSON (preserving other fields if needed)
-                                                        val snippetJson = try {
-                                                            val json = org.json.JSONObject(n.snippet ?: "{}")
-                                                            json.put("transcript", editableTranscript)
-                                                            json.toString()
-                                                        } catch (e: Exception) {
-                                                            // fallback: just save transcript
-                                                            org.json.JSONObject().put("transcript", editableTranscript).toString()
+                                        val hasChanges = editableTranscript != originalTranscript
+                                        if (hasChanges) {
+                                            Button(
+                                                onClick = {
+                                                    note?.let { n ->
+                                                        coroutineScope.launch {
+                                                            // Save the transcript as a snippet JSON (preserving other fields if needed)
+                                                            val snippetJson = try {
+                                                                val json = org.json.JSONObject(n.snippet ?: "{}")
+                                                                json.put("transcript", editableTranscript)
+                                                                json.toString()
+                                                            } catch (e: Exception) {
+                                                                // fallback: just save transcript
+                                                                org.json.JSONObject().put("transcript", editableTranscript).toString()
+                                                            }
+                                                            viewModel.updateNoteSnippet(n.id, snippetJson)
+                                                            viewModel.updateTranscript(n.id, editableTranscript)
+                                                            // Automatically update summary with OpenAI
+                                                            viewModel.updateSummaryWithOpenAI(n.id, editableTranscript)
                                                         }
-                                                        viewModel.updateNoteSnippet(n.id, snippetJson)
-                                                        viewModel.updateTranscript(n.id, editableTranscript)
-                                                        // Automatically update summary with OpenAI
-                                                        viewModel.updateSummaryWithOpenAI(n.id, editableTranscript)
                                                     }
-                                                }
-                                            },
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                                            modifier = Modifier.align(Alignment.End)
-                                        ) {
-                                            Text("Save", color = Color.White)
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                                                modifier = Modifier.align(Alignment.End)
+                                            ) {
+                                                Text("Save changes", color = Color.White)
+                                            }
                                         }
                                     }
                                 }
