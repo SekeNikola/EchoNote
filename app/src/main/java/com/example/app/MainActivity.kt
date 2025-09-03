@@ -28,46 +28,39 @@ import com.example.app.network.RetrofitInstance
 class MainActivity : ComponentActivity() {
 
     private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                // Permission is granted. Continue the action or workflow in your app.
-            } else {
-                // Explain to the user that the feature is unavailable because the
-                // feature requires a permission that the user has denied. At the
-                // same time, respect the user's decision. Don't link to system
-                // settings in an effort to convince the user to change their
-                // decision.
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
+            permissions.entries.forEach { permission ->
+                if (permission.value) {
+                    // Permission is granted. Continue the action or workflow in your app.
+                } else {
+                    // Explain to the user that the feature is unavailable because the
+                    // feature requires a permission that the user has denied.
+                }
             }
         }
 
 		override fun onCreate(savedInstanceState: Bundle?) {
 			super.onCreate(savedInstanceState)
 
-            when {
-                ContextCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.RECORD_AUDIO
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    // You can use the API that requires the permission.
-                }
-                shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO) -> {
-                // In an educational UI, explain to the user why your app requires this
-                // permission for a specific feature to behave as expected, and what
-                // features are disabled if it's declined. In this UI, include a
-                // "cancel" or "no thanks" button that lets the user continue
-                // using your app without granting the permission.
-//                showInContextUI(...)
-            }
-                else -> {
-                    // You can directly ask for the permission.
-                    requestPermissionLauncher.launch(
-                        Manifest.permission.RECORD_AUDIO)
-                }
-            }
-
 			setContent {
 				EchoNoteTheme {
 					Surface {
+						var showPermissionDialog by remember { mutableStateOf(false) }
+						var pendingPermissions by remember { mutableStateOf<Array<String>>(emptyArray()) }
+						
+						// Show permission rationale dialog
+						if (showPermissionDialog) {
+							com.example.app.ui.PermissionRationaleDialog(
+								onDismiss = { showPermissionDialog = false },
+								onGrantPermissions = {
+									showPermissionDialog = false
+									if (pendingPermissions.isNotEmpty()) {
+										requestPermissionLauncher.launch(pendingPermissions)
+									}
+								}
+							)
+						}
+						
 						val navController = rememberNavController()
 						val context = applicationContext
 						val db = AppDatabase.getDatabase(context)
@@ -81,6 +74,47 @@ class MainActivity : ComponentActivity() {
 								}
 							}
 						)
+						// Initialize RetrofitInstance with context
+						RetrofitInstance.init(context)
+						
+						// Check if we need to show permission dialog
+						val permissionsToCheck = mutableListOf<String>().apply {
+							// Essential audio and camera permissions
+							add(Manifest.permission.RECORD_AUDIO)
+							add(Manifest.permission.CAMERA)
+							
+							// Storage permissions based on Android version
+							if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+								// Android 13+ granular media permissions
+								add(Manifest.permission.READ_MEDIA_IMAGES)
+								add(Manifest.permission.READ_MEDIA_AUDIO)
+								add(Manifest.permission.READ_MEDIA_VIDEO)
+							} else {
+								// Android 12 and below
+								add(Manifest.permission.READ_EXTERNAL_STORAGE)
+								if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.P) {
+									// Android 9 and below
+									add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+								}
+							}
+							
+							// Audio settings for better recording quality
+							add(Manifest.permission.MODIFY_AUDIO_SETTINGS)
+							
+							// Optional but useful permissions
+							add(Manifest.permission.VIBRATE)
+						}
+						
+						val permissionsToRequest = permissionsToCheck.filter { permission ->
+							ContextCompat.checkSelfPermission(this@MainActivity, permission) != PackageManager.PERMISSION_GRANTED
+						}
+						
+						// Show permission dialog if needed
+						if (permissionsToRequest.isNotEmpty() && !showPermissionDialog) {
+							pendingPermissions = permissionsToRequest.toTypedArray()
+							showPermissionDialog = true
+						}
+						
 						var showApiKeyDialog by remember { mutableStateOf(ApiKeyProvider.getApiKey(context) == null) }
 						if (showApiKeyDialog) {
 							ApiKeyDialog(

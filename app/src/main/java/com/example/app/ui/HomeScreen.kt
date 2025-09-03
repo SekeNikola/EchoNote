@@ -49,7 +49,14 @@ import com.example.app.ui.VoiceCommandOverlay // Re-added import
 fun HomeScreen(
     viewModel: NoteViewModel,
     onNoteClick: (Long) -> Unit,
-    onRecordClick: (() -> Unit)? = null
+    onRecordClick: (() -> Unit)? = null,
+    onNavigateToUploadAudio: (() -> Unit)? = null,
+    onNavigateToImageCapture: (() -> Unit)? = null,
+    onNavigateToUploadImage: (() -> Unit)? = null,
+    onNavigateToTypeText: (() -> Unit)? = null,
+    onNavigateToVideoUrl: (() -> Unit)? = null,
+    onNavigateToWebPage: (() -> Unit)? = null,
+    onNavigateToDocumentUpload: (() -> Unit)? = null
 ) {
     val notes by viewModel.notes.observeAsState(listOf())
     val searchQuery by viewModel.searchQuery.observeAsState("")
@@ -111,24 +118,45 @@ fun HomeScreen(
                             onRecordClick?.invoke()
                             showSheet.value = false
                         }
-                        SheetActionButton(icon = Icons.Outlined.RadioButtonChecked, label = "Upload Audio", modifier = Modifier.weight(1f)) { /* TODO */ }
+                        SheetActionButton(icon = Icons.Outlined.RadioButtonChecked, label = "Upload Audio", modifier = Modifier.weight(1f)) { 
+                            onNavigateToUploadAudio?.invoke()
+                            showSheet.value = false
+                        }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     // Photo
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        SheetActionButton(icon = Icons.Outlined.CalendarToday, label = "Take Picture", modifier = Modifier.weight(1f)) { /* TODO */ }
-                        SheetActionButton(icon = Icons.Outlined.CheckBoxOutlineBlank, label = "Upload Image", modifier = Modifier.weight(1f)) { /* TODO */ }
+                        SheetActionButton(icon = Icons.Outlined.CalendarToday, label = "Take Picture", modifier = Modifier.weight(1f)) { 
+                            onNavigateToImageCapture?.invoke()
+                            showSheet.value = false
+                        }
+                        SheetActionButton(icon = Icons.Outlined.CheckBoxOutlineBlank, label = "Upload Image", modifier = Modifier.weight(1f)) { 
+                            onNavigateToUploadImage?.invoke()
+                            showSheet.value = false
+                        }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     // Other
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        SheetActionButton(icon = Icons.Filled.Star, label = "Type Text", modifier = Modifier.weight(1f)) { /* TODO */ }
-                        SheetActionButton(icon = Icons.Outlined.PlayArrow, label = "YouTube Video", modifier = Modifier.weight(1f)) { /* TODO */ }
+                        SheetActionButton(icon = Icons.Filled.Star, label = "Type Text", modifier = Modifier.weight(1f)) { 
+                            onNavigateToTypeText?.invoke()
+                            showSheet.value = false
+                        }
+                        SheetActionButton(icon = Icons.Outlined.PlayArrow, label = "YouTube Video", modifier = Modifier.weight(1f)) { 
+                            onNavigateToVideoUrl?.invoke()
+                            showSheet.value = false
+                        }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        SheetActionButton(icon = Icons.Outlined.AccessTime, label = "Web Page URL", modifier = Modifier.weight(1f)) { /* TODO */ }
-                        SheetActionButton(icon = Icons.Outlined.CheckBox, label = "Upload PDF", modifier = Modifier.weight(1f)) { /* TODO */ }
+                        SheetActionButton(icon = Icons.Outlined.AccessTime, label = "Web Page URL", modifier = Modifier.weight(1f)) { 
+                            onNavigateToWebPage?.invoke()
+                            showSheet.value = false
+                        }
+                        SheetActionButton(icon = Icons.Outlined.CheckBox, label = "Upload PDF", modifier = Modifier.weight(1f)) { 
+                            onNavigateToDocumentUpload?.invoke()
+                            showSheet.value = false
+                        }
                     }
                     Spacer(modifier = Modifier.height(24.dp))
                 }
@@ -214,22 +242,50 @@ fun HomeScreen(
                             }
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row {
-                        Button(onClick = {
-                            coroutineScope.launch {
-                                if (isRecording) viewModel.stopSpeechRecognition() else viewModel.startSpeechRecognition(context)
-                            }
-                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))) {
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Bottom buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    if (isRecording) {
+                                        viewModel.stopSpeechRecognition()
+                                    } else {
+                                        viewModel.startSpeechRecognition(context)
+                                    }
+                                }
+                            }, 
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Text(if (isRecording) "Stop Listening" else "Start Listening", color = Color.White)
                         }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Button(onClick = {
-                            showAssistantSheet.value = false
-                            viewModel.stopSpeechRecognition()
-                            viewModel.clearAssistantChat()
-                        }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC))) {
-                            Text("Close", color = Color.White)
+                        Button(
+                            onClick = {
+                                // Save chat as a note using the same logic as recording
+                                coroutineScope.launch {
+                                    if (assistantChatHistory.isNotEmpty()) {
+                                        viewModel.saveChatAsNote()
+                                        // Clear chat AFTER saving is complete
+                                        viewModel.clearAssistantChat()
+                                    } else {
+                                        // For testing - create a simple note even if no chat
+                                        viewModel.saveTestChatNote()
+                                    }
+                                    // Close the sheet and stop recognition
+                                    showAssistantSheet.value = false
+                                    viewModel.stopSpeechRecognition()
+                                }
+                            }, 
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Save Chat", color = Color.White)
                         }
                     }
                 }

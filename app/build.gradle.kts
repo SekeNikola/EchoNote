@@ -13,6 +13,7 @@ plugins {
 repositories {
     google()
     mavenCentral()
+    maven { url = uri("https://jitpack.io") }
 }
 
 android {
@@ -94,6 +95,20 @@ dependencies {
     // Lifecycle
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
+
+    // File picker and media
+    implementation("androidx.documentfile:documentfile:1.0.1")
+
+    // OCR - ML Kit Text Recognition
+    implementation("com.google.mlkit:text-recognition:16.0.0")
+
+    // Image processing
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
+
+    // HTML parsing for web content
+    implementation("org.jsoup:jsoup:1.17.2")
+
+    // File I/O utilities - using built-in Android functions instead
 
     // Testing (optional)
     testImplementation("junit:junit:4.13.2")
