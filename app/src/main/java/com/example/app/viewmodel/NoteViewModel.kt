@@ -203,15 +203,62 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
         }
     }
     
-    // Helper function to clean brackets from summaries
+    // Helper function to clean brackets and quotes from summaries
     private fun cleanBracketsFromText(text: String): String {
         var cleanText = text.trim()
-        if (cleanText.startsWith("[") && cleanText.endsWith("]")) {
-            cleanText = cleanText.substring(1, cleanText.length - 1).trim()
-        }
-        // Also remove brackets if they appear with other characters
-        cleanText = cleanText.replace(Regex("^\\[\\s*"), "").replace(Regex("\\s*\\]$"), "")
+        
+        // Keep cleaning until no more changes occur (handle multiple layers)
+        var previousText: String
+        do {
+            previousText = cleanText
+            
+            // Remove brackets
+            if (cleanText.startsWith("[") && cleanText.endsWith("]")) {
+                cleanText = cleanText.substring(1, cleanText.length - 1).trim()
+            }
+            // Also remove brackets if they appear with other characters
+            cleanText = cleanText.replace(Regex("^\\[\\s*"), "").replace(Regex("\\s*\\]$"), "")
+            
+            // Remove quotes (single or double)
+            if (cleanText.startsWith("\"") && cleanText.endsWith("\"")) {
+                cleanText = cleanText.substring(1, cleanText.length - 1).trim()
+            }
+            if (cleanText.startsWith("'") && cleanText.endsWith("'")) {
+                cleanText = cleanText.substring(1, cleanText.length - 1).trim()
+            }
+            
+            // Remove various prefixes that might appear
+            cleanText = cleanText.replace(Regex("^(?i)(summary|description|analysis|content)\\s*:?\\s*"), "")
+            
+            cleanText = cleanText.trim()
+            
+        } while (cleanText != previousText && cleanText.isNotEmpty())
+        
         return cleanText
+    }
+
+    // Helper function to clean extracted OCR text for better AI processing
+    private fun cleanExtractedText(text: String): String {
+        return text
+            .trim()
+            .replace(Regex("\\s+"), " ") // Replace multiple spaces/newlines with single space
+            .replace(Regex("[^a-zA-Z0-9\\s.,!?-]"), " ") // Remove unusual characters but keep basic punctuation
+            .replace(Regex("\\b[A-Z]{1}[a-z]*[A-Z]{1,}[a-z]*\\b"), "") // Remove likely OCR artifacts (mixed case gibberish)
+            .replace(Regex("\\b[A-Z]{3,}\\b")) { match ->
+                // For all-caps words > 2 chars, try to make them more readable
+                val word = match.value
+                if (word.length > 8) "" // Very long caps likely gibberish
+                else word.lowercase().replaceFirstChar { it.uppercase() }
+            }
+            .trim()
+    }
+
+    // Helper function to lightly clean OCR text for transcript display (preserve original text better)
+    private fun cleanOCRForTranscript(text: String): String {
+        return text
+            .trim()
+            .replace(Regex("\\s+"), " ") // Just normalize whitespace
+            .trim()
     }
     
     fun updateNoteSnippet(noteId: Long, snippet: String) = viewModelScope.launch {
@@ -659,15 +706,17 @@ Output:
         Log.d("NoteViewModel", "=== PROCESS IMAGE VISUAL ANALYSIS START ===")
         
         try {
-            // First, try to extract any text using OCR
-            val extractedText = performOCR(bitmap, context)
-            Log.d("NoteViewModel", "OCR extracted text: $extractedText")
+            // First, try to extract any text using OCR - get both raw and cleaned versions
+            val rawOCRText = performOCRRaw(bitmap, context)
+            val cleanedOCRText = cleanExtractedText(rawOCRText)
+            Log.d("NoteViewModel", "OCR raw text: $rawOCRText")
+            Log.d("NoteViewModel", "OCR cleaned text: $cleanedOCRText")
             
             // Convert bitmap to base64 for OpenAI Vision API
             val base64Image = bitmapToBase64(bitmap)
             
-            // Get visual description from OpenAI
-            val visualDescription = analyzeImageWithOpenAI(base64Image, extractedText)
+            // Get visual description from OpenAI using cleaned text
+            val visualDescription = analyzeImageWithOpenAI(base64Image, cleanedOCRText)
             Log.d("NoteViewModel", "Visual description: $visualDescription")
             
             // Check if the visual description indicates an error
@@ -677,21 +726,15 @@ Output:
                 !visualDescription.contains("failed", ignoreCase = true) &&
                 !visualDescription.contains("timeout", ignoreCase = true)) {
                 
-                processExtractedContent(visualDescription, "Image Analysis")
+                processImageContent(visualDescription, rawOCRText, "Image Analysis")
                 Log.d("NoteViewModel", "=== PROCESS IMAGE VISUAL ANALYSIS SUCCESS ===")
             } else {
                 // Fallback to OCR-only processing if visual analysis fails
                 Log.w("NoteViewModel", "Visual analysis failed, falling back to OCR-only: $visualDescription")
                 
-                if (extractedText.isNotBlank()) {
-                    val fallbackContent = """
-                        Text extracted from image: $extractedText
-                        
-                        Note: Visual analysis was not available. ${visualDescription}
-                        The above text was extracted using OCR (Optical Character Recognition).
-                    """.trimIndent()
-                    
-                    processExtractedContent(fallbackContent, "Image Text (OCR)")
+                if (rawOCRText.isNotBlank()) {
+                    val fallbackSummary = "Text extracted from image using OCR. Visual analysis was not available."
+                    processImageContent(fallbackSummary, rawOCRText, "Image Text (OCR)")
                     Log.d("NoteViewModel", "=== PROCESS IMAGE OCR FALLBACK SUCCESS ===")
                 } else {
                     throw Exception("No text found in image and visual analysis failed: $visualDescription")
@@ -707,9 +750,11 @@ Output:
         Log.d("NoteViewModel", "=== PROCESS IMAGE URI VISUAL ANALYSIS START ===")
         
         try {
-            // First, try to extract any text using OCR
-            val extractedText = performOCR(imageUri, context)
-            Log.d("NoteViewModel", "OCR extracted text: $extractedText")
+            // First, try to extract any text using OCR - get both raw and cleaned versions
+            val rawOCRText = performOCRRaw(imageUri, context)
+            val cleanedOCRText = cleanExtractedText(rawOCRText)
+            Log.d("NoteViewModel", "OCR raw text: $rawOCRText")
+            Log.d("NoteViewModel", "OCR cleaned text: $cleanedOCRText")
             
             // Convert URI to bitmap then to base64 for OpenAI Vision API
             val inputStream = context.contentResolver.openInputStream(imageUri)
@@ -722,8 +767,8 @@ Output:
             
             val base64Image = bitmapToBase64(bitmap)
             
-            // Get visual description from OpenAI
-            val visualDescription = analyzeImageWithOpenAI(base64Image, extractedText)
+            // Get visual description from OpenAI using cleaned text
+            val visualDescription = analyzeImageWithOpenAI(base64Image, cleanedOCRText)
             Log.d("NoteViewModel", "Visual description: $visualDescription")
             
             // Check if the visual description indicates an error
@@ -733,21 +778,15 @@ Output:
                 !visualDescription.contains("failed", ignoreCase = true) &&
                 !visualDescription.contains("timeout", ignoreCase = true)) {
                 
-                processExtractedContent(visualDescription, "Image Analysis")
+                processImageContent(visualDescription, rawOCRText, "Image Analysis")
                 Log.d("NoteViewModel", "=== PROCESS IMAGE URI VISUAL ANALYSIS SUCCESS ===")
             } else {
                 // Fallback to OCR-only processing if visual analysis fails
                 Log.w("NoteViewModel", "Visual analysis failed, falling back to OCR-only: $visualDescription")
                 
-                if (extractedText.isNotBlank()) {
-                    val fallbackContent = """
-                        Text extracted from image: $extractedText
-                        
-                        Note: Visual analysis was not available. ${visualDescription}
-                        The above text was extracted using OCR (Optical Character Recognition).
-                    """.trimIndent()
-                    
-                    processExtractedContent(fallbackContent, "Image Text (OCR)")
+                if (rawOCRText.isNotBlank()) {
+                    val fallbackSummary = "Text extracted from image using OCR. Visual analysis was not available."
+                    processImageContent(fallbackSummary, rawOCRText, "Image Text (OCR)")
                     Log.d("NoteViewModel", "=== PROCESS IMAGE URI OCR FALLBACK SUCCESS ===")
                 } else {
                     throw Exception("No text found in image and visual analysis failed: $visualDescription")
@@ -767,12 +806,38 @@ Output:
                 
                 recognizer.process(image)
                     .addOnSuccessListener { visionText: com.google.mlkit.vision.text.Text ->
-                        continuation.resume(visionText.text)
+                        val cleanedText = cleanExtractedText(visionText.text)
+                        continuation.resume(cleanedText)
                     }
                     .addOnFailureListener { e: Exception ->
+                        Log.e("NoteViewModel", "OCR failed for bitmap", e)
                         continuation.resumeWithException(e)
                     }
             } catch (e: Exception) {
+                Log.e("NoteViewModel", "Error setting up OCR for bitmap", e)
+                continuation.resumeWithException(e)
+            }
+        }
+    }
+
+    // New function to get raw OCR text for transcript
+    private suspend fun performOCRRaw(bitmap: android.graphics.Bitmap, context: android.content.Context): String {
+        return suspendCancellableCoroutine { continuation ->
+            try {
+                val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                val image: InputImage = InputImage.fromBitmap(bitmap, 0)
+                
+                recognizer.process(image)
+                    .addOnSuccessListener { visionText: com.google.mlkit.vision.text.Text ->
+                        val rawText = cleanOCRForTranscript(visionText.text)
+                        continuation.resume(rawText)
+                    }
+                    .addOnFailureListener { e: Exception ->
+                        Log.e("NoteViewModel", "OCR failed for bitmap", e)
+                        continuation.resumeWithException(e)
+                    }
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Error setting up OCR for bitmap", e)
                 continuation.resumeWithException(e)
             }
         }
@@ -789,12 +854,15 @@ Output:
                     
                     recognizer.process(image)
                         .addOnSuccessListener { visionText: com.google.mlkit.vision.text.Text ->
-                            continuation.resume(visionText.text)
+                            val cleanedText = cleanExtractedText(visionText.text)
+                            continuation.resume(cleanedText)
                         }
                         .addOnFailureListener { e: Exception ->
+                            Log.e("NoteViewModel", "OCR failed for URI", e)
                             continuation.resumeWithException(e)
                         }
                 } catch (e: Exception) {
+                    Log.w("NoteViewModel", "Direct URI processing failed, trying bitmap fallback", e)
                     // Fallback: try to load as bitmap first
                     val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
                     if (inputStream != null) {
@@ -804,16 +872,69 @@ Output:
                         val image = InputImage.fromBitmap(bitmap, 0)
                         recognizer.process(image)
                             .addOnSuccessListener { visionText: com.google.mlkit.vision.text.Text ->
-                                continuation.resume(visionText.text)
+                                val cleanedText = cleanExtractedText(visionText.text)
+                                continuation.resume(cleanedText)
                             }
                             .addOnFailureListener { e: Exception ->
+                                Log.e("NoteViewModel", "OCR failed for bitmap fallback", e)
                                 continuation.resumeWithException(e)
                             }
                     } else {
-                        continuation.resumeWithException(Exception("Could not open image stream"))
+                        Log.e("NoteViewModel", "Could not open input stream for URI")
+                        continuation.resumeWithException(IOException("Could not open input stream for URI"))
                     }
                 }
             } catch (e: Exception) {
+                Log.e("NoteViewModel", "Error setting up OCR for URI", e)
+                continuation.resumeWithException(e)
+            }
+        }
+    }
+
+    // Raw OCR function for URI that preserves original text for transcript
+    private suspend fun performOCRRaw(imageUri: android.net.Uri, context: android.content.Context): String {
+        return suspendCancellableCoroutine { continuation ->
+            try {
+                val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+                
+                // Try to create InputImage from URI
+                try {
+                    val image = InputImage.fromFilePath(context, imageUri)
+                    
+                    recognizer.process(image)
+                        .addOnSuccessListener { visionText: com.google.mlkit.vision.text.Text ->
+                            val rawText = cleanOCRForTranscript(visionText.text)
+                            continuation.resume(rawText)
+                        }
+                        .addOnFailureListener { e: Exception ->
+                            Log.e("NoteViewModel", "OCR failed for URI", e)
+                            continuation.resumeWithException(e)
+                        }
+                } catch (e: Exception) {
+                    Log.w("NoteViewModel", "Direct URI processing failed, trying bitmap fallback", e)
+                    // Fallback: try to load as bitmap first
+                    val inputStream: InputStream? = context.contentResolver.openInputStream(imageUri)
+                    if (inputStream != null) {
+                        val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+                        inputStream.close()
+                        
+                        val image = InputImage.fromBitmap(bitmap, 0)
+                        recognizer.process(image)
+                            .addOnSuccessListener { visionText: com.google.mlkit.vision.text.Text ->
+                                val rawText = cleanOCRForTranscript(visionText.text)
+                                continuation.resume(rawText)
+                            }
+                            .addOnFailureListener { e: Exception ->
+                                Log.e("NoteViewModel", "OCR failed for bitmap fallback", e)
+                                continuation.resumeWithException(e)
+                            }
+                    } else {
+                        Log.e("NoteViewModel", "Could not open input stream for URI")
+                        continuation.resumeWithException(IOException("Could not open input stream for URI"))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Error setting up OCR for URI", e)
                 continuation.resumeWithException(e)
             }
         }
@@ -866,16 +987,22 @@ Output:
 
                 // Create a comprehensive prompt for image analysis
                 val prompt = buildString {
-                    append("Please analyze this image and provide a detailed, human-like description of what you see. ")
-                    append("Describe the scene, objects, people, activities, emotions, and any notable details in natural language. ")
-                    append("Be descriptive and engaging, as if you're telling someone who can't see the image what's happening. ")
+                    append("You are a helpful assistant analyzing an image. Please provide a conversational, detailed description of what you see, ")
+                    append("as if you're casually explaining it to a friend. Be specific about:")
+                    append("\n- What objects, products, or items you can identify")
+                    append("\n- Any text, brands, or labels visible")
+                    append("\n- The context and purpose of what's shown")
+                    append("\n- Any useful information someone might want to know")
+                    append("\n\nWrite in a natural, conversational tone - not like a formal report. ")
+                    append("If you recognize specific products, brands, or items, explain what they are and provide context about them.")
                     
                     if (extractedText.isNotBlank()) {
-                        append("\n\nThe image also contains this text: \"$extractedText\". ")
-                        append("Please incorporate this text into your description and explain its context within the image.")
+                        append("\n\nI can also see this text in the image: \"$extractedText\". ")
+                        append("Please help clean up any OCR errors and incorporate this text naturally into your description, ")
+                        append("explaining what role this text plays in the context of the image.")
                     }
                     
-                    append("\n\nAfter your description, also extract any actionable tasks or important information that someone might want to remember or act upon from this image.")
+                    append("\n\nIf there are any actionable items, recommendations, or things worth noting, mention those too in a helpful way.")
                 }
 
                 // Updated to use gpt-4o which supports vision
@@ -1124,6 +1251,28 @@ Output:
             snippet = result?.second?.toString() ?: """{"summary":"$contentType content"}""",
             transcript = content
         )
+        
+        repository.noteDao.insert(note)
+    }
+
+    // Specialized processing function for image content
+    private suspend fun processImageContent(summary: String, ocrText: String, contentType: String) {
+        // Clean up any remaining brackets from summary
+        val cleanedSummary = cleanBracketsFromText(summary)
+        
+        Log.d("NoteViewModel", "Original summary: '$summary'")
+        Log.d("NoteViewModel", "Cleaned summary: '$cleanedSummary'")
+        
+        val title = generateTitle(cleanedSummary)
+        
+        val note = Note(
+            title = title,
+            snippet = """{"summary":"$cleanedSummary"}""",
+            transcript = ocrText.ifBlank { "No text detected in image" }
+        )
+        
+        Log.d("NoteViewModel", "Stored snippet: '${note.snippet}'")
+        Log.d("NoteViewModel", "Stored transcript: '${note.transcript}'")
         
         repository.noteDao.insert(note)
     }

@@ -44,6 +44,39 @@ import com.example.app.data.Note
 import com.example.app.ui.VoiceCommandOverlay // Re-added import
 // import androidx.compose.material3.ExperimentalMaterial3Api // Unused import
 
+// Helper function to clean summary text display
+private fun cleanSummaryText(text: String): String {
+    var cleanText = text.trim()
+    
+    // Keep cleaning until no more changes occur
+    var previousText: String
+    do {
+        previousText = cleanText
+        
+        // Remove brackets
+        if (cleanText.startsWith("[") && cleanText.endsWith("]")) {
+            cleanText = cleanText.substring(1, cleanText.length - 1).trim()
+        }
+        cleanText = cleanText.replace(Regex("^\\[\\s*"), "").replace(Regex("\\s*\\]$"), "")
+        
+        // Remove quotes
+        if (cleanText.startsWith("\"") && cleanText.endsWith("\"")) {
+            cleanText = cleanText.substring(1, cleanText.length - 1).trim()
+        }
+        if (cleanText.startsWith("'") && cleanText.endsWith("'")) {
+            cleanText = cleanText.substring(1, cleanText.length - 1).trim()
+        }
+        
+        // Remove various prefixes
+        cleanText = cleanText.replace(Regex("^(?i)(summary|description|analysis|content)\\s*:?\\s*"), "")
+        
+        cleanText = cleanText.trim()
+        
+    } while (cleanText != previousText && cleanText.isNotEmpty())
+    
+    return cleanText
+}
+
 @OptIn(ExperimentalMaterial3Api::class) // Removed redundant qualifier
 @Composable
 fun HomeScreen(
@@ -408,11 +441,13 @@ fun NoteCard(
                 val summaryOnly = remember(summaryText) {
                     try {
                         val json = org.json.JSONObject(summaryText)
-                        when {
+                        val rawSummary = when {
                             json.has("summary") && json.getString("summary").isNotBlank() -> json.getString("summary")
                             json.has("text") && json.getString("text").isNotBlank() -> json.getString("text")
                             else -> null
                         }
+                        // Clean the summary text to remove brackets, quotes, and prefixes
+                        rawSummary?.let { cleanSummaryText(it) }
                     } catch (e: Exception) { null }
                 }
                 // Always show placeholder under title and above checklist
@@ -432,6 +467,8 @@ fun NoteCard(
                         fontWeight = FontWeight.Normal,
                         lineHeight = 20.sp,
                         color = Color(0xFFEEEEEE),
+                        maxLines = 5,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                         modifier = Modifier.padding(bottom = if (tasks != null) 6.dp else 0.dp)
                     )
                 }
