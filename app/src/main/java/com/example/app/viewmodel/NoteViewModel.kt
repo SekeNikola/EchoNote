@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import com.example.app.data.Note
 import com.example.app.data.NoteRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.firstOrNull
 import android.app.Application
 import android.content.Context
 import android.os.Environment
@@ -39,6 +40,33 @@ import android.speech.RecognizerIntent
 import android.os.Bundle
 
 class NoteViewModel(private val repository: NoteRepository, app: Application) : AndroidViewModel(app), TextToSpeech.OnInitListener {
+    /**
+     * Get an AI assistant response from OpenAI for the given transcript.
+     */
+    fun getAssistantResponse(transcript: String) = viewModelScope.launch {
+        try {
+            // Get all notes (latest 10 for context) directly from Flow
+            val notesList = repository.getAllNotes()
+                .firstOrNull()?.take(10) ?: emptyList()
+            val notesContext = if (notesList.isNotEmpty()) {
+                notesList.joinToString("\n\n") { n ->
+                    "Title: ${n.title}\nContent: ${n.transcript.ifBlank { n.snippet }}"
+                }
+            } else "No notes available."
+            val systemPrompt = "You are a helpful assistant for a note-taking app. You have access to the user's notes. Use the provided notes to answer user questions."
+            val userPrompt = "User's notes:\n$notesContext\n\nUser's question or command: $transcript"
+            val req = GPTRequest(
+                messages = listOf(
+                    Message(role = "system", content = systemPrompt),
+                    Message(role = "user", content = userPrompt)
+                )
+            )
+            val response = RetrofitInstance.api.summarizeText(req)
+            aiResponse.value = response.body()?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
+        } catch (e: Exception) {
+            aiResponse.value = "Sorry, I couldn't get a response."
+        }
+    }
     fun updateSummaryWithOpenAI(noteId: Long, transcript: String) = viewModelScope.launch {
         val result = extractSummaryAndTasksWithOpenAI(transcript)
         val summaryOut = result?.first ?: ""
@@ -274,9 +302,9 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                 val data = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 data?.firstOrNull()?.let { finalResult ->
                     appendTranscript(finalResult, isFinal = true)
-                                        // Generate summary using OpenAI API, always as JSON
-                                        viewModelScope.launch {
-                                                val rules = """
+                    // Generate summary using OpenAI API, always as JSON
+                    viewModelScope.launch {
+                        val rules = """
 You are an assistant that reformats transcripts into JSON for a note-taking app.
 
 Rules:
@@ -304,15 +332,17 @@ Output:
     \"summary\": \"Met John and discussed the project timeline.\"
 }
 """.trimIndent()
-                                                val req = GPTRequest(
-                                                        messages = listOf(
-                                                                Message(role = "system", content = rules),
-                                                                Message(role = "user", content = _fullTranscript.value)
-                                                        )
-                                                )
-                                                val response = RetrofitInstance.api.summarizeText(req)
-                                                summary.value = response.body()?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
-                                        }
+                        val req = GPTRequest(
+                            messages = listOf(
+                                Message(role = "system", content = rules),
+                                Message(role = "user", content = _fullTranscript.value)
+                            )
+                        )
+                        val response = RetrofitInstance.api.summarizeText(req)
+                        summary.value = response.body()?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
+                    }
+                    // Also get AI assistant response for the transcript
+                    getAssistantResponse(finalResult)
                 }
                 if (isRecording.value == true) {
                     speechRecognizer?.startListening(createRecognizerIntent())
