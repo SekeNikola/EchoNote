@@ -44,6 +44,8 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
      * Get an AI assistant response from OpenAI for the given transcript.
      */
     fun getAssistantResponse(transcript: String) = viewModelScope.launch {
+        // Add user message to chat history with empty response
+        _assistantChatHistory.update { it + (transcript to "") }
         try {
             // Get all notes (latest 10 for context) directly from Flow
             val notesList = repository.getAllNotes()
@@ -53,18 +55,41 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                     "Title: ${n.title}\nContent: ${n.transcript.ifBlank { n.snippet }}"
                 }
             } else "No notes available."
-            val systemPrompt = "You are a helpful assistant for a note-taking app. You have access to the user's notes. Use the provided notes to answer user questions."
-            val userPrompt = "User's notes:\n$notesContext\n\nUser's question or command: $transcript"
-            val req = GPTRequest(
-                messages = listOf(
-                    Message(role = "system", content = systemPrompt),
-                    Message(role = "user", content = userPrompt)
-                )
-            )
+            
+            // Build conversation messages including history
+            val messages = mutableListOf<Message>()
+            messages.add(Message(role = "system", content = "You are a helpful AI assistant. You can answer general questions, provide information from the internet, and you also have access to the user's notes. If the user's question is about their notes, use the provided notes for context. Otherwise, answer as a general assistant with access to online information. User's notes:\n$notesContext"))
+            
+            // Add conversation history (excluding the current message which has empty AI response)
+            val currentHistory = _assistantChatHistory.value
+            currentHistory.dropLast(1).forEach { (userMsg, aiMsg) ->
+                messages.add(Message(role = "user", content = userMsg))
+                if (aiMsg.isNotBlank()) {
+                    messages.add(Message(role = "assistant", content = aiMsg))
+                }
+            }
+            
+            // Add current user message
+            messages.add(Message(role = "user", content = transcript))
+            
+            val req = GPTRequest(messages = messages)
             val response = RetrofitInstance.api.summarizeText(req)
-            aiResponse.value = response.body()?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
+            val aiText = response.body()?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
+            // Update last chat entry with AI response
+            _assistantChatHistory.update { history ->
+                if (history.isNotEmpty())
+                    history.dropLast(1) + (history.last().first to aiText)
+                else history
+            }
+            aiResponse.value = aiText
         } catch (e: Exception) {
-            aiResponse.value = "Sorry, I couldn't get a response."
+            val errorMsg = "Sorry, I couldn't get a response."
+            _assistantChatHistory.update { history ->
+                if (history.isNotEmpty())
+                    history.dropLast(1) + (history.last().first to errorMsg)
+                else history
+            }
+            aiResponse.value = errorMsg
         }
     }
     fun updateSummaryWithOpenAI(noteId: Long, transcript: String) = viewModelScope.launch {
@@ -206,6 +231,10 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     // New transcript handling
     private val _fullTranscript = MutableStateFlow("")
     val fullTranscript: StateFlow<String> = _fullTranscript
+
+    // Assistant chat history
+    private val _assistantChatHistory = MutableStateFlow<List<Pair<String, String>>>(emptyList())
+    val assistantChatHistory: StateFlow<List<Pair<String, String>>> = _assistantChatHistory
 
     fun appendTranscript(newText: String, isFinal: Boolean) {
         _fullTranscript.update { current ->
@@ -395,5 +424,10 @@ Output:
     fun hideVoiceOverlay() {
         isVoiceOverlayVisible.value = false
         aiResponse.value = ""
+    }
+
+    // Clear assistant chat history
+    fun clearAssistantChat() {
+        _assistantChatHistory.value = emptyList()
     }
 }

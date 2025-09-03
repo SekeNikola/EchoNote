@@ -54,7 +54,7 @@ fun HomeScreen(
     val notes by viewModel.notes.observeAsState(listOf())
     val searchQuery by viewModel.searchQuery.observeAsState("")
     val isVoiceOverlayVisible by viewModel.isVoiceOverlayVisible.observeAsState(false)
-    // val context = LocalContext.current
+    val context = LocalContext.current
     // var showVoiceInput = false // Unused variable
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -87,7 +87,9 @@ fun HomeScreen(
     val isRecording by viewModel.isRecording.observeAsState(false)
     val transcript by viewModel.fullTranscript.collectAsState()
     val aiResponse by viewModel.aiResponse.observeAsState("")
+    val assistantChatHistory by viewModel.assistantChatHistory.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val chatListState = remember { androidx.compose.foundation.lazy.LazyListState() }
         if (showSheet.value) {
             ModalBottomSheet(
                 onDismissRequest = { showSheet.value = false },
@@ -134,13 +136,18 @@ fun HomeScreen(
         }
         if (showAssistantSheet.value) {
             val context = LocalContext.current
+            val assistantSheetState = rememberModalBottomSheetState(
+                skipPartiallyExpanded = true
+            )
             ModalBottomSheet(
                 onDismissRequest = {
                     showAssistantSheet.value = false
                     viewModel.stopSpeechRecognition()
+                    viewModel.clearAssistantChat()
                 },
+                sheetState = assistantSheetState,
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                containerColor = Color(0xFFF8F8F8)
+                containerColor = Color(0xFF1E1E1E)
             ) {
                 androidx.compose.runtime.LaunchedEffect(showAssistantSheet.value) {
                     if (showAssistantSheet.value) {
@@ -149,28 +156,65 @@ fun HomeScreen(
                 }
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .padding(vertical = 32.dp, horizontal = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(Icons.Outlined.SettingsVoice, contentDescription = "Assistant Mic", tint = if (isRecording) Color(0xFF4CAF50) else Color.Gray, modifier = Modifier.size(48.dp))
-                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = if (isRecording) "Listening..." else "Tap mic to start",
-                        color = Color.Black,
+                        text = if (isRecording) "Listening..." else "AI Assistant",
+                        color = Color.White,
                         fontSize = 16.sp
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    if (transcript.isNotBlank()) {
-                        Text("You said:", color = Color.Gray, fontSize = 13.sp)
-                        Text(transcript, color = Color.Black, fontSize = 15.sp, modifier = Modifier.padding(4.dp))
+                    // Chat history UI
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        state = chatListState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f, fill = false)
+                            .padding(bottom = 8.dp),
+                        reverseLayout = false
+                    ) {
+                        items(assistantChatHistory) { chatPair ->
+                            val (user, ai) = chatPair
+                            // User message bubble
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0xFFBB86FC), shape = RoundedCornerShape(16.dp))
+                                        .padding(10.dp)
+                                        .widthIn(max = 260.dp)
+                                ) {
+                                    Text(text = user, color = Color.White, fontSize = 15.sp)
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            // AI message bubble
+                            if (ai.isNotBlank()) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color(0xFF2D2D2D), shape = RoundedCornerShape(16.dp))
+                                            .padding(10.dp)
+                                            .widthIn(max = 260.dp)
+                                    ) {
+                                        Text(text = ai, color = Color.White, fontSize = 15.sp)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
                     }
-                    if (aiResponse.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Assistant:", color = Color(0xFF4CAF50), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(aiResponse, color = Color.Black, fontSize = 15.sp, modifier = Modifier.padding(4.dp))
+                    
+                    // Auto-scroll to latest message - triggers on any chat history change
+                    LaunchedEffect(assistantChatHistory) {
+                        if (assistantChatHistory.isNotEmpty()) {
+                            coroutineScope.launch {
+                                chatListState.scrollToItem(assistantChatHistory.size - 1)
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
                     Row {
                         Button(onClick = {
                             coroutineScope.launch {
@@ -183,6 +227,7 @@ fun HomeScreen(
                         Button(onClick = {
                             showAssistantSheet.value = false
                             viewModel.stopSpeechRecognition()
+                            viewModel.clearAssistantChat()
                         }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC))) {
                             Text("Close", color = Color.White)
                         }
