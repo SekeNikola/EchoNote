@@ -39,16 +39,17 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-		override fun onCreate(savedInstanceState: Bundle?) {
-			super.onCreate(savedInstanceState)
+	override fun onCreate(savedInstanceState: Bundle?) {
+		super.onCreate(savedInstanceState)
 
-			setContent {
-				EchoNoteTheme {
-					Surface {
-						var showPermissionDialog by remember { mutableStateOf(false) }
-						var pendingPermissions by remember { mutableStateOf<Array<String>>(emptyArray()) }
-						
-						// Show permission rationale dialog
+		// Handle widget intents
+		val widgetAction = intent.getStringExtra("widget_action")
+
+		setContent {
+			EchoNoteTheme {
+				Surface {
+					var showPermissionDialog by remember { mutableStateOf(false) }
+					var pendingPermissions by remember { mutableStateOf<Array<String>>(emptyArray()) }						// Show permission rationale dialog
 						if (showPermissionDialog) {
 							com.example.app.ui.PermissionRationaleDialog(
 								onDismiss = { showPermissionDialog = false },
@@ -126,7 +127,22 @@ class MainActivity : ComponentActivity() {
 							)
 						} else {
 							RetrofitInstance.init(context)
-							EchoNoteNavGraph(navController, viewModel)
+							
+							// Determine starting destination based on widget action
+							val startDestination = when (widgetAction) {
+								"record_audio" -> "recording"
+								"upload_audio" -> "uploadAudio"
+								"take_picture" -> "imageCapture"
+								"upload_image" -> "uploadImage"
+								"type_text" -> "typeText"
+								"videos" -> "videoUrl"
+								"web_page" -> "webPage"
+								"upload_files" -> "documentUpload"
+								"assistant" -> "voiceCommand"
+								else -> "home"
+							}
+							
+							EchoNoteNavGraph(navController, viewModel, startDestination)
 						}
 					}
 				}

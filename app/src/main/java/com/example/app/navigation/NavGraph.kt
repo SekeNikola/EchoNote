@@ -28,9 +28,10 @@ sealed class Screen(val route: String) {
 @Composable
 fun EchoNoteNavGraph(
     navController: NavHostController,
-    viewModel: NoteViewModel
+    viewModel: NoteViewModel,
+    startDestination: String = Screen.Home.route
 ) {
-    NavHost(navController, startDestination = Screen.Home.route) {
+    NavHost(navController, startDestination = startDestination) {
         composable(Screen.Home.route) {
             HomeScreen(
                 viewModel = viewModel,
