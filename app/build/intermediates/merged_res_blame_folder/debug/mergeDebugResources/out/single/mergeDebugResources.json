@@ -1,19 +1,75 @@
 [
     {
-        "merged": "com.example.app-debug-76:/drawable_ic_sparkle_single.xml.flat",
-        "source": "com.example.app-main-78:/drawable/ic_sparkle_single.xml"
+        "merged": "com.example.app-debug-76:/drawable_widget_button_assistant.xml.flat",
+        "source": "com.example.app-main-78:/drawable/widget_button_assistant.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_ic_photo_camera.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_photo_camera.xml"
     },
     {
         "merged": "com.example.app-debug-76:/mipmap_ic_launcher_round.xml.flat",
         "source": "com.example.app-main-78:/mipmap/ic_launcher_round.xml"
     },
     {
+        "merged": "com.example.app-debug-76:/drawable_ic_sparkle.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_sparkle.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_ic_videocam.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_videocam.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_ic_description.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_description.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_ic_fiber_manual_record.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_fiber_manual_record.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/layout_widget_logion.xml.flat",
+        "source": "com.example.app-main-78:/layout/widget_logion.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_ic_sparkle_single.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_sparkle_single.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_ic_mic.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_mic.xml"
+    },
+    {
         "merged": "com.example.app-debug-76:/mipmap_ic_launcher.xml.flat",
         "source": "com.example.app-main-78:/mipmap/ic_launcher.xml"
     },
     {
-        "merged": "com.example.app-debug-76:/drawable_ic_sparkle.xml.flat",
-        "source": "com.example.app-main-78:/drawable/ic_sparkle.xml"
+        "merged": "com.example.app-debug-76:/drawable_ic_edit.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_edit.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_widget_button_background.xml.flat",
+        "source": "com.example.app-main-78:/drawable/widget_button_background.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_ic_image.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_image.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_widget_preview.xml.flat",
+        "source": "com.example.app-main-78:/drawable/widget_preview.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_ic_language.xml.flat",
+        "source": "com.example.app-main-78:/drawable/ic_language.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/drawable_widget_background.xml.flat",
+        "source": "com.example.app-main-78:/drawable/widget_background.xml"
+    },
+    {
+        "merged": "com.example.app-debug-76:/xml_widget_info.xml.flat",
+        "source": "com.example.app-main-78:/xml/widget_info.xml"
     },
     {
         "merged": "com.example.app-debug-76:/layout_activity_main.xml.flat",

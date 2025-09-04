@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 
 object ApiKeyProvider {
-    private const val PREFS_NAME = "echo_note_prefs"
+    private const val PREFS_NAME = "logion_prefs"
     private const val KEY_OPENAI = "openai_api_key"
 
     fun saveApiKey(context: Context, key: String) {

@@ -1,7 +1,7 @@
 
-# EchoNote
+# Logion
 
-EchoNote is a minimal, dark-themed Android app for AI-powered voice notes and reminders. Capture, transcribe, summarize, and manage your notes with advanced AI and seamless reminders—all in a beautiful, modern UI.
+Logion is a minimal, dark-themed Android app for AI-powered voice notes and reminders. Capture, transcribe, summarize, and manage your notes with advanced AI and seamless reminders—all in a beautiful, modern UI.
 
 ## Features
 
@@ -49,4 +49,4 @@ EchoNote is a minimal, dark-themed Android app for AI-powered voice notes and re
 
 ---
 
-**EchoNote** — Your personal AI voice notes and reminders assistant.
+**Logion** — Your personal AI voice notes and reminders assistant.

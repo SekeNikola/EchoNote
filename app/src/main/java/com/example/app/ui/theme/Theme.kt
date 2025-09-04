@@ -16,7 +16,7 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun EchoNoteTheme(content: @Composable () -> Unit) {
+fun LogionTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColorScheme,
         typography = Typography(),

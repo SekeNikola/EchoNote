@@ -43,7 +43,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.BoilerplateApp">
+        android:theme="@style/Theme.Logion">
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -52,7 +52,7 @@
         </activity>
 
         <!-- Widget Configuration -->
-        <receiver android:name=".widget.EchoNoteWidget"
+        <receiver android:name=".widget.LogionWidget"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

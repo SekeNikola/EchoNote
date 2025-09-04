@@ -1,6 +1,6 @@
-# EchoNote App Permissions
+# Logion App Permissions
 
-This document lists all the permissions required by the EchoNote app and explains why each permission is needed.
+This document lists all the permissions required by the Logion app and explains why each permission is needed.
 
 ## Required Permissions
 

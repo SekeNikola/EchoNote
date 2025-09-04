@@ -26,7 +26,7 @@ sealed class Screen(val route: String) {
 }
 
 @Composable
-fun EchoNoteNavGraph(
+fun LogionNavGraph(
     navController: NavHostController,
     viewModel: NoteViewModel,
     startDestination: String = Screen.Home.route

@@ -22,7 +22,7 @@ class ReminderWorker(
     }
 
     private fun showNotification(title: String, noteId: Long) {
-        val channelId = "echo_note_reminders"
+        val channelId = "logion_reminders"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 channelId,

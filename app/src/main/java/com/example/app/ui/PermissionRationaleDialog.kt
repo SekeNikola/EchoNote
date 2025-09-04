@@ -1,5 +1,7 @@
 package com.example.app.ui
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,10 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 
 data class PermissionInfo(
     val icon: ImageVector,
@@ -33,20 +33,20 @@ fun PermissionRationaleDialog(
     val permissions = listOf(
         PermissionInfo(
             icon = Icons.Filled.Mic,
-            title = "Microphone Access",
-            description = "Record voice notes and audio for transcription and AI processing",
-            color = Color(0xFF4CAF50)
-        ),
-        PermissionInfo(
-            icon = Icons.Filled.PhotoCamera,
-            title = "Camera Access", 
-            description = "Take photos for OCR text extraction and visual content processing",
+            title = "Microphone",
+            description = "Record audio for voice notes and transcription",
             color = Color(0xFF2196F3)
         ),
         PermissionInfo(
-            icon = Icons.Filled.Folder,
-            title = "Storage Access",
-            description = "Access your files, images, audio, and documents for upload and processing",
+            icon = Icons.Filled.CameraAlt,
+            title = "Camera",
+            description = "Capture photos and scan documents",
+            color = Color(0xFF4CAF50)
+        ),
+        PermissionInfo(
+            icon = Icons.Filled.Storage,
+            title = "Storage",
+            description = "Save and access your notes, images, and documents",
             color = Color(0xFFFF9800)
         ),
         PermissionInfo(
@@ -57,122 +57,132 @@ fun PermissionRationaleDialog(
         )
     )
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
+    // Full screen overlay - no Dialog wrapper
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF000000).copy(alpha = 0.95f))
+    ) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
+                .fillMaxSize()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
+            Spacer(modifier = Modifier.height(40.dp))
+            
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Header
+                Icon(
+                    Icons.Filled.Security,
+                    contentDescription = null,
+                    tint = Color(0xFF4CAF50),
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        "Permissions Required",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        "Logion needs these permissions to work properly",
+                        fontSize = 16.sp,
+                        color = Color(0xFFB0B0B0)
+                    )
+                }
+            }
+
+            // Permissions list
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                permissions.forEach { permission ->
+                    PermissionItem(permission = permission)
+                }
+            }
+
+            // Privacy note
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF181818)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
                     Icon(
-                        Icons.Filled.Security,
+                        Icons.Filled.PrivacyTip,
                         contentDescription = null,
                         tint = Color(0xFF4CAF50),
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            "Permissions Required",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            "Privacy Protected",
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            fontSize = 16.sp
                         )
                         Text(
-                            "EchoNote needs these permissions to work properly",
+                            "Your data is processed securely and never stored permanently without your consent.",
+                            color = Color(0xFFB0B0B0),
                             fontSize = 14.sp,
-                            color = Color(0xFFB0B0B0)
+                            lineHeight = 20.sp
                         )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-                // Permissions list
-                Column(
+            // Buttons in column layout - Full width
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Button(
+                    onClick = onGrantPermissions,
                     modifier = Modifier
-                        .verticalScroll(rememberScrollState())
-                        .weight(1f, false)
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    permissions.forEach { permission ->
-                        PermissionItem(permission = permission)
-                        if (permission != permissions.last()) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-                    }
+                    Text(
+                        "Grant Permissions", 
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Privacy note
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF181818)),
-                    shape = RoundedCornerShape(8.dp)
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFB0B0B0)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFF444444))
                 ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Icon(
-                            Icons.Filled.PrivacyTip,
-                            contentDescription = null,
-                            tint = Color(0xFF4CAF50),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Column {
-                            Text(
-                                "Privacy Protected",
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                "Your data is processed securely and never stored permanently without your consent.",
-                                color = Color(0xFFB0B0B0),
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                // Buttons
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color(0xFFB0B0B0)
-                        )
-                    ) {
-                        Text("Not Now")
-                    }
-                    Button(
-                        onClick = onGrantPermissions,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50)
-                        )
-                    ) {
-                        Text("Grant Permissions", color = Color.White)
-                    }
+                    Text(
+                        "Not Now",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
@@ -222,6 +232,3 @@ private fun PermissionItem(permission: PermissionInfo) {
         }
     }
 }
-
-
-

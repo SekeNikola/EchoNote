@@ -6,5 +6,5 @@ pluginManagement {
 	}
 }
 
-rootProject.name = "BoilerplateApp"
+rootProject.name = "Logion"
 include(":app")

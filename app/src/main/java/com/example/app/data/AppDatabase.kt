@@ -20,7 +20,7 @@ abstract class AppDatabase : RoomDatabase() {
                 INSTANCE ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "echo_note_db"
+                    "logion_db"
                 )
                 .addMigrations(MIGRATION_1_2)
                 .build().also { INSTANCE = it }

@@ -82,7 +82,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             // Build conversation messages including history
             val messages = mutableListOf<Message>()
             messages.add(Message(role = "system", content = """
-                You are a helpful AI assistant for EchoNote. You can:
+                You are a helpful AI assistant for Logion. You can:
                 1. Answer general questions and provide information
                 2. Help with the user's notes (provided below)
                 3. Help create lists (shopping, grocery, travel, todo, etc.)
@@ -719,7 +719,7 @@ Output:
                     appendLine("${index + 1}. $item")
                 }
                 appendLine()
-                appendLine("Created with EchoNote Assistant")
+                appendLine("Created with Logion Assistant")
             }
             
             val note = Note(
