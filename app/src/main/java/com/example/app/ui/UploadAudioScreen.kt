@@ -45,17 +45,17 @@ fun UploadAudioScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F8F8))
+            .background(Color(0xFF121212))
     ) {
         // Top Bar
         TopAppBar(
-            title = { Text("Upload Audio", color = Color.Black, fontWeight = FontWeight.Bold) },
+            title = { Text("Upload Audio", color = Color.White, fontWeight = FontWeight.Bold) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF222222))
         )
 
         Column(
@@ -72,7 +72,7 @@ fun UploadAudioScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -91,12 +91,12 @@ fun UploadAudioScreen(
                             "Select Audio File",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color.White
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "Choose an audio file from your device to transcribe and create notes",
-                            color = Color.Gray,
+                            color = Color(0xFFB0B0B0),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -116,7 +116,7 @@ fun UploadAudioScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -128,25 +128,19 @@ fun UploadAudioScreen(
                             "Audio Selected",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color.White
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         if (isProcessing) {
                             CircularProgressIndicator(color = Color(0xFF4CAF50))
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text(processingStatus, color = Color.Gray)
+                            Text(processingStatus, color = Color(0xFFB0B0B0))
                         } else {
-                            Row(
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Button(
-                                    onClick = { selectedAudioUri = null },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
-                                ) {
-                                    Text("Choose Different File", color = Color.White)
-                                }
                                 Button(
                                     onClick = {
                                         coroutineScope.launch {
@@ -163,9 +157,16 @@ fun UploadAudioScreen(
                                             }
                                         }
                                     },
+                                    modifier = Modifier.fillMaxWidth(),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                                 ) {
                                     Text("Process Audio", color = Color.White)
+                                }
+                                OutlinedButton(
+                                    onClick = { selectedAudioUri = null },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Choose Different File", color = Color.White)
                                 }
                             }
                         }
@@ -175,3 +176,6 @@ fun UploadAudioScreen(
         }
     }
 }
+
+
+

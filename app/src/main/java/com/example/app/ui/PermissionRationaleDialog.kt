@@ -63,7 +63,7 @@ fun PermissionRationaleDialog(
                 .fillMaxWidth()
                 .padding(16.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
         ) {
             Column(
                 modifier = Modifier
@@ -78,7 +78,7 @@ fun PermissionRationaleDialog(
                     Icon(
                         Icons.Filled.Security,
                         contentDescription = null,
-                        tint = Color(0xFF1976D2),
+                        tint = Color(0xFF4CAF50),
                         modifier = Modifier.size(32.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -87,12 +87,12 @@ fun PermissionRationaleDialog(
                             "Permissions Required",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1976D2)
+                            color = Color.White
                         )
                         Text(
                             "EchoNote needs these permissions to work properly",
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = Color(0xFFB0B0B0)
                         )
                     }
                 }
@@ -117,7 +117,7 @@ fun PermissionRationaleDialog(
 
                 // Privacy note
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF3E5F5)),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF181818)),
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Row(
@@ -127,7 +127,7 @@ fun PermissionRationaleDialog(
                         Icon(
                             Icons.Filled.PrivacyTip,
                             contentDescription = null,
-                            tint = Color(0xFF7B1FA2),
+                            tint = Color(0xFF4CAF50),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
@@ -135,12 +135,12 @@ fun PermissionRationaleDialog(
                             Text(
                                 "Privacy Protected",
                                 fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF7B1FA2),
+                                color = Color.White,
                                 fontSize = 14.sp
                             )
                             Text(
                                 "Your data is processed securely and never stored permanently without your consent.",
-                                color = Color(0xFF7B1FA2),
+                                color = Color(0xFFB0B0B0),
                                 fontSize = 12.sp,
                                 lineHeight = 16.sp
                             )
@@ -159,7 +159,7 @@ fun PermissionRationaleDialog(
                         onClick = onDismiss,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = Color.Gray
+                            contentColor = Color(0xFFB0B0B0)
                         )
                     ) {
                         Text("Not Now")
@@ -168,7 +168,7 @@ fun PermissionRationaleDialog(
                         onClick = onGrantPermissions,
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1976D2)
+                            containerColor = Color(0xFF4CAF50)
                         )
                     ) {
                         Text("Grant Permissions", color = Color.White)
@@ -210,15 +210,18 @@ private fun PermissionItem(permission: PermissionInfo) {
                 permission.title,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp,
-                color = Color(0xFF212121)
+                color = Color.White
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 permission.description,
                 fontSize = 14.sp,
-                color = Color(0xFF757575),
+                color = Color(0xFFB0B0B0),
                 lineHeight = 20.sp
             )
         }
     }
 }
+
+
+

@@ -46,17 +46,17 @@ fun DocumentUploadScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F8F8))
+            .background(Color(0xFF121212))
     ) {
         // Top Bar
         TopAppBar(
-            title = { Text("Document Upload", color = Color.Black, fontWeight = FontWeight.Bold) },
+            title = { Text("Upload Files", color = Color.White, fontWeight = FontWeight.Bold) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF222222))
         )
 
         Column(
@@ -73,7 +73,7 @@ fun DocumentUploadScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -92,12 +92,12 @@ fun DocumentUploadScreen(
                             "Select Document",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color.White
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "Choose a PDF or Word document to extract content and create summary with tasks",
-                            color = Color.Gray,
+                            color = Color(0xFFB0B0B0),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -131,7 +131,7 @@ fun DocumentUploadScreen(
                         Button(
                             onClick = { documentPickerLauncher.launch("*/*") },
                             modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB0B0B0))
                         ) {
                             Icon(Icons.Filled.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
@@ -146,7 +146,7 @@ fun DocumentUploadScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -165,34 +165,25 @@ fun DocumentUploadScreen(
                             "Document Selected",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color.White
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             selectedFileName,
                             fontSize = 14.sp,
-                            color = Color.Gray
+                            color = Color(0xFFB0B0B0)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         
                         if (isProcessing) {
                             CircularProgressIndicator(color = Color(0xFF4CAF50))
                             Spacer(modifier = Modifier.height(16.dp))
-                            Text(processingStatus, color = Color.Gray, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            Text(processingStatus, color = Color(0xFFB0B0B0), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         } else {
-                            Row(
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Button(
-                                    onClick = { 
-                                        selectedDocumentUri = null
-                                        selectedFileName = ""
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
-                                ) {
-                                    Text("Choose Different File", color = Color.White)
-                                }
                                 Button(
                                     onClick = {
                                         coroutineScope.launch {
@@ -212,9 +203,19 @@ fun DocumentUploadScreen(
                                             }
                                         }
                                     },
+                                    modifier = Modifier.fillMaxWidth(),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                                 ) {
                                     Text("Process Document", color = Color.White)
+                                }
+                                OutlinedButton(
+                                    onClick = { 
+                                        selectedDocumentUri = null
+                                        selectedFileName = ""
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Choose Different File", color = Color.White)
                                 }
                             }
                         }
@@ -245,13 +246,13 @@ fun DocumentUploadScreen(
                         Text(
                             "• PDF documents (.pdf)\n• Microsoft Word (.docx)\n• Plain text files (.txt)\n• Rich text format (.rtf)",
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = Color(0xFFB0B0B0)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "The system will extract text content and generate summaries with actionable tasks.",
                             fontSize = 12.sp,
-                            color = Color.Gray,
+                            color = Color(0xFFB0B0B0),
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                         )
                     }
@@ -260,3 +261,6 @@ fun DocumentUploadScreen(
         }
     }
 }
+
+
+

@@ -349,7 +349,7 @@ fun NoteDetailScreen(
                                                                 val thumbHeight = 48.dp.toPx()
                                                                 val y = proportion * (size.height - thumbHeight)
                                                                 drawRoundRect(
-                                                                    color = Color.Gray,
+                                                                    color = Color(0xFFB0B0B0),
                                                                     topLeft = Offset(x = 0f, y = y),
                                                                     size = androidx.compose.ui.geometry.Size(size.width, thumbHeight),
                                                                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx(), 3.dp.toPx())
@@ -457,7 +457,7 @@ fun NoteDetailScreen(
                                         val thumbHeight = 48.dp.toPx()
                                         val y = proportion * (size.height - thumbHeight)
                                         drawRoundRect(
-                                            color = Color.Gray,
+                                            color = Color(0xFFB0B0B0),
                                             topLeft = Offset(x = 0f, y = y),
                                             size = androidx.compose.ui.geometry.Size(size.width, thumbHeight),
                                             cornerRadius = androidx.compose.ui.geometry.CornerRadius(3.dp.toPx(), 3.dp.toPx())
@@ -518,3 +518,6 @@ private fun ActionButton(
         Text(label, color = Color.White, fontSize = 12.sp)
     }
 }
+
+
+

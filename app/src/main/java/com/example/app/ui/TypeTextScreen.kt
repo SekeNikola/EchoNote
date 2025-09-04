@@ -39,14 +39,14 @@ fun TypeTextScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F8F8))
+            .background(Color(0xFF121212))
     ) {
         // Top Bar
         TopAppBar(
-            title = { Text("Create Text Note", color = Color.Black, fontWeight = FontWeight.Bold) },
+            title = { Text("Create Text Note", color = Color.White, fontWeight = FontWeight.Bold) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
             },
             actions = {
@@ -77,10 +77,10 @@ fun TypeTextScreen(
                     },
                     enabled = !isProcessing && (titleText.isNotBlank() || bodyText.isNotBlank())
                 ) {
-                    Icon(Icons.Filled.Save, contentDescription = "Save", tint = if (titleText.isNotBlank() || bodyText.isNotBlank()) Color(0xFF4CAF50) else Color.Gray)
+                    Icon(Icons.Filled.Save, contentDescription = "Save", tint = if (titleText.isNotBlank() || bodyText.isNotBlank()) Color(0xFF4CAF50) else Color(0xFFB0B0B0))
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF222222))
         )
 
         if (isProcessing) {
@@ -91,7 +91,7 @@ fun TypeTextScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator(color = Color(0xFF4CAF50))
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text(processingStatus, color = Color.Gray)
+                    Text(processingStatus, color = Color(0xFFB0B0B0))
                 }
             }
         } else {
@@ -107,7 +107,7 @@ fun TypeTextScreen(
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -118,7 +118,7 @@ fun TypeTextScreen(
                             "Title (Optional)",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color.Gray,
+                            color = Color(0xFFB0B0B0),
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         OutlinedTextField(
@@ -141,7 +141,7 @@ fun TypeTextScreen(
                         .fillMaxWidth()
                         .weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -152,7 +152,7 @@ fun TypeTextScreen(
                             "Content",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color.Gray,
+                            color = Color(0xFFB0B0B0),
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                         OutlinedTextField(
@@ -194,7 +194,7 @@ fun TypeTextScreen(
                         Text(
                             "Your text will be analyzed to extract summaries and tasks automatically.",
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = Color(0xFFB0B0B0)
                         )
                     }
                 }
@@ -202,3 +202,6 @@ fun TypeTextScreen(
         }
     }
 }
+
+
+

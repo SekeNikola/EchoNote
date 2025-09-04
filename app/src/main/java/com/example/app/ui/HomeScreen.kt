@@ -9,6 +9,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.SettingsVoice
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.ui.res.painterResource
 import com.example.app.R
 import androidx.compose.material.icons.filled.Star
@@ -134,7 +142,7 @@ fun HomeScreen(
             ModalBottomSheet(
                 onDismissRequest = { showSheet.value = false },
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                containerColor = Color(0xFFF8F8F8)
+                containerColor = Color(0xFF121212)
             ) {
                 Column(
                     modifier = Modifier
@@ -143,15 +151,15 @@ fun HomeScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Create New Note", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.Black)
+                    Text("Create New Note", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
                     Spacer(modifier = Modifier.height(20.dp))
                     // Audio
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        SheetActionButton(icon = Icons.Outlined.SettingsVoice, label = "Record Audio", modifier = Modifier.weight(1f)) {
+                        SheetActionButton(icon = Icons.Filled.FiberManualRecord, label = "Record Audio", modifier = Modifier.weight(1f)) {
                             onRecordClick?.invoke()
                             showSheet.value = false
                         }
-                        SheetActionButton(icon = Icons.Outlined.RadioButtonChecked, label = "Upload Audio", modifier = Modifier.weight(1f)) { 
+                        SheetActionButton(icon = Icons.Filled.Mic, label = "Upload Audio", modifier = Modifier.weight(1f)) { 
                             onNavigateToUploadAudio?.invoke()
                             showSheet.value = false
                         }
@@ -159,11 +167,11 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     // Photo
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        SheetActionButton(icon = Icons.Outlined.CalendarToday, label = "Take Picture", modifier = Modifier.weight(1f)) { 
+                        SheetActionButton(icon = Icons.Filled.PhotoCamera, label = "Take Picture", modifier = Modifier.weight(1f)) { 
                             onNavigateToImageCapture?.invoke()
                             showSheet.value = false
                         }
-                        SheetActionButton(icon = Icons.Outlined.CheckBoxOutlineBlank, label = "Upload Image", modifier = Modifier.weight(1f)) { 
+                        SheetActionButton(icon = Icons.Filled.Image, label = "Upload Image", modifier = Modifier.weight(1f)) { 
                             onNavigateToUploadImage?.invoke()
                             showSheet.value = false
                         }
@@ -171,22 +179,22 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     // Other
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        SheetActionButton(icon = Icons.Filled.Star, label = "Type Text", modifier = Modifier.weight(1f)) { 
+                        SheetActionButton(icon = Icons.Filled.Edit, label = "Type Text", modifier = Modifier.weight(1f)) { 
                             onNavigateToTypeText?.invoke()
                             showSheet.value = false
                         }
-                        SheetActionButton(icon = Icons.Outlined.PlayArrow, label = "YouTube Video", modifier = Modifier.weight(1f)) { 
+                        SheetActionButton(icon = Icons.Filled.Videocam, label = "Videos", modifier = Modifier.weight(1f)) { 
                             onNavigateToVideoUrl?.invoke()
                             showSheet.value = false
                         }
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                        SheetActionButton(icon = Icons.Outlined.AccessTime, label = "Web Page URL", modifier = Modifier.weight(1f)) { 
+                        SheetActionButton(icon = Icons.Filled.Language, label = "Web Page URL", modifier = Modifier.weight(1f)) { 
                             onNavigateToWebPage?.invoke()
                             showSheet.value = false
                         }
-                        SheetActionButton(icon = Icons.Outlined.CheckBox, label = "Upload PDF", modifier = Modifier.weight(1f)) { 
+                        SheetActionButton(icon = Icons.Filled.Description, label = "Upload Files", modifier = Modifier.weight(1f)) { 
                             onNavigateToDocumentUpload?.invoke()
                             showSheet.value = false
                         }
@@ -370,13 +378,13 @@ fun SheetActionButton(icon: ImageVector, label: String, modifier: Modifier = Mod
     Button(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = Color.White),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF222222)),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 2.dp),
         modifier = modifier.padding(horizontal = 6.dp)
     ) {
-        Icon(icon, contentDescription = label, tint = Color.Black, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(8.dp))
-        Text(label, color = Color.Black, fontSize = 12.sp)
+        Text(label, color = Color.White, fontSize = 12.sp)
     }
 }
 
@@ -526,3 +534,6 @@ fun NoteCard(
         }
     }
 }
+
+
+

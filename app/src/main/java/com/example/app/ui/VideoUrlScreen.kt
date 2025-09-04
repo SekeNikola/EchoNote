@@ -35,17 +35,17 @@ fun VideoUrlScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F8F8))
+            .background(Color(0xFF121212))
     ) {
         // Top Bar
         TopAppBar(
-            title = { Text("Video Summary", color = Color.Black, fontWeight = FontWeight.Bold) },
+            title = { Text("Videos", color = Color.White, fontWeight = FontWeight.Bold) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF222222))
         )
 
         Column(
@@ -61,7 +61,7 @@ fun VideoUrlScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -71,7 +71,7 @@ fun VideoUrlScreen(
                     ) {
                         CircularProgressIndicator(color = Color(0xFF4CAF50))
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(processingStatus, color = Color.Gray, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Text(processingStatus, color = Color(0xFFB0B0B0), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
                 }
             } else {
@@ -81,7 +81,7 @@ fun VideoUrlScreen(
                         .fillMaxWidth()
                         .padding(bottom = 16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -100,12 +100,12 @@ fun VideoUrlScreen(
                             "Video URL",
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.Black
+                            color = Color.White
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "Enter a YouTube or video URL to generate a summary",
-                            color = Color.Gray,
+                            color = Color(0xFFB0B0B0),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -167,7 +167,7 @@ fun VideoUrlScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F8FF))
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF181818))
                 ) {
                     Column(
                         modifier = Modifier
@@ -178,19 +178,19 @@ fun VideoUrlScreen(
                             "ℹ️ Supported Platforms",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color(0xFF2196F3)
+                            color = Color(0xFF4CAF50)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "• YouTube videos\n• Vimeo links\n• Direct video URLs\n• Most video sharing platforms",
                             fontSize = 12.sp,
-                            color = Color.Gray
+                            color = Color(0xFFB0B0B0)
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "The system will extract video metadata and generate a comprehensive summary.",
                             fontSize = 12.sp,
-                            color = Color.Gray,
+                            color = Color(0xFFB0B0B0),
                             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                         )
                     }
@@ -199,3 +199,6 @@ fun VideoUrlScreen(
         }
     }
 }
+
+
+

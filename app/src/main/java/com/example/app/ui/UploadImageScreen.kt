@@ -60,17 +60,17 @@ fun UploadImageScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8F8F8))
+            .background(Color(0xFF121212))
     ) {
         // Top Bar
         TopAppBar(
-            title = { Text("Upload Image", color = Color.Black, fontWeight = FontWeight.Bold) },
+            title = { Text("Upload Image", color = Color.White, fontWeight = FontWeight.Bold) },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.Black)
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF222222))
         )
 
         Column(
@@ -87,7 +87,7 @@ fun UploadImageScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -104,12 +104,12 @@ fun UploadImageScreen(
                             "Opening Gallery...",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color.Black
+                            color = Color.White
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
                             "Select an image to analyze and create notes",
-                            color = Color.Gray,
+                            color = Color(0xFFB0B0B0),
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                     }
@@ -121,7 +121,7 @@ fun UploadImageScreen(
                         .fillMaxWidth()
                         .padding(16.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White)
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF222222))
                 ) {
                     Column(
                         modifier = Modifier
@@ -156,7 +156,7 @@ fun UploadImageScreen(
                             Text(
                                 processingStatus,
                                 fontSize = 16.sp,
-                                color = Color.Gray,
+                                color = Color(0xFFB0B0B0),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         } else {
@@ -164,28 +164,20 @@ fun UploadImageScreen(
                                 "Image Selected",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Black
+                                color = Color.White
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 "Ready to analyze and extract content",
-                                color = Color.Gray,
+                                color = Color(0xFFB0B0B0),
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(24.dp))
                             
-                            Row(
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceEvenly
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                OutlinedButton(
-                                    onClick = { imagePickerLauncher.launch("image/*") },
-                                    modifier = Modifier.weight(1f).padding(end = 8.dp)
-                                ) {
-                                    Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Choose Different")
-                                }
                                 Button(
                                     onClick = {
                                         selectedImageUri?.let { uri ->
@@ -202,12 +194,20 @@ fun UploadImageScreen(
                                             }
                                         }
                                     },
-                                    modifier = Modifier.weight(1f).padding(start = 8.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                                 ) {
                                     Icon(Icons.Filled.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Process", color = Color.White)
+                                }
+                                OutlinedButton(
+                                    onClick = { imagePickerLauncher.launch("image/*") },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Filled.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Choose Different")
                                 }
                             }
                         }
@@ -247,3 +247,6 @@ private fun AsyncImage(
         )
     }
 }
+
+
+
