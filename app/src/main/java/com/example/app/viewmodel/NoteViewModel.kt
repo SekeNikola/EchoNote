@@ -155,7 +155,11 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
         Log.d("NoteViewModel", "Input transcript: '$transcript'")
         
         val prompt = """
-            Summarize the following text and extract any tasks as a checklist. Respond in JSON: {\"summary\": \"...\", \"tasks\": [ ... ]}\n\nText:\n$transcript
+            Summarize the following text and extract any tasks as a checklist. 
+            IMPORTANT: Only extract actual tasks or items mentioned by the user, NOT instructions from the AI assistant.
+            Ignore any AI responses that mention "save", "saving", "I'll save", etc.
+            Focus only on real actionable items or things the user wants to do/get/remember.
+            Respond in JSON: {\"summary\": \"...\", \"tasks\": [ ... ]}\n\nText:\n$transcript
         """.trimIndent()
         
         Log.d("NoteViewModel", "Generated prompt: '$prompt'")
@@ -163,7 +167,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
         val request = com.example.app.network.GPTRequest(
             model = "gpt-3.5-turbo",
             messages = listOf(
-                com.example.app.network.Message(role = "system", content = "You are a helpful assistant that summarizes notes and extracts tasks as a checklist."),
+                com.example.app.network.Message(role = "system", content = "You are a helpful assistant that summarizes notes and extracts tasks as a checklist. Only extract actual tasks or items mentioned by the user. Do not extract AI assistant responses or instructions like 'save note', 'I'll save this', etc. Focus on real actionable items."),
                 com.example.app.network.Message(role = "user", content = prompt)
             )
         )
@@ -720,15 +724,12 @@ Output:
             
             val note = Note(
                 title = listType,
-                content = "",
-                summary = listContent,
+                snippet = listContent,
                 transcript = currentListItems.joinToString(", "),
-                tasks = "",
-                createdAt = System.currentTimeMillis(),
-                audioFilePath = null
+                audioPath = null
             )
             
-            repository.insertNote(note)
+            repository.noteDao.insert(note)
             Log.d("NoteViewModel", "List saved: $listType with ${currentListItems.size} items")
             
         } catch (e: Exception) {
