@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.outlined.CalendarToday
@@ -136,7 +137,17 @@ fun HomeScreen(
     val transcript by viewModel.fullTranscript.collectAsState()
     val aiResponse by viewModel.aiResponse.observeAsState("")
     val assistantChatHistory by viewModel.assistantChatHistory.collectAsState()
+    val shouldCloseAssistant by viewModel.shouldCloseAssistant.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+
+    // Auto-close assistant when list is completed
+    LaunchedEffect(shouldCloseAssistant) {
+        if (shouldCloseAssistant) {
+            showAssistantSheet.value = false
+            viewModel.stopSpeechRecognition()
+            viewModel.clearAssistantChat()
+        }
+    }
     val chatListState = remember { androidx.compose.foundation.lazy.LazyListState() }
         if (showSheet.value) {
             ModalBottomSheet(
@@ -218,9 +229,19 @@ fun HomeScreen(
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 containerColor = Color(0xFF1E1E1E)
             ) {
+                // Auto-start listening when sheet opens and auto-stop when it closes
                 androidx.compose.runtime.LaunchedEffect(showAssistantSheet.value) {
                     if (showAssistantSheet.value) {
                         viewModel.startSpeechRecognition(context)
+                    } else {
+                        viewModel.stopSpeechRecognition()
+                    }
+                }
+                
+                // Stop listening when the sheet is dismissed
+                androidx.compose.runtime.DisposableEffect(Unit) {
+                    onDispose {
+                        viewModel.stopSpeechRecognition()
                     }
                 }
                 Column(
@@ -286,48 +307,30 @@ fun HomeScreen(
                     
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Bottom buttons
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    // Bottom button - just save chat
+                    Button(
+                        onClick = {
+                            // Save chat as a note using the same logic as recording
+                            coroutineScope.launch {
+                                // Stop listening first
+                                viewModel.stopSpeechRecognition()
+                                
+                                if (assistantChatHistory.isNotEmpty()) {
+                                    viewModel.saveChatAsNote()
+                                    // Clear chat AFTER saving is complete
+                                    viewModel.clearAssistantChat()
+                                } else {
+                                    // For testing - create a simple note even if no chat
+                                    viewModel.saveTestChatNote()
+                                }
+                                // Close the sheet
+                                showAssistantSheet.value = false
+                            }
+                        }, 
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Button(
-                            onClick = {
-                                coroutineScope.launch {
-                                    if (isRecording) {
-                                        viewModel.stopSpeechRecognition()
-                                    } else {
-                                        viewModel.startSpeechRecognition(context)
-                                    }
-                                }
-                            }, 
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(if (isRecording) "Stop Listening" else "Start Listening", color = Color.White)
-                        }
-                        Button(
-                            onClick = {
-                                // Save chat as a note using the same logic as recording
-                                coroutineScope.launch {
-                                    if (assistantChatHistory.isNotEmpty()) {
-                                        viewModel.saveChatAsNote()
-                                        // Clear chat AFTER saving is complete
-                                        viewModel.clearAssistantChat()
-                                    } else {
-                                        // For testing - create a simple note even if no chat
-                                        viewModel.saveTestChatNote()
-                                    }
-                                    // Close the sheet and stop recognition
-                                    showAssistantSheet.value = false
-                                    viewModel.stopSpeechRecognition()
-                                }
-                            }, 
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFBB86FC)),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Save Chat", color = Color.White)
-                        }
+                        Text("Save Chat", color = Color.White)
                     }
                 }
             }

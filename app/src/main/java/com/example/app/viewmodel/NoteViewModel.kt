@@ -81,7 +81,21 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             
             // Build conversation messages including history
             val messages = mutableListOf<Message>()
-            messages.add(Message(role = "system", content = "You are a helpful AI assistant. You can answer general questions, provide information from the internet, and you also have access to the user's notes. If the user's question is about their notes, use the provided notes for context. Otherwise, answer as a general assistant with access to online information. User's notes:\n$notesContext"))
+            messages.add(Message(role = "system", content = """
+                You are a helpful AI assistant for EchoNote. You can:
+                1. Answer general questions and provide information
+                2. Help with the user's notes (provided below)
+                3. Help create lists (shopping, grocery, travel, todo, etc.)
+                
+                IMPORTANT FOR LIST CREATION:
+                - When user wants to create any type of list, help them add items one by one
+                - After they add several items, ask "Is that all?" or "Anything else for your list?"
+                - When they say "yes", "that's all", "done", etc., the list will be automatically saved
+                - Be conversational and helpful throughout the process
+                
+                User's notes:
+                $notesContext
+            """.trimIndent()))
             
             // Add conversation history (excluding the current message which has empty AI response)
             val currentHistory = _assistantChatHistory.value
@@ -98,6 +112,10 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             val req = GPTRequest(messages = messages)
             val response = RetrofitInstance.api.summarizeText(req)
             val aiText = response.body()?.choices?.firstOrNull()?.message?.content?.trim() ?: ""
+            
+            // Check for list completion and auto-save
+            checkForListCompletion(transcript, aiText)
+            
             // Update last chat entry with AI response
             _assistantChatHistory.update { history ->
                 if (history.isNotEmpty())
@@ -359,6 +377,10 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     private val _assistantChatHistory = MutableStateFlow<List<Pair<String, String>>>(emptyList())
     val assistantChatHistory: StateFlow<List<Pair<String, String>>> = _assistantChatHistory
 
+    // Auto-close assistant callback
+    private val _shouldCloseAssistant = MutableStateFlow(false)
+    val shouldCloseAssistant: StateFlow<Boolean> = _shouldCloseAssistant
+
     fun appendTranscript(newText: String, isFinal: Boolean) {
         _fullTranscript.update { current ->
             if (isFinal) {
@@ -587,6 +609,131 @@ Output:
     // Clear assistant chat history
     fun clearAssistantChat() {
         _assistantChatHistory.value = emptyList()
+        _shouldCloseAssistant.value = false
+    }
+
+    // Smart list detection and completion
+    private var isCreatingList = false
+    private var currentListItems = mutableListOf<String>()
+    private var listType = ""
+
+    private suspend fun checkForListCompletion(userInput: String, aiResponse: String) {
+        val lowerInput = userInput.lowercase()
+        val lowerAiResponse = aiResponse.lowercase()
+        
+        // Detect list creation intent
+        if (!isCreatingList && (lowerInput.contains("create") || lowerInput.contains("make") || lowerInput.contains("need")) && 
+            (lowerInput.contains("list") || lowerInput.contains("shopping") || lowerInput.contains("grocery") || 
+             lowerInput.contains("travel") || lowerInput.contains("todo") || lowerInput.contains("checklist"))) {
+            
+            isCreatingList = true
+            currentListItems.clear()
+            
+            // Extract list type
+            listType = when {
+                lowerInput.contains("shopping") -> "Shopping List"
+                lowerInput.contains("grocery") -> "Grocery List" 
+                lowerInput.contains("travel") -> "Travel List"
+                lowerInput.contains("todo") -> "Todo List"
+                lowerInput.contains("checklist") -> "Checklist"
+                else -> "List"
+            }
+            
+            Log.d("NoteViewModel", "Started creating $listType")
+            return
+        }
+        
+        // If we're in list creation mode
+        if (isCreatingList) {
+            // Check if user is confirming completion
+            if (lowerInput.contains("yes") || lowerInput.contains("that's all") || 
+                lowerInput.contains("that's it") || lowerInput.contains("done") ||
+                lowerInput.contains("finish") || lowerInput.contains("complete")) {
+                
+                // Auto-save the list and close assistant
+                saveListAsNote()
+                
+                // Reset list state
+                isCreatingList = false
+                currentListItems.clear()
+                listType = ""
+                
+                // Trigger auto-close of assistant
+                _shouldCloseAssistant.value = true
+                
+                Log.d("NoteViewModel", "List completed and saved automatically")
+                return
+            }
+            
+            // Extract items from user input (skip questions/confirmations)
+            if (!lowerInput.contains("?") && !lowerAiResponse.contains("is that all")) {
+                val items = extractListItems(userInput)
+                currentListItems.addAll(items)
+                Log.d("NoteViewModel", "Added items: $items, Total: ${currentListItems.size}")
+            }
+            
+            // Check if AI is asking for confirmation
+            if (lowerAiResponse.contains("is that all") || lowerAiResponse.contains("anything else") || 
+                lowerAiResponse.contains("is there more") || lowerAiResponse.contains("that's your list")) {
+                Log.d("NoteViewModel", "AI asking for confirmation - ready to save list")
+            }
+        }
+    }
+
+    private fun extractListItems(input: String): List<String> {
+        val items = mutableListOf<String>()
+        val text = input.trim()
+        
+        // Split by common separators and clean up
+        val potentialItems = text.split(",", "and", "&", "\n")
+        
+        potentialItems.forEach { item ->
+            val cleanItem = item.trim()
+                .removePrefix("add")
+                .removePrefix("include") 
+                .removePrefix("also")
+                .removePrefix("i need")
+                .removePrefix("i want")
+                .trim()
+            
+            if (cleanItem.isNotBlank() && cleanItem.length > 1) {
+                items.add(cleanItem.replaceFirstChar { it.uppercase() })
+            }
+        }
+        
+        return items
+    }
+
+    private suspend fun saveListAsNote() {
+        if (currentListItems.isEmpty()) return
+        
+        try {
+            val listContent = buildString {
+                appendLine("# $listType")
+                appendLine()
+                currentListItems.forEachIndexed { index, item ->
+                    appendLine("${index + 1}. $item")
+                }
+                appendLine()
+                appendLine("Created with EchoNote Assistant")
+            }
+            
+            val note = Note(
+                title = listType,
+                content = "",
+                summary = listContent,
+                transcript = currentListItems.joinToString(", "),
+                tasks = "",
+                createdAt = System.currentTimeMillis(),
+                audioFilePath = null
+            )
+            
+            repository.insertNote(note)
+            Log.d("NoteViewModel", "List saved: $listType with ${currentListItems.size} items")
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error saving list: ${e.message}")
+        }
     }
 
     // Save chat conversation as a note - same logic as stopAndSaveNote()
