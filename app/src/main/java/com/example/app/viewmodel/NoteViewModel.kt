@@ -48,8 +48,11 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import android.speech.SpeechRecognizer
-import android.content.Intent
 import android.speech.RecognitionListener
+import android.content.Intent
+import com.example.app.data.ChatMessage
+import com.example.app.data.Task
+import kotlinx.coroutines.flow.asStateFlow
 import android.speech.RecognizerIntent
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -304,7 +307,10 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                 val json = org.json.JSONObject()
                 json.put("summary", summaryOut)
                 if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
-                val title = generateTitle(summaryOut)
+                
+                // Use smart title generation
+                val title = generateSmartTitle(transcript)
+                
                 val note = Note(
                     title = title,
                     snippet = json.toString(),
@@ -385,6 +391,33 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     private val _shouldCloseAssistant = MutableStateFlow(false)
     val shouldCloseAssistant: StateFlow<Boolean> = _shouldCloseAssistant
 
+    // AI Chat functionality
+    private val _chatMessages = MutableStateFlow<List<ChatMessage>>(emptyList())
+    val chatMessages: StateFlow<List<ChatMessage>> = _chatMessages.asStateFlow()
+
+    private val _isAiLoading = MutableStateFlow(false)
+    val isAiLoading: StateFlow<Boolean> = _isAiLoading.asStateFlow()
+
+    // Voice interface functionality
+    private val _isListening = MutableStateFlow(false)
+    val isListening: StateFlow<Boolean> = _isListening.asStateFlow()
+
+    private val _voiceText = MutableStateFlow("")
+    val voiceText: StateFlow<String> = _voiceText.asStateFlow()
+
+    private val _isProcessing = MutableStateFlow(false)
+    val isProcessing: StateFlow<Boolean> = _isProcessing.asStateFlow()
+
+    private val _shouldAutoRestart = MutableStateFlow(true)
+    val shouldAutoRestart: StateFlow<Boolean> = _shouldAutoRestart.asStateFlow()
+
+    // Tasks functionality
+    private val _allTasks = MutableStateFlow<List<Task>>(emptyList())
+    val allTasks: StateFlow<List<Task>> = _allTasks.asStateFlow()
+
+    // Speech Recognition
+    private var speechRecognizer: SpeechRecognizer? = null
+
     fun appendTranscript(newText: String, isFinal: Boolean) {
         _fullTranscript.update { current ->
             if (isFinal) {
@@ -397,7 +430,6 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
 
     private var tts: TextToSpeech? = null
     private var ttsReady: Boolean = false
-    private var speechRecognizer: SpeechRecognizer? = null
     private var recognizerIntent: Intent? = null
 
     suspend fun generateTitle(summary: String): String = withContext(Dispatchers.IO) {
@@ -472,6 +504,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     override fun onCleared() {
         tts?.shutdown()
         speechRecognizer?.destroy()
+        stopListening()
         super.onCleared()
     }
 
@@ -561,13 +594,13 @@ Output:
                     speechRecognizer?.startListening(createRecognizerIntent())
                 }
             }
-            override fun onPartialResults(partialResults: Bundle?) {
+            override fun onPartialResults(partialResults: android.os.Bundle?) {
                 val data = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 data?.firstOrNull()?.let { partial ->
                     appendTranscript(partial, isFinal = false)
                 }
             }
-            override fun onEvent(eventType: Int, params: Bundle?) {}
+            override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
         }
         speechRecognizer?.setRecognitionListener(listener)
         isRecording.value = true
@@ -722,15 +755,18 @@ Output:
                 appendLine("Created with Logion Assistant")
             }
             
+            // Use smart title generation for lists
+            val smartTitle = generateSmartTitle(currentListItems.joinToString(", "))
+            
             val note = Note(
-                title = listType,
+                title = smartTitle,
                 snippet = listContent,
                 transcript = currentListItems.joinToString(", "),
                 audioPath = null
             )
             
             repository.noteDao.insert(note)
-            Log.d("NoteViewModel", "List saved: $listType with ${currentListItems.size} items")
+            Log.d("NoteViewModel", "List saved: $smartTitle with ${currentListItems.size} items")
             
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error saving list: ${e.message}")
@@ -775,9 +811,9 @@ Output:
                 
                 Log.d("NoteViewModel", "JSON snippet created: '${json.toString()}'")
                 
-                // Generate title using the same method as recording
-                Log.d("NoteViewModel", "Calling generateTitle with summary: '$finalSummary'")
-                val generatedTitle = generateTitle(finalSummary)
+                // Generate title using smart title generation
+                Log.d("NoteViewModel", "Calling generateSmartTitle with transcript: '$transcript'")
+                val generatedTitle = generateSmartTitle(transcript)
                 Log.d("NoteViewModel", "Generated title result: '$generatedTitle'")
                 
                 // If title generation failed, use fallback
@@ -1440,6 +1476,450 @@ Output:
             Log.d("NoteViewModel", "Test chat note saved successfully")
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error saving test chat note", e)
+        }
+    }
+
+    // ======================= AI CHAT FUNCTIONALITY =======================
+    
+    fun sendChatMessage(message: String) = viewModelScope.launch {
+        // Add user message
+        val userMessage = ChatMessage(content = message, isUser = true)
+        repository.insertChatMessage(userMessage)
+        
+        // Set loading state
+        _isAiLoading.value = true
+        
+        try {
+            // Prepare messages for OpenAI
+            val messages = mutableListOf<Message>()
+            messages.add(Message(role = "system", content = """
+                You are Logion AI, a helpful assistant for note-taking and task management.
+                You can help users:
+                1. Create and organize notes
+                2. Generate tasks from conversations
+                3. Answer questions about their existing notes
+                4. Provide general assistance
+                
+                Be conversational, helpful, and concise. Always aim to understand what the user needs and provide actionable assistance.
+            """.trimIndent()))
+            
+            // Add recent chat history (last 10 messages)
+            _chatMessages.value.takeLast(10).forEach { chatMsg ->
+                messages.add(Message(
+                    role = if (chatMsg.isUser) "user" else "assistant",
+                    content = chatMsg.content
+                ))
+            }
+            
+            val request = GPTRequest(messages = messages)
+            val response = RetrofitInstance.api.summarizeText(request)
+            val aiResponse = response.body()?.choices?.firstOrNull()?.message?.content?.trim() 
+                ?: "Sorry, I couldn't process your request."
+            
+            // Add AI response
+            val aiMessage = ChatMessage(content = aiResponse, isUser = false)
+            repository.insertChatMessage(aiMessage)
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error sending chat message", e)
+            val errorMessage = ChatMessage(
+                content = "Sorry, I'm having trouble connecting. Please try again.",
+                isUser = false
+            )
+            repository.insertChatMessage(errorMessage)
+        } finally {
+            _isAiLoading.value = false
+        }
+    }
+    
+    fun clearChatHistory() = viewModelScope.launch {
+        try {
+            repository.clearChatHistory()
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error clearing chat history", e)
+        }
+    }
+
+    // ======================= VOICE INTERFACE FUNCTIONALITY =======================
+    
+    fun startListening(context: Context) {
+        if (_isListening.value || _isProcessing.value) return
+        
+        try {
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+            speechRecognizer?.setRecognitionListener(object : RecognitionListener {
+                override fun onReadyForSpeech(params: android.os.Bundle?) {
+                    _isListening.value = true
+                }
+                
+                override fun onBeginningOfSpeech() {}
+                
+                override fun onRmsChanged(rmsdB: Float) {}
+                
+                override fun onBufferReceived(buffer: ByteArray?) {}
+                
+                override fun onEndOfSpeech() {
+                    _isListening.value = false
+                }
+                
+                override fun onError(error: Int) {
+                    _isListening.value = false
+                    Log.e("NoteViewModel", "Speech recognition error: $error")
+                }
+                
+                override fun onResults(results: android.os.Bundle?) {
+                    _isListening.value = false
+                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    val text = matches?.firstOrNull() ?: ""
+                    if (text.isNotBlank()) {
+                        _voiceText.value = text
+                        // Auto-process the voice command when speech ends
+                        processVoiceCommand(text)
+                    }
+                }
+                
+                override fun onPartialResults(partialResults: android.os.Bundle?) {
+                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                    val text = matches?.firstOrNull() ?: ""
+                    _voiceText.value = text
+                }
+                
+                override fun onEvent(eventType: Int, params: android.os.Bundle?) {}
+            })
+            
+            val intent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
+                putExtra(android.speech.RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+            }
+            
+            speechRecognizer?.startListening(intent)
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error starting speech recognition", e)
+            _isListening.value = false
+        }
+    }
+    
+    fun stopListening() {
+        speechRecognizer?.stopListening()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        _isListening.value = false
+    }
+    
+    fun clearVoiceText() {
+        _voiceText.value = ""
+    }
+    
+    private fun speakText(text: String) {
+        try {
+            if (ttsReady && tts != null) {
+                // Set speech rate and pitch for better voice quality
+                tts?.setSpeechRate(0.9f) // Slightly slower than normal
+                tts?.setPitch(1.0f) // Normal pitch
+                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "TTS_ID")
+                Log.d("NoteViewModel", "Speaking: $text")
+            } else {
+                Log.w("NoteViewModel", "TTS not ready, cannot speak text")
+                // Initialize TTS if it's not ready
+                if (tts == null) {
+                    initializeTTS()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error speaking text", e)
+        }
+    }
+    
+    private fun initializeTTS() {
+        try {
+            tts = TextToSpeech(getApplication<Application>().applicationContext, this)
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error initializing TTS", e)
+        }
+    }
+    
+    private fun isTaskRelated(text: String): Boolean {
+        val taskKeywords = listOf(
+            "need to", "have to", "must", "should", "fix", "repair", "do", "complete",
+            "finish", "buy", "get", "pick up", "call", "contact", "schedule", "book",
+            "appointment", "meeting", "remind me", "task", "todo", "to do"
+        )
+        
+        return taskKeywords.any { keyword ->
+            text.contains(keyword, ignoreCase = true)
+        }
+    }
+    
+    private suspend fun createNoteFromVoice(originalText: String, aiResponse: String) {
+        try {
+            // Generate a smart title using OpenAI
+            val generatedTitle = generateSmartTitle(originalText)
+            
+            val note = Note(
+                title = generatedTitle,
+                transcript = originalText,
+                snippet = """{"summary":"$aiResponse"}"""
+            )
+            repository.noteDao.insert(note)
+            Log.d("NoteViewModel", "Voice note created successfully with title: $generatedTitle")
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating voice note", e)
+        }
+    }
+    
+    private suspend fun generateSmartTitle(text: String): String {
+        return try {
+            val messages = listOf(
+                Message(role = "system", content = """
+                    Generate a concise, descriptive title (3-6 words max) for this note content.
+                    The title should capture the main topic or action.
+                    Examples:
+                    - "I need to buy groceries tomorrow" -> "Grocery Shopping"
+                    - "Meeting with client about project updates" -> "Client Project Meeting"
+                    - "Remember to call mom about dinner plans" -> "Call Mom About Dinner"
+                    - "Ideas for the new marketing campaign" -> "Marketing Campaign Ideas"
+                    
+                    Return ONLY the title, no quotes or extra text.
+                """.trimIndent()),
+                Message(role = "user", content = text)
+            )
+            
+            val request = GPTRequest(messages = messages)
+            val response = RetrofitInstance.api.summarizeText(request)
+            val title = response.body()?.choices?.firstOrNull()?.message?.content?.trim()
+                ?.replace("\"", "") // Remove any quotes
+                ?.take(50) // Limit length
+                ?: generateFallbackTitle(text)
+            
+            title
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error generating title with AI, using fallback", e)
+            generateFallbackTitle(text)
+        }
+    }
+    
+    private fun generateFallbackTitle(text: String): String {
+        // Fallback title generation if AI fails
+        val cleanText = text.trim()
+        
+        // Extract first few words as title
+        val words = cleanText.split(" ").take(4)
+        val title = words.joinToString(" ")
+        
+        return if (title.length > 30) {
+            title.take(27) + "..."
+        } else {
+            title.ifBlank { "Voice Note - ${java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}" }
+        }
+    }
+    
+    private suspend fun createTaskFromVoice(originalText: String, aiResponse: String) {
+        try {
+            // Extract task details from the original text
+            val title = extractTaskTitle(originalText)
+            val description = aiResponse.ifBlank { originalText }
+            val priority = extractPriority(originalText)
+            val dueDate = extractDueDate(originalText)
+            
+            val newTask = Task(
+                id = System.currentTimeMillis(), // Simple ID generation
+                title = title,
+                description = description,
+                priority = priority,
+                dueDate = dueDate
+            )
+            
+            _allTasks.update { it + newTask }
+            Log.d("NoteViewModel", "Voice task created: $title")
+            
+            // Update the AI response to confirm task creation
+            speakText("Task created: $title")
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating voice task", e)
+        }
+    }
+    
+    private fun extractTaskTitle(text: String): String {
+        // Remove common prefixes and clean up the text for a title
+        var title = text
+            .replace(Regex("^(I need to|I have to|I must|I should|remind me to)\\s*", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("\\s+(today|tomorrow|this week|next week)\\s*$", RegexOption.IGNORE_CASE), "")
+            .trim()
+        
+        // Capitalize first letter
+        if (title.isNotEmpty()) {
+            title = title.first().uppercaseChar() + title.drop(1)
+        }
+        
+        // Limit length for title
+        return if (title.length > 50) {
+            title.take(47) + "..."
+        } else {
+            title.ifBlank { "Voice Task" }
+        }
+    }
+    
+    private fun extractPriority(text: String): String {
+        return when {
+            text.contains(Regex("urgent|emergency|asap|immediately|critical", RegexOption.IGNORE_CASE)) -> "High"
+            text.contains(Regex("important|soon|priority", RegexOption.IGNORE_CASE)) -> "Medium"
+            else -> "Medium"
+        }
+    }
+    
+    private fun extractDueDate(text: String): Long {
+        val now = System.currentTimeMillis()
+        return when {
+            text.contains(Regex("today|now", RegexOption.IGNORE_CASE)) -> now + (4 * 60 * 60 * 1000) // 4 hours from now
+            text.contains(Regex("tomorrow", RegexOption.IGNORE_CASE)) -> now + (24 * 60 * 60 * 1000) // Tomorrow
+            text.contains(Regex("this week", RegexOption.IGNORE_CASE)) -> now + (3 * 24 * 60 * 60 * 1000) // 3 days
+            text.contains(Regex("next week", RegexOption.IGNORE_CASE)) -> now + (7 * 24 * 60 * 60 * 1000) // 1 week
+            else -> now + (4 * 60 * 60 * 1000) // Default to today (4 hours from now)
+        }
+    }
+    
+    fun processVoiceCommand(text: String) = viewModelScope.launch {
+        _isProcessing.value = true
+        
+        try {
+            // Use OpenAI to process the voice command
+            val messages = listOf(
+                Message(role = "system", content = """
+                    You are Logion AI. The user has spoken a voice command. Process their request and:
+                    1. If they want to create a note, respond with "I'll create a note for you" and include the note content
+                    2. If they want to create a task, respond with "I'll create a task for you" and include the task details
+                    3. If they're asking a question, provide a helpful answer
+                    4. Be conversational and confirm what action you're taking
+                    5. Keep responses concise but friendly for voice interaction
+                    
+                    IMPORTANT: If the user mentions something they need to do, fix, complete, or accomplish, treat it as a task creation request.
+                    
+                    Always be clear about what you're doing and ask for clarification if needed.
+                """.trimIndent()),
+                Message(role = "user", content = text)
+            )
+            
+            val request = GPTRequest(messages = messages)
+            val response = RetrofitInstance.api.summarizeText(request)
+            val aiResponse = response.body()?.choices?.firstOrNull()?.message?.content?.trim()
+                ?: "I processed your request."
+            
+            // Add to chat history
+            val userMessage = ChatMessage(content = text, isUser = true)
+            val aiMessage = ChatMessage(content = aiResponse, isUser = false)
+            _chatMessages.update { it + userMessage + aiMessage }
+            
+            // Speak the response
+            speakText(aiResponse)
+            
+            // Check if we should create a note or task based on the response AND the original text
+            val shouldCreateTask = aiResponse.contains("task", ignoreCase = true) || 
+                                 isTaskRelated(text)
+            val shouldCreateNote = aiResponse.contains("note", ignoreCase = true) && !shouldCreateTask
+            
+            if (shouldCreateTask) {
+                createTaskFromVoice(text, aiResponse)
+            } else if (shouldCreateNote) {
+                createNoteFromVoice(text, aiResponse)
+            }
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error processing voice command", e)
+            val errorResponse = "Sorry, I'm having trouble processing that. Please try again."
+            speakText(errorResponse)
+        } finally {
+            _isProcessing.value = false
+            // Clear voice text after processing
+            _voiceText.value = ""
+        }
+    }
+
+    // ======================= TASK FUNCTIONALITY =======================
+    
+    init {
+        // Load tasks when ViewModel is created
+        loadTasks()
+        loadChatMessages()
+    }
+    
+    private fun loadTasks() = viewModelScope.launch {
+        try {
+            repository.getAllTasks().collect { tasks ->
+                _allTasks.value = tasks
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error loading tasks", e)
+            // Create some sample tasks if none exist
+            createSampleTasks()
+        }
+    }
+    
+    private fun loadChatMessages() = viewModelScope.launch {
+        try {
+            repository.getAllChatMessages().collect { messages ->
+                _chatMessages.value = messages
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error loading chat messages", e)
+        }
+    }
+    
+    private fun createSampleTasks() = viewModelScope.launch {
+        try {
+            val sampleTasks = listOf(
+                Task(
+                    title = "Review project proposal",
+                    description = "Go through the client's requirements and prepare feedback",
+                    priority = "High",
+                    dueDate = System.currentTimeMillis() + (2 * 60 * 60 * 1000) // 2 hours from now
+                ),
+                Task(
+                    title = "Grocery shopping",
+                    description = "Buy ingredients for weekend dinner",
+                    priority = "Medium",
+                    dueDate = System.currentTimeMillis() + (4 * 60 * 60 * 1000) // 4 hours from now
+                ),
+                Task(
+                    title = "Call dentist",
+                    description = "Schedule appointment for routine checkup",
+                    priority = "Low",
+                    dueDate = System.currentTimeMillis() + (24 * 60 * 60 * 1000) // Tomorrow
+                )
+            )
+            sampleTasks.forEach { task ->
+                repository.insertTask(task)
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating sample tasks", e)
+        }
+    }
+    
+    fun createTask(title: String, description: String, priority: String = "Medium", dueDate: Long = System.currentTimeMillis()) = viewModelScope.launch {
+        try {
+            val newTask = Task(
+                title = title,
+                description = description,
+                priority = priority,
+                dueDate = dueDate
+            )
+            repository.insertTask(newTask)
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating task", e)
+        }
+    }
+    
+    fun toggleTaskComplete(taskId: Long) = viewModelScope.launch {
+        try {
+            val tasks = _allTasks.value
+            val task = tasks.find { it.id == taskId }
+            if (task != null) {
+                repository.toggleTaskComplete(taskId, !task.isCompleted)
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error toggling task", e)
         }
     }
 }

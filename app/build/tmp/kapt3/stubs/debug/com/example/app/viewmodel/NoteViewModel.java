@@ -32,8 +32,10 @@ import java.net.URL;
 import java.io.IOException;
 import okhttp3.MultipartBody;
 import android.speech.SpeechRecognizer;
-import android.content.Intent;
 import android.speech.RecognitionListener;
+import android.content.Intent;
+import com.example.app.data.ChatMessage;
+import com.example.app.data.Task;
 import android.speech.RecognizerIntent;
 import android.os.Bundle;
 import java.util.concurrent.TimeUnit;
@@ -43,7 +45,7 @@ import org.json.JSONObject;
 import org.json.JSONArray;
 import android.util.Base64;
 
-@kotlin.Metadata(mv = {1, 9, 0}, k = 1, xi = 48, d1 = {"\u0000\u00b2\u0001\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0002\u0010 \n\u0002\u0018\u0002\n\u0002\u0010\u000e\n\u0002\b\u0002\n\u0002\u0010\u000b\n\u0000\n\u0002\u0018\u0002\n\u0002\b\u0004\n\u0002\u0010\b\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010!\n\u0002\b\u0007\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0002\b\u0005\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0002\b\u0006\n\u0002\u0010\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010\t\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0002\b\f\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\b@\u0018\u00002\u00020\u00012\u00020\u0002B\u0015\u0012\u0006\u0010\u0003\u001a\u00020\u0004\u0012\u0006\u0010\u0005\u001a\u00020\u0006\u00a2\u0006\u0002\u0010\u0007J\u001e\u0010:\u001a\u00020\f2\u0006\u0010;\u001a\u00020\f2\u0006\u0010<\u001a\u00020\fH\u0082@\u00a2\u0006\u0002\u0010=J\u0016\u0010>\u001a\u00020?2\u0006\u0010@\u001a\u00020\f2\u0006\u0010A\u001a\u00020\u000fJ\u000e\u0010B\u001a\u00020C2\u0006\u0010D\u001a\u00020EJ\u0010\u0010F\u001a\u00020\f2\u0006\u0010G\u001a\u00020HH\u0002J\u001e\u0010I\u001a\u00020?2\u0006\u0010J\u001a\u00020\f2\u0006\u0010\u0010\u001a\u00020\fH\u0082@\u00a2\u0006\u0002\u0010=J\u0010\u0010K\u001a\u00020\f2\u0006\u0010L\u001a\u00020\fH\u0002J\u0010\u0010M\u001a\u00020\f2\u0006\u0010L\u001a\u00020\fH\u0002J\u0010\u0010N\u001a\u00020\f2\u0006\u0010L\u001a\u00020\fH\u0002J\u0006\u0010O\u001a\u00020?J\b\u0010P\u001a\u00020?H\u0002J\b\u0010Q\u001a\u00020.H\u0002J\u000e\u0010R\u001a\u00020C2\u0006\u0010D\u001a\u00020EJ\u001e\u0010S\u001a\u00020\f2\u0006\u0010T\u001a\u00020U2\u0006\u0010V\u001a\u00020WH\u0082@\u00a2\u0006\u0002\u0010XJ\u0016\u0010Y\u001a\b\u0012\u0004\u0012\u00020\f0\n2\u0006\u0010Z\u001a\u00020\fH\u0002J*\u0010[\u001a\u0016\u0012\u0004\u0012\u00020\f\u0012\n\u0012\b\u0012\u0004\u0012\u00020\f0\n\u0018\u00010\u000b2\u0006\u0010\\\u001a\u00020\fH\u0086@\u00a2\u0006\u0002\u0010]J\u0016\u0010^\u001a\u00020\f2\u0006\u0010_\u001a\u00020\fH\u0082@\u00a2\u0006\u0002\u0010]J\u0016\u0010`\u001a\u00020\f2\u0006\u0010a\u001a\u00020\fH\u0082@\u00a2\u0006\u0002\u0010]J\u0010\u0010b\u001a\u00020\f2\u0006\u0010L\u001a\u00020\fH\u0002J\u0016\u0010c\u001a\u00020\f2\u0006\u00105\u001a\u00020\fH\u0086@\u00a2\u0006\u0002\u0010]J\u000e\u0010d\u001a\u00020C2\u0006\u0010\\\u001a\u00020\fJ\u0016\u0010e\u001a\n\u0012\u0006\u0012\u0004\u0018\u00010*0)2\u0006\u0010D\u001a\u00020EJ\n\u0010f\u001a\u0004\u0018\u00010\fH\u0002J\u0006\u0010g\u001a\u00020?J\b\u0010h\u001a\u00020?H\u0014J\u0010\u0010i\u001a\u00020?2\u0006\u0010j\u001a\u00020\u0016H\u0016J\u001e\u0010k\u001a\u00020\f2\u0006\u0010G\u001a\u00020H2\u0006\u0010V\u001a\u00020WH\u0082@\u00a2\u0006\u0002\u0010lJ\u001e\u0010k\u001a\u00020\f2\u0006\u0010m\u001a\u00020U2\u0006\u0010V\u001a\u00020WH\u0082@\u00a2\u0006\u0002\u0010XJ\u001e\u0010n\u001a\u00020\f2\u0006\u0010G\u001a\u00020H2\u0006\u0010V\u001a\u00020WH\u0082@\u00a2\u0006\u0002\u0010lJ\u001e\u0010n\u001a\u00020\f2\u0006\u0010m\u001a\u00020U2\u0006\u0010V\u001a\u00020WH\u0082@\u00a2\u0006\u0002\u0010XJ\u001e\u0010o\u001a\u00020\u00162\u0006\u0010T\u001a\u00020U2\u0006\u0010V\u001a\u00020WH\u0086@\u00a2\u0006\u0002\u0010XJ\u001e\u0010p\u001a\u00020?2\u0006\u0010q\u001a\u00020\f2\u0006\u0010r\u001a\u00020\fH\u0082@\u00a2\u0006\u0002\u0010=J&\u0010s\u001a\u00020?2\u0006\u00105\u001a\u00020\f2\u0006\u0010t\u001a\u00020\f2\u0006\u0010r\u001a\u00020\fH\u0082@\u00a2\u0006\u0002\u0010uJ\u001e\u0010v\u001a\u00020\u00162\u0006\u0010G\u001a\u00020H2\u0006\u0010V\u001a\u00020WH\u0086@\u00a2\u0006\u0002\u0010lJ\u001e\u0010v\u001a\u00020\u00162\u0006\u0010m\u001a\u00020U2\u0006\u0010V\u001a\u00020WH\u0086@\u00a2\u0006\u0002\u0010XJ\u0016\u0010w\u001a\u00020\u00162\u0006\u0010x\u001a\u00020\fH\u0086@\u00a2\u0006\u0002\u0010]J\u001e\u0010y\u001a\u00020\u00162\u0006\u0010z\u001a\u00020U2\u0006\u0010V\u001a\u00020WH\u0086@\u00a2\u0006\u0002\u0010XJ\u0016\u0010{\u001a\u00020\u00162\u0006\u0010_\u001a\u00020\fH\u0086@\u00a2\u0006\u0002\u0010]J\u0016\u0010|\u001a\u00020\u00162\u0006\u0010a\u001a\u00020\fH\u0086@\u00a2\u0006\u0002\u0010]J\u000e\u0010}\u001a\u00020?2\u0006\u0010D\u001a\u00020EJ\u0006\u0010~\u001a\u00020CJ\u000f\u0010\u007f\u001a\u00020?H\u0082@\u00a2\u0006\u0003\u0010\u0080\u0001J\u0007\u0010\u0081\u0001\u001a\u00020CJ\u0019\u0010\u0082\u0001\u001a\u00020?2\u0007\u0010\u0083\u0001\u001a\u00020\u001dH\u0082@\u00a2\u0006\u0003\u0010\u0084\u0001J\u0010\u0010\u0085\u0001\u001a\u00020?2\u0007\u0010\u0086\u0001\u001a\u00020EJ\u0010\u0010\u0087\u0001\u001a\u00020C2\u0007\u0010\u0088\u0001\u001a\u00020\fJ\u000f\u0010\u0089\u0001\u001a\u00020?2\u0006\u0010V\u001a\u00020WJ\u0007\u0010\u008a\u0001\u001a\u00020?J\u0007\u0010\u008b\u0001\u001a\u00020?J\u0010\u0010\u008c\u0001\u001a\u00020C2\u0007\u0010\u008d\u0001\u001a\u00020*J\u001f\u0010\u008e\u0001\u001a\u00020\f2\u0006\u0010z\u001a\u00020U2\u0006\u0010V\u001a\u00020WH\u0082@\u00a2\u0006\u0002\u0010XJ\u0019\u0010\u008f\u0001\u001a\u00020C2\u0007\u0010\u0086\u0001\u001a\u00020E2\u0007\u0010\u0090\u0001\u001a\u00020\fJ\u0019\u0010\u0091\u0001\u001a\u00020C2\u0007\u0010\u0086\u0001\u001a\u00020E2\u0007\u0010\u0092\u0001\u001a\u00020\fJ\u0018\u0010\u0093\u0001\u001a\u00020C2\u0006\u0010D\u001a\u00020E2\u0007\u0010\u0094\u0001\u001a\u00020\fJ\u0018\u0010\u0095\u0001\u001a\u00020C2\u0007\u0010\u0086\u0001\u001a\u00020E2\u0006\u0010\\\u001a\u00020\fJ\u0018\u0010\u0096\u0001\u001a\u00020C2\u0007\u0010\u0086\u0001\u001a\u00020E2\u0006\u0010\\\u001a\u00020\fR&\u0010\b\u001a\u001a\u0012\u0016\u0012\u0014\u0012\u0010\u0012\u000e\u0012\u0004\u0012\u00020\f\u0012\u0004\u0012\u00020\f0\u000b0\n0\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010\r\u001a\b\u0012\u0004\u0012\u00020\f0\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010\u000e\u001a\b\u0012\u0004\u0012\u00020\u000f0\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u001f\u0010\u0010\u001a\u0010\u0012\f\u0012\n \u0012*\u0004\u0018\u00010\f0\f0\u0011\u00a2\u0006\b\n\u0000\u001a\u0004\b\u0013\u0010\u0014R\u001f\u0010\u0015\u001a\u0010\u0012\f\u0012\n \u0012*\u0004\u0018\u00010\u00160\u00160\u0011\u00a2\u0006\b\n\u0000\u001a\u0004\b\u0017\u0010\u0014R)\u0010\u0018\u001a\u001a\u0012\u0016\u0012\u0014\u0012\u0010\u0012\u000e\u0012\u0004\u0012\u00020\f\u0012\u0004\u0012\u00020\f0\u000b0\n0\u0019\u00a2\u0006\b\n\u0000\u001a\u0004\b\u001a\u0010\u001bR\u0010\u0010\u001c\u001a\u0004\u0018\u00010\u001dX\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u0010\u001e\u001a\u00020\u001fX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010 \u001a\b\u0012\u0004\u0012\u00020\f0!X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u0017\u0010\"\u001a\b\u0012\u0004\u0012\u00020\f0\u0019\u00a2\u0006\b\n\u0000\u001a\u0004\b#\u0010\u001bR\u000e\u0010$\u001a\u00020\u000fX\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u001f\u0010%\u001a\u0010\u0012\f\u0012\n \u0012*\u0004\u0018\u00010\u000f0\u000f0\u0011\u00a2\u0006\b\n\u0000\u001a\u0004\b%\u0010\u0014R\u001f\u0010&\u001a\u0010\u0012\f\u0012\n \u0012*\u0004\u0018\u00010\u000f0\u000f0\u0011\u00a2\u0006\b\n\u0000\u001a\u0004\b&\u0010\u0014R\u000e\u0010\'\u001a\u00020\fX\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u001d\u0010(\u001a\u000e\u0012\n\u0012\b\u0012\u0004\u0012\u00020*0\n0)\u00a2\u0006\b\n\u0000\u001a\u0004\b+\u0010,R\u0010\u0010-\u001a\u0004\u0018\u00010.X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u0010\u0003\u001a\u00020\u0004X\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u001f\u0010/\u001a\u0010\u0012\f\u0012\n \u0012*\u0004\u0018\u00010\f0\f0\u0011\u00a2\u0006\b\n\u0000\u001a\u0004\b0\u0010\u0014R\u0017\u00101\u001a\b\u0012\u0004\u0012\u00020\u000f0\u0019\u00a2\u0006\b\n\u0000\u001a\u0004\b2\u0010\u001bR\u0010\u00103\u001a\u0004\u0018\u000104X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u001f\u00105\u001a\u0010\u0012\f\u0012\n \u0012*\u0004\u0018\u00010\f0\f0\u0011\u00a2\u0006\b\n\u0000\u001a\u0004\b6\u0010\u0014R\u0010\u00107\u001a\u0004\u0018\u000108X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u00109\u001a\u00020\u000fX\u0082\u000e\u00a2\u0006\u0002\n\u0000\u00a8\u0006\u0097\u0001"}, d2 = {"Lcom/example/app/viewmodel/NoteViewModel;", "Landroidx/lifecycle/AndroidViewModel;", "Landroid/speech/tts/TextToSpeech$OnInitListener;", "repository", "Lcom/example/app/data/NoteRepository;", "app", "Landroid/app/Application;", "(Lcom/example/app/data/NoteRepository;Landroid/app/Application;)V", "_assistantChatHistory", "Lkotlinx/coroutines/flow/MutableStateFlow;", "", "Lkotlin/Pair;", "", "_fullTranscript", "_shouldCloseAssistant", "", "aiResponse", "Landroidx/lifecycle/MutableLiveData;", "kotlin.jvm.PlatformType", "getAiResponse", "()Landroidx/lifecycle/MutableLiveData;", "amplitude", "", "getAmplitude", "assistantChatHistory", "Lkotlinx/coroutines/flow/StateFlow;", "getAssistantChatHistory", "()Lkotlinx/coroutines/flow/StateFlow;", "compressedAudioFile", "Ljava/io/File;", "compressedAudioRecorder", "Lcom/example/app/audio/CompressedAudioRecorder;", "currentListItems", "", "fullTranscript", "getFullTranscript", "isCreatingList", "isRecording", "isVoiceOverlayVisible", "listType", "notes", "Landroidx/lifecycle/LiveData;", "Lcom/example/app/data/Note;", "getNotes", "()Landroidx/lifecycle/LiveData;", "recognizerIntent", "Landroid/content/Intent;", "searchQuery", "getSearchQuery", "shouldCloseAssistant", "getShouldCloseAssistant", "speechRecognizer", "Landroid/speech/SpeechRecognizer;", "summary", "getSummary", "tts", "Landroid/speech/tts/TextToSpeech;", "ttsReady", "analyzeImageWithOpenAI", "base64Image", "extractedText", "(Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "appendTranscript", "", "newText", "isFinal", "archiveNote", "Lkotlinx/coroutines/Job;", "id", "", "bitmapToBase64", "bitmap", "Landroid/graphics/Bitmap;", "checkForListCompletion", "userInput", "cleanBracketsFromText", "text", "cleanExtractedText", "cleanOCRForTranscript", "clearAssistantChat", "compressAndSendAudioToOpenAI", "createRecognizerIntent", "deleteNote", "extractDocumentText", "documentUri", "Landroid/net/Uri;", "context", "Landroid/content/Context;", "(Landroid/net/Uri;Landroid/content/Context;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "extractListItems", "input", "extractSummaryAndTasksWithOpenAI", "transcript", "(Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "extractVideoSummary", "videoUrl", "fetchWebPageContent", "webUrl", "generateSummary", "generateTitle", "getAssistantResponse", "getNoteById", "getRawAudioFilePath", "hideVoiceOverlay", "onCleared", "onInit", "status", "performOCR", "(Landroid/graphics/Bitmap;Landroid/content/Context;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "imageUri", "performOCRRaw", "processDocument", "processExtractedContent", "content", "contentType", "processImageContent", "ocrText", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "processImageWithOCR", "processTextNote", "textContent", "processUploadedAudio", "audioUri", "processVideoUrl", "processWebPageUrl", "readAloud", "saveChatAsNote", "saveListAsNote", "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "saveTestChatNote", "sendCompressedAudioToOpenAI", "file", "(Ljava/io/File;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "setReminder", "noteId", "showVoiceOverlay", "query", "startSpeechRecognition", "stopAndSaveNote", "stopSpeechRecognition", "toggleFavorite", "note", "transcribeUploadedAudio", "updateChecklistState", "checklistState", "updateNoteSnippet", "snippet", "updateNoteTitle", "title", "updateSummaryWithOpenAI", "updateTranscript", "app_debug"})
+@kotlin.Metadata(mv = {1, 9, 0}, k = 1, xi = 48, d1 = {"\u0000\u00c0\u0001\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0002\u0010 \n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\u0010\u000e\n\u0000\n\u0002\u0018\u0002\n\u0002\b\u0002\n\u0002\u0010\u000b\n\u0002\b\u0006\n\u0002\u0018\u0002\n\u0002\b\u0004\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0010\b\n\u0002\b\u0006\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010!\n\u0002\b\n\n\u0002\u0018\u0002\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0002\b\u0007\n\u0002\u0018\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0002\b\b\n\u0002\u0010\u0002\n\u0002\b\u0003\n\u0002\u0018\u0002\n\u0000\n\u0002\u0010\t\n\u0002\b\u0002\n\u0002\u0018\u0002\n\u0002\b\u0017\n\u0002\u0018\u0002\n\u0000\n\u0002\u0018\u0002\n\u0002\bP\u0018\u00002\u00020\u00012\u00020\u0002B\u0015\u0012\u0006\u0010\u0003\u001a\u00020\u0004\u0012\u0006\u0010\u0005\u001a\u00020\u0006\u00a2\u0006\u0002\u0010\u0007J\u001e\u0010N\u001a\u00020\u000e2\u0006\u0010O\u001a\u00020\u000e2\u0006\u0010P\u001a\u00020\u000eH\u0082@\u00a2\u0006\u0002\u0010QJ\u0016\u0010R\u001a\u00020S2\u0006\u0010T\u001a\u00020\u000e2\u0006\u0010U\u001a\u00020\u0013J\u000e\u0010V\u001a\u00020W2\u0006\u0010X\u001a\u00020YJ\u0010\u0010Z\u001a\u00020\u000e2\u0006\u0010[\u001a\u00020\\H\u0002J\u001e\u0010]\u001a\u00020S2\u0006\u0010^\u001a\u00020\u000e2\u0006\u0010\u0019\u001a\u00020\u000eH\u0082@\u00a2\u0006\u0002\u0010QJ\u0010\u0010_\u001a\u00020\u000e2\u0006\u0010`\u001a\u00020\u000eH\u0002J\u0010\u0010a\u001a\u00020\u000e2\u0006\u0010`\u001a\u00020\u000eH\u0002J\u0010\u0010b\u001a\u00020\u000e2\u0006\u0010`\u001a\u00020\u000eH\u0002J\u0006\u0010c\u001a\u00020SJ\u0006\u0010d\u001a\u00020WJ\u0006\u0010e\u001a\u00020SJ\b\u0010f\u001a\u00020SH\u0002J\u001e\u0010g\u001a\u00020S2\u0006\u0010h\u001a\u00020\u000e2\u0006\u0010\u0019\u001a\u00020\u000eH\u0082@\u00a2\u0006\u0002\u0010QJ\b\u0010i\u001a\u00020>H\u0002J\b\u0010j\u001a\u00020WH\u0002J*\u0010k\u001a\u00020W2\u0006\u0010l\u001a\u00020\u000e2\u0006\u0010m\u001a\u00020\u000e2\b\b\u0002\u0010n\u001a\u00020\u000e2\b\b\u0002\u0010o\u001a\u00020YJ\u001e\u0010p\u001a\u00020S2\u0006\u0010h\u001a\u00020\u000e2\u0006\u0010\u0019\u001a\u00020\u000eH\u0082@\u00a2\u0006\u0002\u0010QJ\u000e\u0010q\u001a\u00020W2\u0006\u0010X\u001a\u00020YJ\u001e\u0010r\u001a\u00020\u000e2\u0006\u0010s\u001a\u00020t2\u0006\u0010u\u001a\u00020vH\u0082@\u00a2\u0006\u0002\u0010wJ\u0010\u0010x\u001a\u00020Y2\u0006\u0010`\u001a\u00020\u000eH\u0002J\u0016\u0010y\u001a\b\u0012\u0004\u0012\u00020\u000e0\n2\u0006\u0010z\u001a\u00020\u000eH\u0002J\u0010\u0010{\u001a\u00020\u000e2\u0006\u0010`\u001a\u00020\u000eH\u0002J*\u0010|\u001a\u0016\u0012\u0004\u0012\u00020\u000e\u0012\n\u0012\b\u0012\u0004\u0012\u00020\u000e0\n\u0018\u00010\r2\u0006\u0010}\u001a\u00020\u000eH\u0086@\u00a2\u0006\u0002\u0010~J\u0010\u0010\u007f\u001a\u00020\u000e2\u0006\u0010`\u001a\u00020\u000eH\u0002J\u0018\u0010\u0080\u0001\u001a\u00020\u000e2\u0007\u0010\u0081\u0001\u001a\u00020\u000eH\u0082@\u00a2\u0006\u0002\u0010~J\u0018\u0010\u0082\u0001\u001a\u00020\u000e2\u0007\u0010\u0083\u0001\u001a\u00020\u000eH\u0082@\u00a2\u0006\u0002\u0010~J\u0011\u0010\u0084\u0001\u001a\u00020\u000e2\u0006\u0010`\u001a\u00020\u000eH\u0002J\u0017\u0010\u0085\u0001\u001a\u00020\u000e2\u0006\u0010`\u001a\u00020\u000eH\u0082@\u00a2\u0006\u0002\u0010~J\u0011\u0010\u0086\u0001\u001a\u00020\u000e2\u0006\u0010`\u001a\u00020\u000eH\u0002J\u0017\u0010\u0087\u0001\u001a\u00020\u000e2\u0006\u0010G\u001a\u00020\u000eH\u0086@\u00a2\u0006\u0002\u0010~J\u000f\u0010\u0088\u0001\u001a\u00020W2\u0006\u0010}\u001a\u00020\u000eJ\u0017\u0010\u0089\u0001\u001a\n\u0012\u0006\u0012\u0004\u0018\u00010:092\u0006\u0010X\u001a\u00020YJ\u000b\u0010\u008a\u0001\u001a\u0004\u0018\u00010\u000eH\u0002J\u0007\u0010\u008b\u0001\u001a\u00020SJ\t\u0010\u008c\u0001\u001a\u00020SH\u0002J\u0011\u0010\u008d\u0001\u001a\u00020\u00132\u0006\u0010`\u001a\u00020\u000eH\u0002J\t\u0010\u008e\u0001\u001a\u00020WH\u0002J\t\u0010\u008f\u0001\u001a\u00020WH\u0002J\t\u0010\u0090\u0001\u001a\u00020SH\u0014J\u0012\u0010\u0091\u0001\u001a\u00020S2\u0007\u0010\u0092\u0001\u001a\u00020#H\u0016J \u0010\u0093\u0001\u001a\u00020\u000e2\u0006\u0010[\u001a\u00020\\2\u0006\u0010u\u001a\u00020vH\u0082@\u00a2\u0006\u0003\u0010\u0094\u0001J \u0010\u0093\u0001\u001a\u00020\u000e2\u0007\u0010\u0095\u0001\u001a\u00020t2\u0006\u0010u\u001a\u00020vH\u0082@\u00a2\u0006\u0002\u0010wJ \u0010\u0096\u0001\u001a\u00020\u000e2\u0006\u0010[\u001a\u00020\\2\u0006\u0010u\u001a\u00020vH\u0082@\u00a2\u0006\u0003\u0010\u0094\u0001J \u0010\u0096\u0001\u001a\u00020\u000e2\u0007\u0010\u0095\u0001\u001a\u00020t2\u0006\u0010u\u001a\u00020vH\u0082@\u00a2\u0006\u0002\u0010wJ\u001f\u0010\u0097\u0001\u001a\u00020#2\u0006\u0010s\u001a\u00020t2\u0006\u0010u\u001a\u00020vH\u0086@\u00a2\u0006\u0002\u0010wJ!\u0010\u0098\u0001\u001a\u00020S2\u0007\u0010\u0099\u0001\u001a\u00020\u000e2\u0007\u0010\u009a\u0001\u001a\u00020\u000eH\u0082@\u00a2\u0006\u0002\u0010QJ*\u0010\u009b\u0001\u001a\u00020S2\u0006\u0010G\u001a\u00020\u000e2\u0007\u0010\u009c\u0001\u001a\u00020\u000e2\u0007\u0010\u009a\u0001\u001a\u00020\u000eH\u0082@\u00a2\u0006\u0003\u0010\u009d\u0001J \u0010\u009e\u0001\u001a\u00020#2\u0006\u0010[\u001a\u00020\\2\u0006\u0010u\u001a\u00020vH\u0086@\u00a2\u0006\u0003\u0010\u0094\u0001J \u0010\u009e\u0001\u001a\u00020#2\u0007\u0010\u0095\u0001\u001a\u00020t2\u0006\u0010u\u001a\u00020vH\u0086@\u00a2\u0006\u0002\u0010wJ\u0018\u0010\u009f\u0001\u001a\u00020#2\u0007\u0010\u00a0\u0001\u001a\u00020\u000eH\u0086@\u00a2\u0006\u0002\u0010~J \u0010\u00a1\u0001\u001a\u00020#2\u0007\u0010\u00a2\u0001\u001a\u00020t2\u0006\u0010u\u001a\u00020vH\u0086@\u00a2\u0006\u0002\u0010wJ\u0018\u0010\u00a3\u0001\u001a\u00020#2\u0007\u0010\u0081\u0001\u001a\u00020\u000eH\u0086@\u00a2\u0006\u0002\u0010~J\u000f\u0010\u00a4\u0001\u001a\u00020W2\u0006\u0010`\u001a\u00020\u000eJ\u0018\u0010\u00a5\u0001\u001a\u00020#2\u0007\u0010\u0083\u0001\u001a\u00020\u000eH\u0086@\u00a2\u0006\u0002\u0010~J\u000f\u0010\u00a6\u0001\u001a\u00020S2\u0006\u0010X\u001a\u00020YJ\u0007\u0010\u00a7\u0001\u001a\u00020WJ\u0010\u0010\u00a8\u0001\u001a\u00020SH\u0082@\u00a2\u0006\u0003\u0010\u00a9\u0001J\u0007\u0010\u00aa\u0001\u001a\u00020WJ\u0010\u0010\u00ab\u0001\u001a\u00020W2\u0007\u0010\u00ac\u0001\u001a\u00020\u000eJ\u0019\u0010\u00ad\u0001\u001a\u00020S2\u0007\u0010\u00ae\u0001\u001a\u00020*H\u0082@\u00a2\u0006\u0003\u0010\u00af\u0001J\u0010\u0010\u00b0\u0001\u001a\u00020S2\u0007\u0010\u00b1\u0001\u001a\u00020YJ\u0010\u0010\u00b2\u0001\u001a\u00020W2\u0007\u0010\u00b3\u0001\u001a\u00020\u000eJ\u0011\u0010\u00b4\u0001\u001a\u00020S2\u0006\u0010`\u001a\u00020\u000eH\u0002J\u000f\u0010\u00b5\u0001\u001a\u00020S2\u0006\u0010u\u001a\u00020vJ\u000f\u0010\u00b6\u0001\u001a\u00020S2\u0006\u0010u\u001a\u00020vJ\u0007\u0010\u00b7\u0001\u001a\u00020SJ\u0007\u0010\u00b8\u0001\u001a\u00020SJ\u0007\u0010\u00b9\u0001\u001a\u00020SJ\u0010\u0010\u00ba\u0001\u001a\u00020W2\u0007\u0010\u00bb\u0001\u001a\u00020:J\u0010\u0010\u00bc\u0001\u001a\u00020W2\u0007\u0010\u00bd\u0001\u001a\u00020YJ \u0010\u00be\u0001\u001a\u00020\u000e2\u0007\u0010\u00a2\u0001\u001a\u00020t2\u0006\u0010u\u001a\u00020vH\u0082@\u00a2\u0006\u0002\u0010wJ\u0019\u0010\u00bf\u0001\u001a\u00020W2\u0007\u0010\u00b1\u0001\u001a\u00020Y2\u0007\u0010\u00c0\u0001\u001a\u00020\u000eJ\u0019\u0010\u00c1\u0001\u001a\u00020W2\u0007\u0010\u00b1\u0001\u001a\u00020Y2\u0007\u0010\u00c2\u0001\u001a\u00020\u000eJ\u0017\u0010\u00c3\u0001\u001a\u00020W2\u0006\u0010X\u001a\u00020Y2\u0006\u0010l\u001a\u00020\u000eJ\u0018\u0010\u00c4\u0001\u001a\u00020W2\u0007\u0010\u00b1\u0001\u001a\u00020Y2\u0006\u0010}\u001a\u00020\u000eJ\u0018\u0010\u00c5\u0001\u001a\u00020W2\u0007\u0010\u00b1\u0001\u001a\u00020Y2\u0006\u0010}\u001a\u00020\u000eR\u001a\u0010\b\u001a\u000e\u0012\n\u0012\b\u0012\u0004\u0012\u00020\u000b0\n0\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R&\u0010\f\u001a\u001a\u0012\u0016\u0012\u0014\u0012\u0010\u0012\u000e\u0012\u0004\u0012\u00020\u000e\u0012\u0004\u0012\u00020\u000e0\r0\n0\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u001a\u0010\u000f\u001a\u000e\u0012\n\u0012\b\u0012\u0004\u0012\u00020\u00100\n0\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010\u0011\u001a\b\u0012\u0004\u0012\u00020\u000e0\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010\u0012\u001a\b\u0012\u0004\u0012\u00020\u00130\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010\u0014\u001a\b\u0012\u0004\u0012\u00020\u00130\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010\u0015\u001a\b\u0012\u0004\u0012\u00020\u00130\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010\u0016\u001a\b\u0012\u0004\u0012\u00020\u00130\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010\u0017\u001a\b\u0012\u0004\u0012\u00020\u00130\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010\u0018\u001a\b\u0012\u0004\u0012\u00020\u000e0\tX\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u001f\u0010\u0019\u001a\u0010\u0012\f\u0012\n \u001b*\u0004\u0018\u00010\u000e0\u000e0\u001a\u00a2\u0006\b\n\u0000\u001a\u0004\b\u001c\u0010\u001dR\u001d\u0010\u001e\u001a\u000e\u0012\n\u0012\b\u0012\u0004\u0012\u00020\u000b0\n0\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\b \u0010!R\u001f\u0010\"\u001a\u0010\u0012\f\u0012\n \u001b*\u0004\u0018\u00010#0#0\u001a\u00a2\u0006\b\n\u0000\u001a\u0004\b$\u0010\u001dR)\u0010%\u001a\u001a\u0012\u0016\u0012\u0014\u0012\u0010\u0012\u000e\u0012\u0004\u0012\u00020\u000e\u0012\u0004\u0012\u00020\u000e0\r0\n0\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\b&\u0010!R\u001d\u0010\'\u001a\u000e\u0012\n\u0012\b\u0012\u0004\u0012\u00020\u00100\n0\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\b(\u0010!R\u0010\u0010)\u001a\u0004\u0018\u00010*X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u0010+\u001a\u00020,X\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u0014\u0010-\u001a\b\u0012\u0004\u0012\u00020\u000e0.X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u0017\u0010/\u001a\b\u0012\u0004\u0012\u00020\u000e0\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\b0\u0010!R\u0017\u00101\u001a\b\u0012\u0004\u0012\u00020\u00130\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\b1\u0010!R\u000e\u00102\u001a\u00020\u0013X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u0017\u00103\u001a\b\u0012\u0004\u0012\u00020\u00130\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\b3\u0010!R\u0017\u00104\u001a\b\u0012\u0004\u0012\u00020\u00130\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\b4\u0010!R\u001f\u00105\u001a\u0010\u0012\f\u0012\n \u001b*\u0004\u0018\u00010\u00130\u00130\u001a\u00a2\u0006\b\n\u0000\u001a\u0004\b5\u0010\u001dR\u001f\u00106\u001a\u0010\u0012\f\u0012\n \u001b*\u0004\u0018\u00010\u00130\u00130\u001a\u00a2\u0006\b\n\u0000\u001a\u0004\b6\u0010\u001dR\u000e\u00107\u001a\u00020\u000eX\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u001d\u00108\u001a\u000e\u0012\n\u0012\b\u0012\u0004\u0012\u00020:0\n09\u00a2\u0006\b\n\u0000\u001a\u0004\b;\u0010<R\u0010\u0010=\u001a\u0004\u0018\u00010>X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u0010\u0003\u001a\u00020\u0004X\u0082\u0004\u00a2\u0006\u0002\n\u0000R\u001f\u0010?\u001a\u0010\u0012\f\u0012\n \u001b*\u0004\u0018\u00010\u000e0\u000e0\u001a\u00a2\u0006\b\n\u0000\u001a\u0004\b@\u0010\u001dR\u0017\u0010A\u001a\b\u0012\u0004\u0012\u00020\u00130\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\bB\u0010!R\u0017\u0010C\u001a\b\u0012\u0004\u0012\u00020\u00130\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\bD\u0010!R\u0010\u0010E\u001a\u0004\u0018\u00010FX\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u001f\u0010G\u001a\u0010\u0012\f\u0012\n \u001b*\u0004\u0018\u00010\u000e0\u000e0\u001a\u00a2\u0006\b\n\u0000\u001a\u0004\bH\u0010\u001dR\u0010\u0010I\u001a\u0004\u0018\u00010JX\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u000e\u0010K\u001a\u00020\u0013X\u0082\u000e\u00a2\u0006\u0002\n\u0000R\u0017\u0010L\u001a\b\u0012\u0004\u0012\u00020\u000e0\u001f\u00a2\u0006\b\n\u0000\u001a\u0004\bM\u0010!\u00a8\u0006\u00c6\u0001"}, d2 = {"Lcom/example/app/viewmodel/NoteViewModel;", "Landroidx/lifecycle/AndroidViewModel;", "Landroid/speech/tts/TextToSpeech$OnInitListener;", "repository", "Lcom/example/app/data/NoteRepository;", "app", "Landroid/app/Application;", "(Lcom/example/app/data/NoteRepository;Landroid/app/Application;)V", "_allTasks", "Lkotlinx/coroutines/flow/MutableStateFlow;", "", "Lcom/example/app/data/Task;", "_assistantChatHistory", "Lkotlin/Pair;", "", "_chatMessages", "Lcom/example/app/data/ChatMessage;", "_fullTranscript", "_isAiLoading", "", "_isListening", "_isProcessing", "_shouldAutoRestart", "_shouldCloseAssistant", "_voiceText", "aiResponse", "Landroidx/lifecycle/MutableLiveData;", "kotlin.jvm.PlatformType", "getAiResponse", "()Landroidx/lifecycle/MutableLiveData;", "allTasks", "Lkotlinx/coroutines/flow/StateFlow;", "getAllTasks", "()Lkotlinx/coroutines/flow/StateFlow;", "amplitude", "", "getAmplitude", "assistantChatHistory", "getAssistantChatHistory", "chatMessages", "getChatMessages", "compressedAudioFile", "Ljava/io/File;", "compressedAudioRecorder", "Lcom/example/app/audio/CompressedAudioRecorder;", "currentListItems", "", "fullTranscript", "getFullTranscript", "isAiLoading", "isCreatingList", "isListening", "isProcessing", "isRecording", "isVoiceOverlayVisible", "listType", "notes", "Landroidx/lifecycle/LiveData;", "Lcom/example/app/data/Note;", "getNotes", "()Landroidx/lifecycle/LiveData;", "recognizerIntent", "Landroid/content/Intent;", "searchQuery", "getSearchQuery", "shouldAutoRestart", "getShouldAutoRestart", "shouldCloseAssistant", "getShouldCloseAssistant", "speechRecognizer", "Landroid/speech/SpeechRecognizer;", "summary", "getSummary", "tts", "Landroid/speech/tts/TextToSpeech;", "ttsReady", "voiceText", "getVoiceText", "analyzeImageWithOpenAI", "base64Image", "extractedText", "(Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "appendTranscript", "", "newText", "isFinal", "archiveNote", "Lkotlinx/coroutines/Job;", "id", "", "bitmapToBase64", "bitmap", "Landroid/graphics/Bitmap;", "checkForListCompletion", "userInput", "cleanBracketsFromText", "text", "cleanExtractedText", "cleanOCRForTranscript", "clearAssistantChat", "clearChatHistory", "clearVoiceText", "compressAndSendAudioToOpenAI", "createNoteFromVoice", "originalText", "createRecognizerIntent", "createSampleTasks", "createTask", "title", "description", "priority", "dueDate", "createTaskFromVoice", "deleteNote", "extractDocumentText", "documentUri", "Landroid/net/Uri;", "context", "Landroid/content/Context;", "(Landroid/net/Uri;Landroid/content/Context;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "extractDueDate", "extractListItems", "input", "extractPriority", "extractSummaryAndTasksWithOpenAI", "transcript", "(Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "extractTaskTitle", "extractVideoSummary", "videoUrl", "fetchWebPageContent", "webUrl", "generateFallbackTitle", "generateSmartTitle", "generateSummary", "generateTitle", "getAssistantResponse", "getNoteById", "getRawAudioFilePath", "hideVoiceOverlay", "initializeTTS", "isTaskRelated", "loadChatMessages", "loadTasks", "onCleared", "onInit", "status", "performOCR", "(Landroid/graphics/Bitmap;Landroid/content/Context;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "imageUri", "performOCRRaw", "processDocument", "processExtractedContent", "content", "contentType", "processImageContent", "ocrText", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "processImageWithOCR", "processTextNote", "textContent", "processUploadedAudio", "audioUri", "processVideoUrl", "processVoiceCommand", "processWebPageUrl", "readAloud", "saveChatAsNote", "saveListAsNote", "(Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "saveTestChatNote", "sendChatMessage", "message", "sendCompressedAudioToOpenAI", "file", "(Ljava/io/File;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;", "setReminder", "noteId", "showVoiceOverlay", "query", "speakText", "startListening", "startSpeechRecognition", "stopAndSaveNote", "stopListening", "stopSpeechRecognition", "toggleFavorite", "note", "toggleTaskComplete", "taskId", "transcribeUploadedAudio", "updateChecklistState", "checklistState", "updateNoteSnippet", "snippet", "updateNoteTitle", "updateSummaryWithOpenAI", "updateTranscript", "app_debug"})
 public final class NoteViewModel extends androidx.lifecycle.AndroidViewModel implements android.speech.tts.TextToSpeech.OnInitListener {
     @org.jetbrains.annotations.NotNull()
     private final com.example.app.data.NoteRepository repository = null;
@@ -77,11 +79,39 @@ public final class NoteViewModel extends androidx.lifecycle.AndroidViewModel imp
     private final kotlinx.coroutines.flow.MutableStateFlow<java.lang.Boolean> _shouldCloseAssistant = null;
     @org.jetbrains.annotations.NotNull()
     private final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> shouldCloseAssistant = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.MutableStateFlow<java.util.List<com.example.app.data.ChatMessage>> _chatMessages = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.StateFlow<java.util.List<com.example.app.data.ChatMessage>> chatMessages = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.MutableStateFlow<java.lang.Boolean> _isAiLoading = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> isAiLoading = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.MutableStateFlow<java.lang.Boolean> _isListening = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> isListening = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.MutableStateFlow<java.lang.String> _voiceText = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.StateFlow<java.lang.String> voiceText = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.MutableStateFlow<java.lang.Boolean> _isProcessing = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> isProcessing = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.MutableStateFlow<java.lang.Boolean> _shouldAutoRestart = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> shouldAutoRestart = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.MutableStateFlow<java.util.List<com.example.app.data.Task>> _allTasks = null;
+    @org.jetbrains.annotations.NotNull()
+    private final kotlinx.coroutines.flow.StateFlow<java.util.List<com.example.app.data.Task>> allTasks = null;
+    @org.jetbrains.annotations.Nullable()
+    private android.speech.SpeechRecognizer speechRecognizer;
     @org.jetbrains.annotations.Nullable()
     private android.speech.tts.TextToSpeech tts;
     private boolean ttsReady = false;
-    @org.jetbrains.annotations.Nullable()
-    private android.speech.SpeechRecognizer speechRecognizer;
     @org.jetbrains.annotations.Nullable()
     private android.content.Intent recognizerIntent;
     private boolean isCreatingList = false;
@@ -221,6 +251,41 @@ public final class NoteViewModel extends androidx.lifecycle.AndroidViewModel imp
     
     @org.jetbrains.annotations.NotNull()
     public final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> getShouldCloseAssistant() {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.flow.StateFlow<java.util.List<com.example.app.data.ChatMessage>> getChatMessages() {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> isAiLoading() {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> isListening() {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.flow.StateFlow<java.lang.String> getVoiceText() {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> isProcessing() {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.flow.StateFlow<java.lang.Boolean> getShouldAutoRestart() {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.flow.StateFlow<java.util.List<com.example.app.data.Task>> getAllTasks() {
         return null;
     }
     
@@ -415,6 +480,96 @@ public final class NoteViewModel extends androidx.lifecycle.AndroidViewModel imp
     
     @org.jetbrains.annotations.NotNull()
     public final kotlinx.coroutines.Job saveTestChatNote() {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.Job sendChatMessage(@org.jetbrains.annotations.NotNull()
+    java.lang.String message) {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.Job clearChatHistory() {
+        return null;
+    }
+    
+    public final void startListening(@org.jetbrains.annotations.NotNull()
+    android.content.Context context) {
+    }
+    
+    public final void stopListening() {
+    }
+    
+    public final void clearVoiceText() {
+    }
+    
+    private final void speakText(java.lang.String text) {
+    }
+    
+    private final void initializeTTS() {
+    }
+    
+    private final boolean isTaskRelated(java.lang.String text) {
+        return false;
+    }
+    
+    private final java.lang.Object createNoteFromVoice(java.lang.String originalText, java.lang.String aiResponse, kotlin.coroutines.Continuation<? super kotlin.Unit> $completion) {
+        return null;
+    }
+    
+    private final java.lang.Object generateSmartTitle(java.lang.String text, kotlin.coroutines.Continuation<? super java.lang.String> $completion) {
+        return null;
+    }
+    
+    private final java.lang.String generateFallbackTitle(java.lang.String text) {
+        return null;
+    }
+    
+    private final java.lang.Object createTaskFromVoice(java.lang.String originalText, java.lang.String aiResponse, kotlin.coroutines.Continuation<? super kotlin.Unit> $completion) {
+        return null;
+    }
+    
+    private final java.lang.String extractTaskTitle(java.lang.String text) {
+        return null;
+    }
+    
+    private final java.lang.String extractPriority(java.lang.String text) {
+        return null;
+    }
+    
+    private final long extractDueDate(java.lang.String text) {
+        return 0L;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.Job processVoiceCommand(@org.jetbrains.annotations.NotNull()
+    java.lang.String text) {
+        return null;
+    }
+    
+    private final kotlinx.coroutines.Job loadTasks() {
+        return null;
+    }
+    
+    private final kotlinx.coroutines.Job loadChatMessages() {
+        return null;
+    }
+    
+    private final kotlinx.coroutines.Job createSampleTasks() {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.Job createTask(@org.jetbrains.annotations.NotNull()
+    java.lang.String title, @org.jetbrains.annotations.NotNull()
+    java.lang.String description, @org.jetbrains.annotations.NotNull()
+    java.lang.String priority, long dueDate) {
+        return null;
+    }
+    
+    @org.jetbrains.annotations.NotNull()
+    public final kotlinx.coroutines.Job toggleTaskComplete(long taskId) {
         return null;
     }
 }

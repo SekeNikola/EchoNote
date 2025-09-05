@@ -3189,6 +3189,7 @@ int id clear_text 0x7f080071
 int id clip_horizontal 0x7f080072
 int id clip_vertical 0x7f080073
 int id clockwise 0x7f080074
+int id coil_request_manager 0x7f0801d9
 int id collapseActionView 0x7f080075
 int id compose_view_saveable_id_tag 0x7f080076
 int id compress 0x7f080077
@@ -3740,7 +3741,7 @@ int layout select_dialog_item_material 0x7f0b0068
 int layout select_dialog_multichoice_material 0x7f0b0069
 int layout select_dialog_singlechoice_material 0x7f0b006a
 int layout support_simple_spinner_dropdown_item 0x7f0b006b
-int layout widget_logion 0x7f0b006d
+int layout widget_logion 0x7f0b006c
 int mipmap ic_launcher 0x7f0d0000
 int mipmap ic_launcher_round 0x7f0d0001
 int plurals mtrl_badge_content_description 0x7f0e0000
@@ -4553,13 +4554,13 @@ int style Theme_AppCompat_Light_Dialog_MinWidth 0x7f100220
 int style Theme_AppCompat_Light_DialogWhenLarge 0x7f100221
 int style Theme_AppCompat_Light_NoActionBar 0x7f100222
 int style Theme_AppCompat_NoActionBar 0x7f100223
-int style Theme_Design 0x7f100225
-int style Theme_Design_BottomSheetDialog 0x7f100226
-int style Theme_Design_Light 0x7f100227
-int style Theme_Design_Light_BottomSheetDialog 0x7f100228
-int style Theme_Design_Light_NoActionBar 0x7f100229
-int style Theme_Design_NoActionBar 0x7f10022a
-int style Theme_Logion 0x7f100460
+int style Theme_Design 0x7f100224
+int style Theme_Design_BottomSheetDialog 0x7f100225
+int style Theme_Design_Light 0x7f100226
+int style Theme_Design_Light_BottomSheetDialog 0x7f100227
+int style Theme_Design_Light_NoActionBar 0x7f100228
+int style Theme_Design_NoActionBar 0x7f100229
+int style Theme_Logion 0x7f10022a
 int style Theme_Material3_Dark 0x7f10022b
 int style Theme_Material3_Dark_BottomSheetDialog 0x7f10022c
 int style Theme_Material3_Dark_Dialog 0x7f10022d
@@ -6970,4 +6971,5 @@ int[] styleable ViewStubCompat { 0x010100d0, 0x010100f2, 0x010100f3 }
 int styleable ViewStubCompat_android_id 0
 int styleable ViewStubCompat_android_layout 1
 int styleable ViewStubCompat_android_inflatedId 2
+int xml file_paths 0x7f120001
 int xml widget_info 0x7f120000

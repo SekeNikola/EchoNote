@@ -36,4 +36,5 @@ mipmap ic_launcher_round
 string app_name
 string widget_description
 style Theme.Logion
+xml file_paths
 xml widget_info

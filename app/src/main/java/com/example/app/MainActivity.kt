@@ -76,7 +76,7 @@ class MainActivity : ComponentActivity() {
 								val navController = rememberNavController()
 						val context = applicationContext
 						val db = AppDatabase.getDatabase(context)
-						val repo = NoteRepository(db.noteDao())
+						val repo = NoteRepository(db.noteDao(), db.taskDao(), db.chatMessageDao())
 						val app = requireNotNull(application) as android.app.Application
 						val viewModel: NoteViewModel = viewModel(
 							factory = object : ViewModelProvider.Factory {

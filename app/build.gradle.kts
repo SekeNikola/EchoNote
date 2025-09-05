@@ -104,6 +104,9 @@ dependencies {
 
     // Image processing
     implementation("androidx.exifinterface:exifinterface:1.3.7")
+    
+    // Image loading
+    implementation("io.coil-kt:coil-compose:2.4.0")
 
     // HTML parsing for web content
     implementation("org.jsoup:jsoup:1.17.2")

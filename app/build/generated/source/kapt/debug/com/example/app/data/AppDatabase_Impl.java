@@ -30,17 +30,23 @@ public final class AppDatabase_Impl extends AppDatabase {
 
   private volatile ReminderDao _reminderDao;
 
+  private volatile TaskDao _taskDao;
+
+  private volatile ChatMessageDao _chatMessageDao;
+
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(2) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(3) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `notes` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `snippet` TEXT NOT NULL, `transcript` TEXT NOT NULL, `audioPath` TEXT, `highlights` TEXT NOT NULL, `isFavorite` INTEGER NOT NULL, `isArchived` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `reminderTime` INTEGER, `checklistState` TEXT)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `reminders` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `noteId` INTEGER NOT NULL, `time` INTEGER NOT NULL, `isDone` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `note_cross_refs` (`noteId` INTEGER NOT NULL, `relatedNoteId` INTEGER NOT NULL, PRIMARY KEY(`noteId`, `relatedNoteId`))");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `tasks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `priority` TEXT NOT NULL, `dueDate` INTEGER NOT NULL, `isCompleted` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `chat_messages` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `content` TEXT NOT NULL, `isUser` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `sessionId` TEXT)");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a215ee10cfd0b1dd9a1e2c7bcdb4ff92')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'abb02b09fcc1854fe97667e6d4b5c2e2')");
       }
 
       @Override
@@ -48,6 +54,8 @@ public final class AppDatabase_Impl extends AppDatabase {
         db.execSQL("DROP TABLE IF EXISTS `notes`");
         db.execSQL("DROP TABLE IF EXISTS `reminders`");
         db.execSQL("DROP TABLE IF EXISTS `note_cross_refs`");
+        db.execSQL("DROP TABLE IF EXISTS `tasks`");
+        db.execSQL("DROP TABLE IF EXISTS `chat_messages`");
         final List<? extends RoomDatabase.Callback> _callbacks = mCallbacks;
         if (_callbacks != null) {
           for (RoomDatabase.Callback _callback : _callbacks) {
@@ -138,9 +146,42 @@ public final class AppDatabase_Impl extends AppDatabase {
                   + " Expected:\n" + _infoNoteCrossRefs + "\n"
                   + " Found:\n" + _existingNoteCrossRefs);
         }
+        final HashMap<String, TableInfo.Column> _columnsTasks = new HashMap<String, TableInfo.Column>(8);
+        _columnsTasks.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("title", new TableInfo.Column("title", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("description", new TableInfo.Column("description", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("priority", new TableInfo.Column("priority", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("dueDate", new TableInfo.Column("dueDate", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("isCompleted", new TableInfo.Column("isCompleted", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("createdAt", new TableInfo.Column("createdAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("updatedAt", new TableInfo.Column("updatedAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        final HashSet<TableInfo.ForeignKey> _foreignKeysTasks = new HashSet<TableInfo.ForeignKey>(0);
+        final HashSet<TableInfo.Index> _indicesTasks = new HashSet<TableInfo.Index>(0);
+        final TableInfo _infoTasks = new TableInfo("tasks", _columnsTasks, _foreignKeysTasks, _indicesTasks);
+        final TableInfo _existingTasks = TableInfo.read(db, "tasks");
+        if (!_infoTasks.equals(_existingTasks)) {
+          return new RoomOpenHelper.ValidationResult(false, "tasks(com.example.app.data.Task).\n"
+                  + " Expected:\n" + _infoTasks + "\n"
+                  + " Found:\n" + _existingTasks);
+        }
+        final HashMap<String, TableInfo.Column> _columnsChatMessages = new HashMap<String, TableInfo.Column>(5);
+        _columnsChatMessages.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsChatMessages.put("content", new TableInfo.Column("content", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsChatMessages.put("isUser", new TableInfo.Column("isUser", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsChatMessages.put("timestamp", new TableInfo.Column("timestamp", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsChatMessages.put("sessionId", new TableInfo.Column("sessionId", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        final HashSet<TableInfo.ForeignKey> _foreignKeysChatMessages = new HashSet<TableInfo.ForeignKey>(0);
+        final HashSet<TableInfo.Index> _indicesChatMessages = new HashSet<TableInfo.Index>(0);
+        final TableInfo _infoChatMessages = new TableInfo("chat_messages", _columnsChatMessages, _foreignKeysChatMessages, _indicesChatMessages);
+        final TableInfo _existingChatMessages = TableInfo.read(db, "chat_messages");
+        if (!_infoChatMessages.equals(_existingChatMessages)) {
+          return new RoomOpenHelper.ValidationResult(false, "chat_messages(com.example.app.data.ChatMessage).\n"
+                  + " Expected:\n" + _infoChatMessages + "\n"
+                  + " Found:\n" + _existingChatMessages);
+        }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "a215ee10cfd0b1dd9a1e2c7bcdb4ff92", "2c425750efdc6040260817af8db93ce3");
+    }, "abb02b09fcc1854fe97667e6d4b5c2e2", "88cf456cf39e7249a8f60139b794404a");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;
@@ -151,7 +192,7 @@ public final class AppDatabase_Impl extends AppDatabase {
   protected InvalidationTracker createInvalidationTracker() {
     final HashMap<String, String> _shadowTablesMap = new HashMap<String, String>(0);
     final HashMap<String, Set<String>> _viewTables = new HashMap<String, Set<String>>(0);
-    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "notes","reminders","note_cross_refs");
+    return new InvalidationTracker(this, _shadowTablesMap, _viewTables, "notes","reminders","note_cross_refs","tasks","chat_messages");
   }
 
   @Override
@@ -163,6 +204,8 @@ public final class AppDatabase_Impl extends AppDatabase {
       _db.execSQL("DELETE FROM `notes`");
       _db.execSQL("DELETE FROM `reminders`");
       _db.execSQL("DELETE FROM `note_cross_refs`");
+      _db.execSQL("DELETE FROM `tasks`");
+      _db.execSQL("DELETE FROM `chat_messages`");
       super.setTransactionSuccessful();
     } finally {
       super.endTransaction();
@@ -179,6 +222,8 @@ public final class AppDatabase_Impl extends AppDatabase {
     final HashMap<Class<?>, List<Class<?>>> _typeConvertersMap = new HashMap<Class<?>, List<Class<?>>>();
     _typeConvertersMap.put(NoteDao.class, NoteDao_Impl.getRequiredConverters());
     _typeConvertersMap.put(ReminderDao.class, ReminderDao_Impl.getRequiredConverters());
+    _typeConvertersMap.put(TaskDao.class, TaskDao_Impl.getRequiredConverters());
+    _typeConvertersMap.put(ChatMessageDao.class, ChatMessageDao_Impl.getRequiredConverters());
     return _typeConvertersMap;
   }
 
@@ -221,6 +266,34 @@ public final class AppDatabase_Impl extends AppDatabase {
           _reminderDao = new ReminderDao_Impl(this);
         }
         return _reminderDao;
+      }
+    }
+  }
+
+  @Override
+  public TaskDao taskDao() {
+    if (_taskDao != null) {
+      return _taskDao;
+    } else {
+      synchronized(this) {
+        if(_taskDao == null) {
+          _taskDao = new TaskDao_Impl(this);
+        }
+        return _taskDao;
+      }
+    }
+  }
+
+  @Override
+  public ChatMessageDao chatMessageDao() {
+    if (_chatMessageDao != null) {
+      return _chatMessageDao;
+    } else {
+      synchronized(this) {
+        if(_chatMessageDao == null) {
+          _chatMessageDao = new ChatMessageDao_Impl(this);
+        }
+        return _chatMessageDao;
       }
     }
   }

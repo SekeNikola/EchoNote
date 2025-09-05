@@ -23,6 +23,17 @@ sealed class Screen(val route: String) {
     object VideoUrl : Screen("videoUrl")
     object WebPage : Screen("webPage")
     object DocumentUpload : Screen("documentUpload")
+    
+    // New Simple version screens
+    object AiChat : Screen("ai_chat")
+    object AiVoice : Screen("ai_voice")
+    object Tasks : Screen("tasks")
+    object Notes : Screen("notes")
+    object Chats : Screen("chats")
+    object ImagePreview : Screen("image_preview")
+    data class TaskDetail(val taskId: Long) : Screen("task_detail/{taskId}") {
+        fun createRoute(taskId: Long) = "task_detail/$taskId"
+    }
 }
 
 @Composable
@@ -33,19 +44,39 @@ fun LogionNavGraph(
 ) {
     NavHost(navController, startDestination = startDestination) {
         composable(Screen.Home.route) {
-            HomeScreen(
-                viewModel = viewModel,
-                onNoteClick = { noteId -> navController.navigate(Screen.NoteDetail(noteId).createRoute(noteId)) },
-                onRecordClick = { navController.navigate(Screen.Recording.route) },
-                onNavigateToUploadAudio = { navController.navigate(Screen.UploadAudio.route) },
-                onNavigateToImageCapture = { navController.navigate(Screen.ImageCapture.route) },
-                onNavigateToUploadImage = { navController.navigate(Screen.UploadImage.route) },
-                onNavigateToTypeText = { navController.navigate(Screen.TypeText.route) },
-                onNavigateToVideoUrl = { navController.navigate(Screen.VideoUrl.route) },
-                onNavigateToWebPage = { navController.navigate(Screen.WebPage.route) },
-                onNavigateToDocumentUpload = { navController.navigate(Screen.DocumentUpload.route) }
+            SimpleHomeScreen(
+                navController = navController,
+                viewModel = viewModel
             )
         }
+        
+        // AI Chat Screen
+        composable(Screen.AiChat.route) {
+            AiChatScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+        
+        // AI Voice Screen
+        composable(Screen.AiVoice.route) {
+            AiVoiceScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+        
+        // Image Preview Screen
+        composable("image_preview?source={source}") { backStackEntry ->
+            val source = backStackEntry.arguments?.getString("source")
+            ImagePreviewScreen(
+                navController = navController,
+                viewModel = viewModel,
+                source = source
+            )
+        }
+        
+        // Legacy screens for existing functionality
         composable(Screen.Recording.route) {
             RecordingScreen(
                 viewModel = viewModel,
@@ -107,6 +138,37 @@ fun LogionNavGraph(
             DocumentUploadScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        // New Simple version screens
+        composable(Screen.Tasks.route) {
+            TasksScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+        
+        composable(Screen.Notes.route) {
+            NotesListScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+        
+        composable(Screen.Chats.route) {
+            ChatsScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+        
+        composable("task_detail/{taskId}") { backStackEntry ->
+            val taskId = backStackEntry.arguments?.getString("taskId")?.toLongOrNull() ?: 0L
+            TaskDetailScreen(
+                navController = navController,
+                viewModel = viewModel,
+                taskId = taskId
             )
         }
     }

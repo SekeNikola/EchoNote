@@ -1,7 +1,7 @@
 {
     "logs": [
         {
-            "outputFile": "com.example.app-mergeDebugResources-74:/values-bg/values-bg.xml",
+            "outputFile": "com.example.app-mergeDebugResources-75:/values-bg/values-bg.xml",
             "map": [
                 {
                     "source": "C:\\Users\\T\\.gradle\\caches\\8.13\\transforms\\6ebd1d33b0d2cbfd10b1c5642589481f\\transformed\\jetified-material3-release\\res\\values-bg\\values-bg.xml",
