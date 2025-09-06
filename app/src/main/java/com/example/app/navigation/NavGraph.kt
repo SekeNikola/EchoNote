@@ -16,13 +16,7 @@ sealed class Screen(val route: String) {
         fun createRoute(noteId: Long) = "noteDetail/$noteId"
     }
     object VoiceCommand : Screen("voiceCommand")
-    object UploadAudio : Screen("uploadAudio")
-    object ImageCapture : Screen("imageCapture")
-    object UploadImage : Screen("uploadImage")
-    object TypeText : Screen("typeText")
-    object VideoUrl : Screen("videoUrl")
     object WebPage : Screen("webPage")
-    object DocumentUpload : Screen("documentUpload")
     
     // New Simple version screens
     object AiChat : Screen("ai_chat")
@@ -31,6 +25,7 @@ sealed class Screen(val route: String) {
     object Notes : Screen("notes")
     object Chats : Screen("chats")
     object ImagePreview : Screen("image_preview")
+    object Settings : Screen("settings")
     data class TaskDetail(val taskId: Long) : Screen("task_detail/{taskId}") {
         fun createRoute(taskId: Long) = "task_detail/$taskId"
     }
@@ -46,7 +41,13 @@ fun LogionNavGraph(
         composable(Screen.Home.route) {
             SimpleHomeScreen(
                 navController = navController,
-                viewModel = viewModel
+                viewModel = viewModel,
+                onAddNote = {
+                    viewModel.createNote()
+                },
+                onAIVoiceClick = {
+                    navController.navigate("ai_voice")
+                }
             )
         }
         
@@ -67,14 +68,6 @@ fun LogionNavGraph(
         }
         
         // Image Preview Screen
-        composable("image_preview?source={source}") { backStackEntry ->
-            val source = backStackEntry.arguments?.getString("source")
-            ImagePreviewScreen(
-                navController = navController,
-                viewModel = viewModel,
-                source = source
-            )
-        }
         
         // Legacy screens for existing functionality
         composable(Screen.Recording.route) {
@@ -98,44 +91,8 @@ fun LogionNavGraph(
                 onDismiss = { navController.popBackStack() }
             )
         }
-        composable(Screen.UploadAudio.route) {
-            UploadAudioScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.ImageCapture.route) {
-            ImageCaptureScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.UploadImage.route) {
-            UploadImageScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.TypeText.route) {
-            TypeTextScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.VideoUrl.route) {
-            VideoUrlScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
         composable(Screen.WebPage.route) {
             WebPageScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.DocumentUpload.route) {
-            DocumentUploadScreen(
                 viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -169,6 +126,13 @@ fun LogionNavGraph(
                 navController = navController,
                 viewModel = viewModel,
                 taskId = taskId
+            )
+        }
+        
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                navController = navController,
+                viewModel = viewModel
             )
         }
     }

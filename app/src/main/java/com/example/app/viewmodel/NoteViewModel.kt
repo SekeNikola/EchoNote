@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import com.example.app.data.Note
 import com.example.app.data.NoteRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withTimeout
 import android.app.Application
@@ -24,7 +25,10 @@ import com.example.app.network.GPTRequest
 import com.example.app.network.Message
 import com.example.app.network.RetrofitInstance
 import com.example.app.worker.ReminderScheduler
+import com.example.app.util.ApiKeyProvider
+import com.example.app.utils.OpenAITTS
 import android.speech.tts.TextToSpeech
+import android.speech.tts.UtteranceProgressListener
 import java.io.File
 import java.util.Locale
 import com.example.app.util.NetworkUtils
@@ -88,15 +92,16 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                 You are a helpful AI assistant for Logion. You can:
                 1. Answer general questions and provide information
                 2. Help with the user's notes (provided below)
-                3. Help create lists (shopping, grocery, travel, todo, etc.)
+                3. Help create lists (shopping, grocery, travel, todo, etc.) when specifically requested
                 
-                IMPORTANT FOR LIST CREATION:
-                - When user wants to create any type of list, help them add items one by one
-                - After they add several items, ask "Is that all?" or "Anything else for your list?"
-                - When they say "yes", "that's all", "done", etc., the list will be automatically saved
-                - Be conversational and helpful throughout the process
+                IMPORTANT CONVERSATION GUIDELINES:
+                - Focus on natural conversation first - don't rush to create notes or lists
+                - Only create notes/lists when users explicitly ask or when they share substantial content to save
+                - When helping with lists, build them step by step but let users decide when to save
+                - Don't auto-save anything - let users control when content is saved
+                - Be patient and let conversations develop naturally
                 
-                User's notes:
+                User's notes (for reference only):
                 $notesContext
             """.trimIndent()))
             
@@ -408,6 +413,13 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     private val _isProcessing = MutableStateFlow(false)
     val isProcessing: StateFlow<Boolean> = _isProcessing.asStateFlow()
 
+    private val _isSpeaking = MutableStateFlow(false)
+    val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
+
+    // Voice session chat history - separate from regular chat
+    private val _voiceSessionHistory = MutableStateFlow<List<ChatMessage>>(emptyList())
+    val voiceSessionHistory: StateFlow<List<ChatMessage>> = _voiceSessionHistory.asStateFlow()
+
     private val _shouldAutoRestart = MutableStateFlow(true)
     val shouldAutoRestart: StateFlow<Boolean> = _shouldAutoRestart.asStateFlow()
 
@@ -430,6 +442,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
 
     private var tts: TextToSpeech? = null
     private var ttsReady: Boolean = false
+    private var openAITTS: OpenAITTS? = null
     private var recognizerIntent: Intent? = null
 
     suspend fun generateTitle(summary: String): String = withContext(Dispatchers.IO) {
@@ -469,6 +482,11 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     }
     init {
         tts = TextToSpeech(app.applicationContext, this)
+        // Initialize OpenAI TTS if API key is available
+        val apiKey = ApiKeyProvider.getApiKey(app.applicationContext)
+        if (!apiKey.isNullOrBlank()) {
+            openAITTS = OpenAITTS(app.applicationContext, apiKey)
+        }
     }
 
     fun toggleFavorite(note: Note) = viewModelScope.launch {
@@ -682,21 +700,25 @@ Output:
         
         // If we're in list creation mode
         if (isCreatingList) {
-            // Check if user is confirming completion
-            if (lowerInput.contains("yes") || lowerInput.contains("that's all") || 
+            // Only save and close if user explicitly says they're done AND AI confirms
+            if ((lowerInput.contains("yes") || lowerInput.contains("that's all") || 
                 lowerInput.contains("that's it") || lowerInput.contains("done") ||
-                lowerInput.contains("finish") || lowerInput.contains("complete")) {
+                lowerInput.contains("finish") || lowerInput.contains("complete")) &&
+                (lowerAiResponse.contains("saved") || lowerAiResponse.contains("created") || 
+                 lowerAiResponse.contains("note") && lowerAiResponse.contains("you"))) {
                 
-                // Auto-save the list and close assistant
-                saveListAsNote()
+                // Only save if we have items and AI confirms saving
+                if (currentListItems.isNotEmpty()) {
+                    saveListAsNote()
+                }
                 
-                // Reset list state
+                // Reset list state but don't auto-close
                 isCreatingList = false
                 currentListItems.clear()
                 listType = ""
                 
-                // Trigger auto-close of assistant
-                _shouldCloseAssistant.value = true
+                // Don't auto-close - let conversation continue
+                // _shouldCloseAssistant.value = true
                 
                 Log.d("NoteViewModel", "List completed and saved automatically")
                 return
@@ -776,14 +798,14 @@ Output:
     // Save chat conversation as a note - same logic as stopAndSaveNote()
     fun saveChatAsNote() = viewModelScope.launch {
         try {
-            val chatHistory = _assistantChatHistory.value
+            val chatMessages = _chatMessages.value
             Log.d("NoteViewModel", "=== SAVE CHAT START ===")
-            Log.d("NoteViewModel", "Chat history size: ${chatHistory.size}")
+            Log.d("NoteViewModel", "Chat messages size: ${chatMessages.size}")
             
-            if (chatHistory.isNotEmpty()) {
-                // Convert chat history to transcript format
-                val transcript = chatHistory.joinToString("\n\n") { (user, ai) ->
-                    "User: $user${if (ai.isNotBlank()) "\n\nAssistant: $ai" else ""}"
+            if (chatMessages.isNotEmpty()) {
+                // Convert chat messages to transcript format
+                val transcript = chatMessages.joinToString("\n\n") { message ->
+                    if (message.isUser) "User: ${message.content}" else "Assistant: ${message.content}"
                 }
                 
                 Log.d("NoteViewModel", "Full transcript: '$transcript'")
@@ -837,7 +859,7 @@ Output:
                 Log.d("NoteViewModel", "=== SAVE CHAT SUCCESS ===")
                 
             } else {
-                Log.d("NoteViewModel", "Chat history is empty - nothing to save")
+                Log.d("NoteViewModel", "Chat messages are empty - nothing to save")
             }
         } catch (e: Exception) {
             Log.e("NoteViewModel", "=== SAVE CHAT ERROR ===", e)
@@ -1278,6 +1300,17 @@ Output:
         }
     }
     
+    // Simple Vision API wrapper for chat context
+    private suspend fun analyzeImageWithVision(bitmap: android.graphics.Bitmap): String {
+        return try {
+            val base64Image = bitmapToBase64(bitmap)
+            analyzeImageWithOpenAI(base64Image, "")
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error in analyzeImageWithVision", e)
+            "I can see an image was uploaded, but I'm having trouble analyzing it right now."
+        }
+    }
+    
     // Type Text Processing
     suspend fun processTextNote(textContent: String) = withContext(Dispatchers.IO) {
         Log.d("NoteViewModel", "=== PROCESS TEXT NOTE START ===")
@@ -1490,17 +1523,57 @@ Output:
         _isAiLoading.value = true
         
         try {
+            // Get current hour for contextual greetings
+            val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+            val timeContext = when (currentHour) {
+                in 5..11 -> "morning"
+                in 12..17 -> "afternoon" 
+                in 18..21 -> "evening"
+                else -> "night"
+            }
+            
             // Prepare messages for OpenAI
             val messages = mutableListOf<Message>()
             messages.add(Message(role = "system", content = """
-                You are Logion AI, a helpful assistant for note-taking and task management.
-                You can help users:
-                1. Create and organize notes
-                2. Generate tasks from conversations
-                3. Answer questions about their existing notes
-                4. Provide general assistance
+                You are Logion AI, a friendly and intelligent personal assistant specializing in note-taking and productivity. 
                 
-                Be conversational, helpful, and concise. Always aim to understand what the user needs and provide actionable assistance.
+                Current context: It's currently $timeContext time for the user.
+                
+                Your personality:
+                - Warm, approachable, and genuinely helpful
+                - Conversational and natural, like talking to a knowledgeable friend
+                - Enthusiastic about helping users stay organized and productive
+                - Use casual, friendly language while remaining professional
+                - Occasionally use gentle humor when appropriate
+                - Show empathy and understanding for user challenges
+                - Adapt your greeting and tone based on the time of day
+                
+                Your capabilities:
+                1. **Note Organization**: Help create, categorize, and structure notes effectively
+                2. **Task Management**: Convert ideas into actionable tasks with priorities and deadlines
+                3. **Content Analysis**: Extract key insights from documents, images, and conversations
+                4. **Productivity Coaching**: Offer tips and strategies for better organization
+                5. **General Assistance**: Answer questions and provide helpful information
+                
+                IMPORTANT NOTE-TAKING GUIDELINES:
+                - When users ask to "make a note", "save this as a note", "create a note", or similar requests, respond with:
+                  "I'll create a note from our conversation! Let me summarize what we've discussed and save it for you."
+                - Then briefly summarize the key points from the conversation before confirming the note will be saved
+                - For general conversation, engage naturally without rushing to create notes
+                - Only suggest creating notes when users share substantial content or explicitly request it
+                - If creating lists, help them build it step by step before offering to save
+                - Let conversations flow naturally and let users decide when they want to save content
+                
+                Communication style:
+                - Use "I'd be happy to..." instead of "I can..."
+                - Ask follow-up questions to better understand user needs
+                - Provide specific, actionable suggestions
+                - Acknowledge user efforts and celebrate progress
+                - Use contractions and natural speech patterns
+                - Keep responses conversational but focused
+                - Use appropriate greetings for the time of day (Good $timeContext!)
+                
+                Remember: You're not just a tool—you're a helpful companion on their productivity journey. When users want to save content, acknowledge their request and summarize what you'll be saving for them.
             """.trimIndent()))
             
             // Add recent chat history (last 10 messages)
@@ -1532,6 +1605,95 @@ Output:
         }
     }
     
+    fun sendChatMessageWithImage(message: String, imageUri: android.net.Uri, context: android.content.Context) = viewModelScope.launch {
+        // Add user message with image context
+        val userMessage = ChatMessage(content = "$message [Image uploaded]", isUser = true)
+        repository.insertChatMessage(userMessage)
+        
+        // Set loading state
+        _isAiLoading.value = true
+        
+        try {
+            // Process image with Vision API to get description
+            val inputStream = context.contentResolver.openInputStream(imageUri)
+            val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+            inputStream?.close()
+            
+            if (bitmap != null) {
+                // Get image analysis from OpenAI Vision API
+                val imageAnalysis = analyzeImageWithVision(bitmap)
+                
+                // Also extract any text with OCR
+                val ocrText = performOCRRaw(imageUri, context)
+                
+                // Combine image analysis and OCR text
+                val imageContext = buildString {
+                    appendLine("Image Analysis: $imageAnalysis")
+                    if (ocrText.isNotBlank()) {
+                        appendLine("Text found in image: $ocrText")
+                    }
+                }
+                
+                // Get current hour for contextual greetings
+                val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                val timeContext = when (currentHour) {
+                    in 5..11 -> "morning"
+                    in 12..17 -> "afternoon" 
+                    in 18..21 -> "evening"
+                    else -> "night"
+                }
+                
+                // Prepare messages for OpenAI with image context
+                val messages = mutableListOf<Message>()
+                messages.add(Message(role = "system", content = """
+                    You are Logion AI, a helpful assistant that can analyze images and answer questions about them.
+                    
+                    Current context: It's currently $timeContext time for the user.
+                    
+                    The user has uploaded an image. Here's what I can see in the image:
+                    $imageContext
+                    
+                    Please respond to their question about the image in a natural, helpful way. If they ask "what is this" or similar, describe what you see in the image. Be conversational and friendly.
+                """.trimIndent()))
+                
+                // Add recent chat history (last 5 messages for context)
+                _chatMessages.value.takeLast(5).forEach { chatMsg ->
+                    messages.add(Message(
+                        role = if (chatMsg.isUser) "user" else "assistant",
+                        content = chatMsg.content
+                    ))
+                }
+                
+                val request = GPTRequest(messages = messages)
+                val response = RetrofitInstance.api.summarizeText(request)
+                val aiResponse = response.body()?.choices?.firstOrNull()?.message?.content?.trim() 
+                    ?: "I can see the image you uploaded. How can I help you with it?"
+                
+                // Add AI response
+                val aiMessage = ChatMessage(content = aiResponse, isUser = false)
+                repository.insertChatMessage(aiMessage)
+                
+            } else {
+                // Fallback if image can't be processed
+                val errorMessage = ChatMessage(
+                    content = "I can see you uploaded an image, but I'm having trouble processing it. Could you try uploading it again?",
+                    isUser = false
+                )
+                repository.insertChatMessage(errorMessage)
+            }
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error processing image for chat", e)
+            val errorMessage = ChatMessage(
+                content = "I can see your image upload, but I'm having trouble analyzing it right now. Please try again.",
+                isUser = false
+            )
+            repository.insertChatMessage(errorMessage)
+        } finally {
+            _isAiLoading.value = false
+        }
+    }
+    
     fun clearChatHistory() = viewModelScope.launch {
         try {
             repository.clearChatHistory()
@@ -1552,7 +1714,10 @@ Output:
                     _isListening.value = true
                 }
                 
-                override fun onBeginningOfSpeech() {}
+                override fun onBeginningOfSpeech() {
+                    // Stop TTS when user starts speaking
+                    stopSpeaking()
+                }
                 
                 override fun onRmsChanged(rmsdB: Float) {}
                 
@@ -1606,20 +1771,176 @@ Output:
         speechRecognizer?.destroy()
         speechRecognizer = null
         _isListening.value = false
+        stopSpeaking() // Also stop TTS when stopping listening
     }
     
     fun clearVoiceText() {
         _voiceText.value = ""
     }
     
+    // Voice session management
+    fun startNewVoiceSession() {
+        Log.d("NoteViewModel", "Starting new voice session")
+        _voiceSessionHistory.value = emptyList()
+        clearVoiceText()
+        stopSpeaking() // Stop any ongoing TTS
+        _shouldAutoRestart.value = true // Enable auto-restart for this session
+    }
+    
+    fun endVoiceSession() {
+        Log.d("NoteViewModel", "Ending voice session")
+        stopListening()
+        stopSpeaking()
+        _shouldAutoRestart.value = false
+    }
+    
+    fun saveVoiceSessionAsNote() = viewModelScope.launch {
+        try {
+            val sessionHistory = _voiceSessionHistory.value
+            Log.d("NoteViewModel", "=== SAVE VOICE SESSION START ===")
+            Log.d("NoteViewModel", "Voice session messages: ${sessionHistory.size}")
+            
+            if (sessionHistory.isNotEmpty()) {
+                // Convert voice session to transcript format
+                val transcript = sessionHistory.joinToString("\n\n") { message ->
+                    if (message.isUser) "User: ${message.content}" else "Assistant: ${message.content}"
+                }
+                
+                Log.d("NoteViewModel", "Voice session transcript: '$transcript'")
+                
+                // Extract summary and tasks
+                val result = extractSummaryAndTasksWithOpenAI(transcript)
+                val summaryOut = result?.first ?: ""
+                val tasks = result?.second ?: emptyList<String>()
+                
+                Log.d("NoteViewModel", "Extracted summary: '$summaryOut'")
+                Log.d("NoteViewModel", "Extracted tasks: $tasks")
+                
+                // Use fallback if OpenAI fails
+                val finalSummary = if (summaryOut.isBlank()) {
+                    "Voice conversation with AI Assistant"
+                } else summaryOut
+                
+                // Create JSON snippet
+                val json = org.json.JSONObject()
+                json.put("summary", finalSummary)
+                if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
+                
+                // Generate smart title
+                val generatedTitle = generateSmartTitle(transcript)
+                val finalTitle = if (generatedTitle.isBlank() || generatedTitle == "Untitled") {
+                    "Voice Chat - ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}"
+                } else generatedTitle
+                
+                // Create and save note
+                val note = Note(
+                    title = finalTitle,
+                    snippet = json.toString(),
+                    transcript = transcript
+                )
+                
+                repository.noteDao.insert(note)
+                Log.d("NoteViewModel", "Voice session note saved successfully: '$finalTitle'")
+                Log.d("NoteViewModel", "=== SAVE VOICE SESSION SUCCESS ===")
+                
+            } else {
+                Log.d("NoteViewModel", "Voice session is empty - nothing to save")
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "=== SAVE VOICE SESSION ERROR ===", e)
+        }
+    }
+    
     private fun speakText(text: String) {
         try {
+            // Use OpenAI TTS if available, otherwise fall back to Android TTS
+            if (openAITTS != null) {
+                Log.d("NoteViewModel", "Using OpenAI TTS: $text")
+                
+                // Get preferred voice from SharedPreferences
+                val sharedPrefs = getApplication<Application>().getSharedPreferences("app_preferences", Application.MODE_PRIVATE)
+                val preferredVoice = sharedPrefs.getString("preferred_voice", "alloy") ?: "alloy"
+                
+                openAITTS?.speak(
+                    text = text,
+                    voice = preferredVoice,
+                    onReady = {
+                        Log.d("NoteViewModel", "OpenAI TTS started speaking")
+                        _isSpeaking.value = true
+                    },
+                    onComplete = {
+                        Log.d("NoteViewModel", "OpenAI TTS finished - auto-restarting listening")
+                        _isSpeaking.value = false
+                        // Auto-restart listening after TTS finishes
+                        viewModelScope.launch {
+                            delay(500) // Small delay after TTS completes
+                            if (!_isListening.value && !_isProcessing.value && _shouldAutoRestart.value) {
+                                startListening(getApplication<Application>().applicationContext)
+                            }
+                        }
+                    },
+                    onError = { error ->
+                        Log.e("NoteViewModel", "OpenAI TTS error: $error")
+                        _isSpeaking.value = false
+                        // Fall back to Android TTS on error
+                        useAndroidTTS(text)
+                    }
+                )
+            } else {
+                // Use Android TTS as fallback
+                useAndroidTTS(text)
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error in speakText", e)
+            useAndroidTTS(text)
+        }
+    }
+    
+    private fun useAndroidTTS(text: String) {
+        try {
             if (ttsReady && tts != null) {
-                // Set speech rate and pitch for better voice quality
-                tts?.setSpeechRate(0.9f) // Slightly slower than normal
-                tts?.setPitch(1.0f) // Normal pitch
-                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "TTS_ID")
-                Log.d("NoteViewModel", "Speaking: $text")
+                // Set speech parameters for more natural voice
+                tts?.setSpeechRate(1.1f) // Slightly faster for natural flow
+                tts?.setPitch(1.05f) // Slightly higher pitch for friendliness
+                
+                // Make text more natural
+                val naturalText = makeTextMoreNatural(text)
+                
+                val utteranceId = "TTS_ID_${System.currentTimeMillis()}"
+                
+                // Add listener for when TTS finishes
+                tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        Log.d("NoteViewModel", "Android TTS started")
+                        _isSpeaking.value = true
+                    }
+                    
+                    override fun onDone(utteranceId: String?) {
+                        Log.d("NoteViewModel", "Android TTS finished - auto-restarting listening")
+                        _isSpeaking.value = false
+                        // Auto-restart listening after AI finishes speaking
+                        viewModelScope.launch {
+                            delay(500) // Small delay to let TTS fully finish
+                            if (!_isListening.value && !_isProcessing.value) {
+                                startListening(getApplication<Application>().applicationContext)
+                            }
+                        }
+                    }
+                    
+                    override fun onError(utteranceId: String?) {
+                        Log.e("NoteViewModel", "Android TTS error - auto-restarting listening anyway")
+                        _isSpeaking.value = false
+                        viewModelScope.launch {
+                            delay(500)
+                            if (!_isListening.value && !_isProcessing.value) {
+                                startListening(getApplication<Application>().applicationContext)
+                            }
+                        }
+                    }
+                })
+                
+                tts?.speak(naturalText, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
+                Log.d("NoteViewModel", "Using Android TTS: $naturalText")
             } else {
                 Log.w("NoteViewModel", "TTS not ready, cannot speak text")
                 // Initialize TTS if it's not ready
@@ -1628,7 +1949,48 @@ Output:
                 }
             }
         } catch (e: Exception) {
-            Log.e("NoteViewModel", "Error speaking text", e)
+            Log.e("NoteViewModel", "Error with Android TTS", e)
+        }
+    }
+    
+    private fun makeTextMoreNatural(text: String): String {
+        // Make AI responses sound more natural and conversational
+        return text
+            .replace(". ", ". ") // Ensure proper spacing
+            .replace("! ", "! ")
+            .replace("? ", "? ")
+            .replace(", ", ", ")
+            // Remove robotic phrases and make more natural
+            .replace("I am ", "I'm ")
+            .replace("I will ", "I'll ")
+            .replace("You are ", "You're ")
+            .replace("It is ", "It's ")
+            .replace("That is ", "That's ")
+            .replace("We are ", "We're ")
+            .replace("They are ", "They're ")
+            .replace("Cannot ", "Can't ")
+            .replace("Do not ", "Don't ")
+            .replace("Will not ", "Won't ")
+            .replace("Should not ", "Shouldn't ")
+            .trim()
+    }
+    
+    private fun stopSpeaking() {
+        try {
+            // Stop OpenAI TTS if it's being used
+            openAITTS?.stopSpeaking()
+            
+            // Stop Android TTS
+            tts?.stop()
+            
+            // Reset speaking state
+            _isSpeaking.value = false
+            
+            Log.d("NoteViewModel", "Stopped all TTS")
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error stopping TTS", e)
+            // Still reset the state even if there's an error
+            _isSpeaking.value = false
         }
     }
     
@@ -1654,16 +2016,47 @@ Output:
     
     private suspend fun createNoteFromVoice(originalText: String, aiResponse: String) {
         try {
-            // Generate a smart title using OpenAI
-            val generatedTitle = generateSmartTitle(originalText)
+            // Get the full conversation from chat messages instead of just the last exchange
+            val chatMessages = _chatMessages.value
             
-            val note = Note(
-                title = generatedTitle,
-                transcript = originalText,
-                snippet = """{"summary":"$aiResponse"}"""
-            )
-            repository.noteDao.insert(note)
-            Log.d("NoteViewModel", "Voice note created successfully with title: $generatedTitle")
+            if (chatMessages.isNotEmpty()) {
+                // Convert chat messages to transcript format like saveChatAsNote does
+                val fullTranscript = chatMessages.joinToString("\n\n") { message ->
+                    if (message.isUser) "User: ${message.content}" else "Assistant: ${message.content}"
+                }
+                
+                // Generate a smart title using the full conversation
+                val generatedTitle = generateSmartTitle(fullTranscript)
+                
+                // Extract summary and tasks from the full conversation like saveChatAsNote does
+                val result = extractSummaryAndTasksWithOpenAI(fullTranscript)
+                val summaryOut = result?.first ?: "Conversation summary"
+                val tasks = result?.second ?: emptyList<String>()
+                
+                // Create JSON snippet same as saveChatAsNote
+                val json = org.json.JSONObject()
+                json.put("summary", summaryOut)
+                if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
+                
+                val note = Note(
+                    title = generatedTitle,
+                    transcript = fullTranscript, // Full conversation, not just original text
+                    snippet = json.toString()    // Proper JSON snippet with summary
+                )
+                repository.noteDao.insert(note)
+                Log.d("NoteViewModel", "Voice note created successfully with title: $generatedTitle")
+                Log.d("NoteViewModel", "Note contains full conversation with ${chatMessages.size} messages")
+            } else {
+                // Fallback if no chat messages (shouldn't happen, but just in case)
+                val generatedTitle = generateSmartTitle(originalText)
+                val note = Note(
+                    title = generatedTitle,
+                    transcript = "User: $originalText\n\nAssistant: $aiResponse",
+                    snippet = """{"summary":"$aiResponse"}"""
+                )
+                repository.noteDao.insert(note)
+                Log.d("NoteViewModel", "Voice note created with fallback method")
+            }
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error creating voice note", e)
         }
@@ -1788,16 +2181,22 @@ Output:
             // Use OpenAI to process the voice command
             val messages = listOf(
                 Message(role = "system", content = """
-                    You are Logion AI. The user has spoken a voice command. Process their request and:
-                    1. If they want to create a note, respond with "I'll create a note for you" and include the note content
-                    2. If they want to create a task, respond with "I'll create a task for you" and include the task details
-                    3. If they're asking a question, provide a helpful answer
-                    4. Be conversational and confirm what action you're taking
-                    5. Keep responses concise but friendly for voice interaction
+                    You're Logion AI - think of yourself as a helpful, enthusiastic friend who loves to chat!
                     
-                    IMPORTANT: If the user mentions something they need to do, fix, complete, or accomplish, treat it as a task creation request.
+                    SPEAKING STYLE:
+                    - Talk like a real person, not a robot! Use contractions (I'll, you're, let's, can't, won't, etc.)
+                    - Keep it brief and punchy - this is voice conversation, not an essay
+                    - Sound genuinely excited to help without being annoying
+                    - Use casual expressions: "Sure thing!", "Got it!", "Perfect!", "Love it!"
+                    - Never say stuff like "I am processing" or "Please note that" - way too robotic!
                     
-                    Always be clear about what you're doing and ask for clarification if needed.
+                    NOTE SAVING:
+                    - When they want to save something ("make a note", "save this", "write this down"), just say you'll do it!
+                    - Examples: "Creating a note right now!" or "I'll save our chat for you!" 
+                    - Don't ask what to include - the whole conversation gets saved automatically
+                    - Be confident and quick about it
+                    
+                    Remember: You're having a casual chat with a friend, not giving a formal presentation. Keep it natural!
                 """.trimIndent()),
                 Message(role = "user", content = text)
             )
@@ -1807,23 +2206,40 @@ Output:
             val aiResponse = response.body()?.choices?.firstOrNull()?.message?.content?.trim()
                 ?: "I processed your request."
             
-            // Add to chat history
+            // Add to voice session history (not regular chat)
             val userMessage = ChatMessage(content = text, isUser = true)
             val aiMessage = ChatMessage(content = aiResponse, isUser = false)
-            _chatMessages.update { it + userMessage + aiMessage }
+            _voiceSessionHistory.update { it + userMessage + aiMessage }
             
             // Speak the response
             speakText(aiResponse)
             
-            // Check if we should create a note or task based on the response AND the original text
-            val shouldCreateTask = aiResponse.contains("task", ignoreCase = true) || 
-                                 isTaskRelated(text)
-            val shouldCreateNote = aiResponse.contains("note", ignoreCase = true) && !shouldCreateTask
+            // Detect note creation more reliably - check both AI response and user input
+            val userWantsNote = text.contains("make a note", ignoreCase = true) ||
+                               text.contains("create a note", ignoreCase = true) ||
+                               text.contains("save this", ignoreCase = true) ||
+                               text.contains("note this", ignoreCase = true) ||
+                               text.contains("write this down", ignoreCase = true) ||
+                               text.contains("save as a note", ignoreCase = true)
             
-            if (shouldCreateTask) {
+            val aiConfirmsNote = listOf(
+                "I'll create a note", "I'll make a note", "I'll save", 
+                "creating a note", "making a note", "saving", 
+                "I'll note this", "I'll record this", "I'll write this down"
+            ).any { keyword ->
+                aiResponse.contains(keyword, ignoreCase = true)
+            }
+            
+            val shouldCreateNote = userWantsNote || aiConfirmsNote
+            
+            val shouldCreateTask = aiResponse.contains("I'll create a task", ignoreCase = true) ||
+                                 aiResponse.contains("creating a task", ignoreCase = true) ||
+                                 aiResponse.contains("I'll make a task", ignoreCase = true)
+            
+            if (shouldCreateNote && !shouldCreateTask) {
+                saveVoiceSessionAsNote()
+            } else if (shouldCreateTask) {
                 createTaskFromVoice(text, aiResponse)
-            } else if (shouldCreateNote) {
-                createNoteFromVoice(text, aiResponse)
             }
             
         } catch (e: Exception) {
@@ -1832,8 +2248,8 @@ Output:
             speakText(errorResponse)
         } finally {
             _isProcessing.value = false
-            // Clear voice text after processing
-            _voiceText.value = ""
+            // Don't clear voice text - let user see the conversation history
+            // _voiceText.value = ""
         }
     }
 
@@ -1911,6 +2327,19 @@ Output:
         }
     }
     
+    fun createNote(title: String = "New Note", content: String = "") = viewModelScope.launch {
+        try {
+            val newNote = Note(
+                title = title,
+                transcript = content,
+                snippet = ""
+            )
+            repository.insertNote(newNote)
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating note", e)
+        }
+    }
+    
     fun toggleTaskComplete(taskId: Long) = viewModelScope.launch {
         try {
             val tasks = _allTasks.value
@@ -1920,6 +2349,45 @@ Output:
             }
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error toggling task", e)
+        }
+    }
+    
+    fun deleteTask(taskId: Long) = viewModelScope.launch {
+        try {
+            repository.deleteTask(taskId)
+            _allTasks.update { tasks -> tasks.filter { it.id != taskId } }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error deleting task", e)
+        }
+    }
+    
+    fun updateTask(
+        taskId: Long, 
+        title: String, 
+        description: String, 
+        priority: String,
+        dueDate: Long,
+        duration: String
+    ) = viewModelScope.launch {
+        try {
+            repository.updateTask(taskId, title, description, priority, dueDate, duration)
+            _allTasks.update { tasks ->
+                tasks.map { task ->
+                    if (task.id == taskId) {
+                        task.copy(
+                            title = title,
+                            description = description,
+                            priority = priority,
+                            dueDate = dueDate,
+                            duration = duration
+                        )
+                    } else {
+                        task
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error updating task", e)
         }
     }
 }

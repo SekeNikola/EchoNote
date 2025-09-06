@@ -107,6 +107,9 @@ dependencies {
     
     // Image loading
     implementation("io.coil-kt:coil-compose:2.4.0")
+    
+    // Lottie animations
+    implementation("com.airbnb.android:lottie-compose:6.1.0")
 
     // HTML parsing for web content
     implementation("org.jsoup:jsoup:1.17.2")

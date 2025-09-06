@@ -24,6 +24,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.airbnb.lottie.compose.*
+import com.example.app.R
 import com.example.app.viewmodel.NoteViewModel
 import kotlin.math.sin
 
@@ -36,7 +38,30 @@ fun AiVoiceScreen(
     val isListening by viewModel.isListening.collectAsState()
     val voiceText by viewModel.voiceText.collectAsState()
     val isProcessing by viewModel.isProcessing.collectAsState()
+    val isSpeaking by viewModel.isSpeaking.collectAsState()
     val context = LocalContext.current
+    
+    // Auto-start listening when screen opens and start new session
+    LaunchedEffect(Unit) {
+        try {
+            viewModel.startNewVoiceSession() // Start fresh voice session
+            kotlinx.coroutines.delay(500) // Small delay to let screen settle
+            // Only start listening if not already listening to prevent crashes
+            if (!isListening) {
+                viewModel.startListening(context)
+            }
+        } catch (e: Exception) {
+            // Silently handle any errors to prevent crashes
+            // User can manually start listening by tapping the orb
+        }
+    }
+    
+    // Cleanup when leaving screen
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.endVoiceSession()
+        }
+    }
     
     Column(
         modifier = Modifier
@@ -85,64 +110,35 @@ fun AiVoiceScreen(
         
         Spacer(modifier = Modifier.height(60.dp))
         
-        // Status Text
-        Text(
-            text = when {
-                isProcessing -> "Thinking..."
-                isListening -> "I'm listening..."
-                voiceText.isNotEmpty() && !isProcessing -> "Processing complete"
-                else -> "Tap to start"
-            },
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color.White,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(8.dp))
-        
-        Text(
-            text = when {
-                isProcessing -> "I'm preparing your response..."
-                isListening -> "Speak now, I'm ready to help"
-                voiceText.isNotEmpty() && !isProcessing -> "Great! I'll respond shortly"
-                else -> "Tell me what you need help with"
-            },
-            fontSize = 14.sp,
-            color = Color(0xFFB0B0B0),
-            textAlign = TextAlign.Center
-        )
-        
         Spacer(modifier = Modifier.weight(1f))
         
         // Animated Voice Orb
         VoiceOrb(
             isListening = isListening,
             isProcessing = isProcessing,
+            isSpeaking = isSpeaking,
             onClick = {
-                if (!isProcessing) {
-                    if (isListening) {
-                        viewModel.stopListening()
-                    } else {
-                        viewModel.startListening(context)
+                try {
+                    if (!isProcessing) {
+                        if (isListening) {
+                            viewModel.stopListening()
+                            viewModel.endVoiceSession()
+                            navController.navigateUp() // Exit when stopping
+                        } else {
+                            viewModel.startListening(context)
+                        }
                     }
+                } catch (e: Exception) {
+                    // Handle errors silently to prevent crashes
+                    // The user can try again
                 }
             }
         )
         
         Spacer(modifier = Modifier.height(40.dp))
         
-        // Voice Text Display
-        if (voiceText.isNotEmpty()) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color(0xFF2A2A3E)
-                ),
-                shape = RoundedCornerShape(16.dp)
-            ) {
+        Spacer(modifier = Modifier.weight(1f))
+        /*
                 Column(
                     modifier = Modifier.padding(20.dp)
                 ) {
@@ -202,22 +198,10 @@ fun AiVoiceScreen(
                 }
             }
         }
+        */
         
-        Spacer(modifier = Modifier.weight(1f))
-        
-        // Auto-restart listening after processing (but only once per interaction)
-        LaunchedEffect(isProcessing, voiceText) {
-            if (!isProcessing && voiceText.isNotEmpty()) {
-                // Wait a moment then restart listening for continuous conversation
-                kotlinx.coroutines.delay(3000) // Wait 3 seconds
-                if (!isListening && !isProcessing && voiceText.isNotEmpty()) {
-                    // Clear the text and restart listening
-                    viewModel.clearVoiceText()
-                    kotlinx.coroutines.delay(500) // Small delay before restarting
-                    viewModel.startListening(context)
-                }
-            }
-        }
+        // Removed auto-restart listening to allow for proper conversation flow
+        // Users can manually tap to continue the conversation
         
         // Action Buttons - simplified
         Row(
@@ -228,10 +212,8 @@ fun AiVoiceScreen(
                 OutlinedButton(
                     onClick = { 
                         viewModel.stopListening()
-                        // Also clear the voice text if we're stopping
-                        if (!isProcessing) {
-                            viewModel.clearVoiceText()
-                        }
+                        viewModel.endVoiceSession()
+                        navController.navigateUp() // Exit the voice assistant screen
                     },
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color(0xFFEF4444)
@@ -261,144 +243,164 @@ fun AiVoiceScreen(
 fun VoiceOrb(
     isListening: Boolean,
     isProcessing: Boolean,
+    isSpeaking: Boolean,
     onClick: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "voice_orb")
+    LottieVoiceOrb(
+        isListening = isListening,
+        isProcessing = isProcessing,
+        isSpeaking = isSpeaking,
+        onClick = onClick
+    )
+}
+
+@Composable
+fun LottieVoiceOrb(
+    isListening: Boolean,
+    isProcessing: Boolean,
+    isSpeaking: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Load the Lottie composition from raw resources
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.orb)
+    )
     
-    // Pulsing animation for listening
+    // Animation state based on current mode
+    val animationState = when {
+        isSpeaking -> LottieConstants.IterateForever // Continuous animation when AI is speaking
+        isProcessing -> LottieConstants.IterateForever // Continuous animation when processing
+        isListening -> LottieConstants.IterateForever // Continuous animation when listening
+        else -> 1 // Single iteration when idle (Lottie requires positive number)
+    }
+    
+    // Animation speed based on state
+    val animationSpeed = when {
+        isSpeaking -> 2.0f // Fastest when AI is speaking
+        isProcessing -> 1.5f // Faster when processing
+        isListening -> 1.0f // Normal speed when listening
+        else -> 0.5f // Slower when idle
+    }
+    
+    // Pulsing scale animation for speaking/talking state
+    val infiniteTransition = rememberInfiniteTransition(label = "voice_orb_pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
-        targetValue = if (isListening) 1.2f else 1f,
+        targetValue = when {
+            isSpeaking -> 1.15f // Larger pulse when AI is speaking
+            isListening || isProcessing -> 1.1f
+            else -> 1f
+        },
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = EaseInOut),
+            animation = tween(
+                durationMillis = if (isSpeaking) 600 else 800, // Faster pulse when speaking
+                easing = EaseInOut
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "pulse_scale"
     )
     
-    // Rotation animation for processing
-    val rotation by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = if (isProcessing) 360f else 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "rotation"
-    )
-    
-    // Wave animation for listening
-    val wavePhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = if (isListening) 360f else 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "wave_phase"
-    )
-    
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(200.dp)
             .scale(pulseScale)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        // Outer ripple rings for listening
-        if (isListening) {
-            repeat(3) { index ->
-                val rippleScale by infiniteTransition.animateFloat(
-                    initialValue = 0.5f,
-                    targetValue = 1.5f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(
-                            durationMillis = 2000,
-                            delayMillis = index * 400,
-                            easing = EaseOut
-                        ),
-                        repeatMode = RepeatMode.Restart
+        // Lottie animation - only show if composition is loaded
+        composition?.let {
+            LottieAnimation(
+                composition = it,
+                iterations = animationState,
+                speed = animationSpeed,
+                modifier = Modifier
+                    .size(180.dp)
+                    .fillMaxSize()
+            )
+        } ?: run {
+            // Fallback: Show a simple circle if Lottie fails to load
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .background(
+                        brush = when {
+                            isSpeaking -> Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFF3B82F6), // Blue for speaking
+                                    Color(0xFF1E40AF)
+                                )
+                            )
+                            isProcessing -> Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFFF59E0B), // Orange for processing
+                                    Color(0xFFD97706)
+                                )
+                            )
+                            isListening -> Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFF10B981), // Green for listening
+                                    Color(0xFF059669)
+                                )
+                            )
+                            else -> Brush.radialGradient(
+                                colors = listOf(
+                                    Color(0xFF8B5CF6), // Purple for idle
+                                    Color(0xFF7C3AED)
+                                )
+                            )
+                        },
+                        shape = CircleShape
                     ),
-                    label = "ripple_$index"
-                )
-                
-                val rippleAlpha by infiniteTransition.animateFloat(
-                    initialValue = 0.6f,
-                    targetValue = 0f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(
-                            durationMillis = 2000,
-                            delayMillis = index * 400,
-                            easing = EaseOut
-                        ),
-                        repeatMode = RepeatMode.Restart
-                    ),
-                    label = "ripple_alpha_$index"
-                )
-                
-                Box(
-                    modifier = Modifier
-                        .size(200.dp)
-                        .scale(rippleScale)
-                        .background(
-                            Color(0xFF8B5CF6).copy(alpha = rippleAlpha),
-                            shape = CircleShape
-                        )
-                )
-            }
-        }
-        
-        // Wave visualization for listening
-        if (isListening) {
-            Canvas(
-                modifier = Modifier.size(160.dp)
+                contentAlignment = Alignment.Center
             ) {
-                drawWaveform(wavePhase, this)
+                Icon(
+                    imageVector = when {
+                        isSpeaking -> Icons.Default.RecordVoiceOver // Speaking icon
+                        isProcessing -> Icons.Default.Psychology // Brain icon for thinking
+                        isListening -> Icons.Default.Mic
+                        else -> Icons.Default.MicNone
+                    },
+                    contentDescription = when {
+                        isSpeaking -> "AI is speaking"
+                        isProcessing -> "Processing"
+                        isListening -> "Listening"
+                        else -> "Start listening"
+                    },
+                    tint = Color.White,
+                    modifier = Modifier.size(48.dp)
+                )
             }
         }
         
-        // Main orb
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .background(
-                    brush = when {
-                        isProcessing -> Brush.radialGradient(
-                            colors = listOf(
-                                Color(0xFFF59E0B), // Orange for processing
-                                Color(0xFFD97706)
-                            )
-                        )
-                        isListening -> Brush.radialGradient(
-                            colors = listOf(
-                                Color(0xFF10B981), // Green for listening
-                                Color(0xFF059669)
-                            )
-                        )
-                        else -> Brush.radialGradient(
-                            colors = listOf(
-                                Color(0xFF8B5CF6), // Purple for idle
-                                Color(0xFF3B82F6)
-                            )
-                        )
-                    },
-                    shape = CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = when {
-                    isProcessing -> Icons.Default.Psychology // Brain icon for thinking
-                    isListening -> Icons.Default.Mic
-                    else -> Icons.Default.MicNone
-                },
-                contentDescription = when {
-                    isProcessing -> "Processing"
-                    isListening -> "Listening"
-                    else -> "Start listening"
-                },
-                tint = Color.White,
-                modifier = Modifier.size(48.dp)
+        // Optional: Add a subtle overlay for different states
+        if (isSpeaking) {
+            Box(
+                modifier = Modifier
+                    .size(180.dp)
+                    .background(
+                        Color.Blue.copy(alpha = 0.15f), // Blue tint when AI is speaking
+                        shape = CircleShape
+                    )
+            )
+        } else if (isProcessing) {
+            Box(
+                modifier = Modifier
+                    .size(180.dp)
+                    .background(
+                        Color(0xFFF59E0B).copy(alpha = 0.1f), // Orange tint when processing
+                        shape = CircleShape
+                    )
+            )
+        } else if (isListening) {
+            Box(
+                modifier = Modifier
+                    .size(180.dp)
+                    .background(
+                        Color.Green.copy(alpha = 0.1f),
+                        shape = CircleShape
+                    )
             )
         }
     }
