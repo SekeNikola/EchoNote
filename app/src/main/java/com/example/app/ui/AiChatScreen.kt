@@ -30,7 +30,9 @@ import com.example.app.data.ChatMessage
 import com.example.app.viewmodel.NoteViewModel
 import kotlinx.coroutines.launch
 import android.net.Uri
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +56,13 @@ fun AiChatScreen(
             selectedImageUri = Uri.parse(uriString)
             // Clear the saved state to prevent re-showing on navigation
             savedStateHandle.remove<String>("selectedImageUri")
+        }
+        
+        // Handle initial message from home screen
+        savedStateHandle?.get<String>("initialMessage")?.let { message ->
+            inputText = message
+            // Clear the saved state to prevent re-showing on navigation
+            savedStateHandle.remove<String>("initialMessage")
         }
     }
     
@@ -166,7 +175,13 @@ fun AiChatScreen(
         ) {
             if (chatMessages.isEmpty()) {
                 item {
-                    WelcomeMessage()
+                    WelcomeMessage(
+                        onSuggestionClick = { suggestion ->
+                            // Extract the text without emoji and send it
+                            val cleanText = suggestion.replace(Regex("^[\\p{So}\\p{Sk}]+ "), "")
+                            inputText = cleanText
+                        }
+                    )
                 }
             }
             
@@ -242,172 +257,173 @@ fun AiChatScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Bottom
                 ) {
-                // Plus icon with dropdown menu for media options
-                var showDropDown by remember { mutableStateOf(false) }
-                
-                Box {
-                    IconButton(
-                        onClick = { showDropDown = true },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Add media",
-                            tint = Color(0xFF8B5CF6),
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                    // Plus icon with dropdown menu for media options
+                    var showDropDown by remember { mutableStateOf(false) }
                     
-                    DropdownMenu(
-                        expanded = showDropDown,
-                        onDismissRequest = { showDropDown = false },
-                        modifier = Modifier
-                            .background(
-                                Color(0xFF1A1A2E),
-                                RoundedCornerShape(16.dp)
-                            )
-                            .padding(8.dp)
-                    ) {
-                        // Options in a row
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.padding(8.dp)
+                    Box {
+                        IconButton(
+                            onClick = { showDropDown = true },
+                            modifier = Modifier.size(40.dp)
                         ) {
-                            // Camera option
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .clickable {
-                                        showDropDown = false
-                                        navController.navigate("image_preview?source=camera")
-                                    }
-                                    .padding(12.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.CameraAlt,
-                                    contentDescription = "Camera",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "Camera",
-                                    color = Color.White,
-                                    fontSize = 12.sp
-                                )
-                            }
-                            
-                            // Photos option
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .clickable {
-                                        showDropDown = false
-                                        navController.navigate("image_preview?source=gallery")
-                                    }
-                                    .padding(12.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Photo,
-                                    contentDescription = "Photos",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "Photos",
-                                    color = Color.White,
-                                    fontSize = 12.sp
-                                )
-                            }
-                            
-                            // Files option
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .clickable {
-                                        showDropDown = false
-                                        // TODO: Handle file upload
-                                    }
-                                    .padding(12.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.AttachFile,
-                                    contentDescription = "Files",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "Files",
-                                    color = Color.White,
-                                    fontSize = 12.sp
-                                )
-                            }
+                            Icon(
+                                Icons.Default.Add,
+                                contentDescription = "Add media",
+                                tint = Color(0xFF8B5CF6),
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
-                    }
-                }
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text(
-                            text = "Ask me anything...",
-                            color = Color(0xFFB0B0B0)
-                        )
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF8B5CF6),
-                        unfocusedBorderColor = Color(0xFF404056),
-                        cursorColor = Color(0xFF8B5CF6)
-                    ),
-                    shape = RoundedCornerShape(24.dp),
-                    maxLines = 4
-                )
-                
-                Spacer(modifier = Modifier.width(12.dp))
-                
-                FloatingActionButton(
-                    onClick = {
-                        if ((inputText.isNotBlank() || selectedImageUri != null) && !isLoading) {
-                            coroutineScope.launch {
-                                // Send message with optional image context
-                                val messageToSend = if (selectedImageUri != null) {
-                                    if (inputText.isBlank()) {
-                                        "I've shared an image with you. Can you describe what you see?"
-                                    } else {
-                                        "$inputText [User has shared an image]"
-                                    }
-                                } else {
-                                    inputText
+                        
+                        DropdownMenu(
+                            expanded = showDropDown,
+                            onDismissRequest = { showDropDown = false },
+                            modifier = Modifier
+                                .background(
+                                    Color(0xFF1A1A2E),
+                                    RoundedCornerShape(16.dp)
+                                )
+                                .padding(8.dp)
+                        ) {
+                            // Options in a row
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.padding(8.dp)
+                            ) {
+                                // Camera option
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .clickable {
+                                            showDropDown = false
+                                            navController.navigate("image_preview?source=camera")
+                                        }
+                                        .padding(12.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.CameraAlt,
+                                        contentDescription = "Camera",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "Camera",
+                                        color = Color.White,
+                                        fontSize = 12.sp
+                                    )
                                 }
                                 
-                                viewModel.sendChatMessage(messageToSend)
-                                selectedImageUri = null
-                                inputText = ""
+                                // Photos option
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .clickable {
+                                            showDropDown = false
+                                            navController.navigate("image_preview?source=gallery")
+                                        }
+                                        .padding(12.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Photo,
+                                        contentDescription = "Photos",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "Photos",
+                                        color = Color.White,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                                
+                                // Files option
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .clickable {
+                                            showDropDown = false
+                                            // TODO: Handle file upload
+                                        }
+                                        .padding(12.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.AttachFile,
+                                        contentDescription = "Files",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "Files",
+                                        color = Color.White,
+                                        fontSize = 12.sp
+                                    )
+                                }
                             }
                         }
-                    },
-                    modifier = Modifier.size(48.dp),
-                    containerColor = if ((inputText.isNotBlank() || selectedImageUri != null) && !isLoading) {
-                        Color(0xFF8B5CF6)
-                    } else {
-                        Color(0xFF404056)
                     }
-                ) {
-                    Icon(
-                        Icons.Default.Send,
-                        contentDescription = "Send",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = {
+                            Text(
+                                text = "Ask me anything...",
+                                color = Color(0xFFB0B0B0)
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color(0xFF8B5CF6),
+                            unfocusedBorderColor = Color(0xFF404056),
+                            cursorColor = Color(0xFF8B5CF6)
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        maxLines = 4
                     )
-                }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    FloatingActionButton(
+                        onClick = {
+                            if ((inputText.isNotBlank() || selectedImageUri != null) && !isLoading) {
+                                coroutineScope.launch {
+                                    // Send message with optional image context
+                                    if (selectedImageUri != null) {
+                                        // Send message with image
+                                        val messageToSend = if (inputText.isBlank()) {
+                                            "I've shared an image with you. Can you describe what you see?"
+                                        } else {
+                                            inputText
+                                        }
+                                        viewModel.sendChatMessageWithImage(messageToSend, selectedImageUri!!, context)
+                                    } else {
+                                        // Send text-only message
+                                        viewModel.sendChatMessage(inputText)
+                                    }
+                                    selectedImageUri = null
+                                    inputText = ""
+                                }
+                            }
+                        },
+                        modifier = Modifier.size(48.dp),
+                        containerColor = if ((inputText.isNotBlank() || selectedImageUri != null) && !isLoading) {
+                            Color(0xFF8B5CF6)
+                        } else {
+                            Color(0xFF404056)
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.Send,
+                            contentDescription = "Send",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             }
         }
@@ -415,7 +431,18 @@ fun AiChatScreen(
 }
 
 @Composable
-fun WelcomeMessage() {
+fun WelcomeMessage(
+    onSuggestionClick: (String) -> Unit = {}
+) {
+    // Get current time for contextual greeting
+    val currentHour = remember { java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY) }
+    val greeting = when (currentHour) {
+        in 5..11 -> "Good morning! 🌅"
+        in 12..17 -> "Good afternoon! ☀️" 
+        in 18..21 -> "Good evening! 🌆"
+        else -> "Hello there! 🌙"
+    }
+    
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -435,7 +462,7 @@ fun WelcomeMessage() {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.Mic,
+                Icons.Default.Psychology,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(40.dp)
@@ -445,7 +472,7 @@ fun WelcomeMessage() {
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "Hello! I'm Logion AI",
+            text = greeting,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
@@ -454,32 +481,67 @@ fun WelcomeMessage() {
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "I can help you create notes, tasks, and organize your thoughts. Just ask me anything!",
+            text = "I'm Logion, your personal productivity assistant! I'm here to help you stay organized and make the most of your day.",
             fontSize = 16.sp,
             color = Color(0xFFB0B0B0),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             lineHeight = 22.sp
         )
         
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = "What can I help you with today?",
+            fontSize = 14.sp,
+            color = Color(0xFF9CA3AF),
+            fontWeight = FontWeight.Medium
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Quick suggestions based on time of day
+        val suggestions = when (currentHour) {
+            in 5..11 -> listOf(
+                "📋 Plan my day and set priorities",
+                "☕ Create a morning routine task list",
+                "💡 Brainstorm ideas for today's projects",
+                "🎯 Set my goals for the week"
+            )
+            in 12..17 -> listOf(
+                "📝 Take notes from my afternoon meeting",
+                "📋 Create a task list for tomorrow",
+                "💡 Help me brainstorm solutions",
+                "🔄 Review and organize my tasks"
+            )
+            else -> listOf(
+                "✨ Reflect on today's accomplishments",
+                "📋 Plan tomorrow's priorities",
+                "💡 Capture thoughts before bed",
+                "🎯 Set goals for tomorrow"
+            )
+        }
         
         // Quick suggestions
         Column(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            SuggestionChip(
-                text = "Create a task for tomorrow",
-                onClick = { /* Handle suggestion */ }
-            )
-            SuggestionChip(
-                text = "Take notes from my meeting",
-                onClick = { /* Handle suggestion */ }
-            )
-            SuggestionChip(
-                text = "Organize my thoughts about the project",
-                onClick = { /* Handle suggestion */ }
-            )
+            suggestions.forEach { suggestion ->
+                SuggestionChip(
+                    text = suggestion,
+                    onClick = { onSuggestionClick(suggestion) }
+                )
+            }
         }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        Text(
+            text = "Or just type whatever's on your mind below! 😊",
+            fontSize = 14.sp,
+            color = Color(0xFF6B7280),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+        )
     }
 }
 
@@ -493,14 +555,31 @@ fun SuggestionChip(
             .fillMaxWidth()
             .clickable { onClick() },
         color = Color(0xFF2A2A3E),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(16.dp),
+        shadowElevation = 2.dp
     ) {
-        Text(
-            text = text,
-            fontSize = 14.sp,
-            color = Color(0xFFB0B0B0),
-            modifier = Modifier.padding(16.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Text(
+                text = text,
+                fontSize = 14.sp,
+                color = Color(0xFFE0E0E0),
+                modifier = Modifier.weight(1f),
+                lineHeight = 20.sp
+            )
+            
+            Icon(
+                Icons.Default.ArrowForward,
+                contentDescription = null,
+                tint = Color(0xFF8B5CF6),
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
 
@@ -553,8 +632,8 @@ fun ChatMessageItem(
                 text = message.content,
                 fontSize = 15.sp,
                 color = Color.White,
-                modifier = Modifier.padding(16.dp),
-                lineHeight = 20.sp
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(16.dp)
             )
         }
         

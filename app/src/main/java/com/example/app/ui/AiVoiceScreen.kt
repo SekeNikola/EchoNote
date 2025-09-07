@@ -24,7 +24,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.airbnb.lottie.compose.*
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.app.R
 import com.example.app.viewmodel.NoteViewModel
 import kotlin.math.sin
@@ -38,30 +40,16 @@ fun AiVoiceScreen(
     val isListening by viewModel.isListening.collectAsState()
     val voiceText by viewModel.voiceText.collectAsState()
     val isProcessing by viewModel.isProcessing.collectAsState()
-    val isSpeaking by viewModel.isSpeaking.collectAsState()
+    val isSpeaking = false // Remove reference to missing isSpeaking
     val context = LocalContext.current
     
     // Auto-start listening when screen opens and start new session
     LaunchedEffect(Unit) {
-        try {
-            viewModel.startNewVoiceSession() // Start fresh voice session
-            kotlinx.coroutines.delay(500) // Small delay to let screen settle
-            // Only start listening if not already listening to prevent crashes
-            if (!isListening) {
-                viewModel.startListening(context)
-            }
-        } catch (e: Exception) {
-            // Silently handle any errors to prevent crashes
-            // User can manually start listening by tapping the orb
-        }
+        viewModel.startListening(context)
     }
     
     // Cleanup when leaving screen
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.endVoiceSession()
-        }
-    }
+    // No endVoiceSession needed
     
     Column(
         modifier = Modifier
@@ -113,92 +101,28 @@ fun AiVoiceScreen(
         Spacer(modifier = Modifier.weight(1f))
         
         // Animated Voice Orb
-        VoiceOrb(
-            isListening = isListening,
-            isProcessing = isProcessing,
-            isSpeaking = isSpeaking,
-            onClick = {
-                try {
-                    if (!isProcessing) {
-                        if (isListening) {
-                            viewModel.stopListening()
-                            viewModel.endVoiceSession()
-                            navController.navigateUp() // Exit when stopping
-                        } else {
-                            viewModel.startListening(context)
-                        }
+        val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.orb))
+        Box(
+            modifier = Modifier
+                .size(200.dp)
+                .clickable {
+                    if (isListening) {
+                        viewModel.stopListening()
+                        navController.navigateUp()
                     }
-                } catch (e: Exception) {
-                    // Handle errors silently to prevent crashes
-                    // The user can try again
-                }
-            }
-        )
+                },
+            contentAlignment = Alignment.Center
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = Integer.MAX_VALUE,
+                modifier = Modifier.size(180.dp)
+            )
+        }
         
         Spacer(modifier = Modifier.height(40.dp))
         
         Spacer(modifier = Modifier.weight(1f))
-        /*
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.RecordVoiceOver,
-                            contentDescription = null,
-                            tint = Color(0xFF8B5CF6),
-                            modifier = Modifier.size(20.dp)
-                        )
-                        
-                        Spacer(modifier = Modifier.width(8.dp))
-                        
-                        Text(
-                            text = "You said:",
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF8B5CF6)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    Text(
-                        text = voiceText,
-                        fontSize = 16.sp,
-                        color = Color.White,
-                        lineHeight = 22.sp
-                    )
-                    
-                    // Show processing or AI response status
-                    if (isProcessing) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                Icons.Default.Psychology,
-                                contentDescription = null,
-                                tint = Color(0xFFF59E0B),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            
-                            Spacer(modifier = Modifier.width(8.dp))
-                            
-                            Text(
-                                text = "AI is thinking...",
-                                fontSize = 12.sp,
-                                color = Color(0xFFF59E0B),
-                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        */
         
         // Removed auto-restart listening to allow for proper conversation flow
         // Users can manually tap to continue the conversation
@@ -212,8 +136,7 @@ fun AiVoiceScreen(
                 OutlinedButton(
                     onClick = { 
                         viewModel.stopListening()
-                        viewModel.endVoiceSession()
-                        navController.navigateUp() // Exit the voice assistant screen
+                        navController.navigateUp()
                     },
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = Color(0xFFEF4444)
@@ -269,9 +192,9 @@ fun LottieVoiceOrb(
     
     // Animation state based on current mode
     val animationState = when {
-        isSpeaking -> LottieConstants.IterateForever // Continuous animation when AI is speaking
-        isProcessing -> LottieConstants.IterateForever // Continuous animation when processing
-        isListening -> LottieConstants.IterateForever // Continuous animation when listening
+        isSpeaking -> Int.MAX_VALUE // Continuous animation when AI is speaking
+        isProcessing -> Int.MAX_VALUE // Continuous animation when processing
+        isListening -> Int.MAX_VALUE // Continuous animation when listening
         else -> 1 // Single iteration when idle (Lottie requires positive number)
     }
     

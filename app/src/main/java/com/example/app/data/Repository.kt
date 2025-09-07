@@ -11,6 +11,7 @@ class NoteRepository(
     internal val chatMessageDao: ChatMessageDao
 ) {
     // Note operations
+    suspend fun insertNote(note: Note) = noteDao.insert(note)
     suspend fun updateTranscript(id: Long, transcript: String) = noteDao.updateTranscript(id, transcript)
     suspend fun updateNoteSnippet(id: Long, snippet: String) = noteDao.updateSnippet(id, snippet)
     suspend fun updateChecklistState(id: Long, checklistState: String) = noteDao.updateChecklistState(id, checklistState)

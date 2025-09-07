@@ -21,6 +21,7 @@ import androidx.compose.ui.res.painterResource
 import com.example.app.R
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -98,7 +99,8 @@ fun HomeScreen(
     onNavigateToTypeText: (() -> Unit)? = null,
     onNavigateToVideoUrl: (() -> Unit)? = null,
     onNavigateToWebPage: (() -> Unit)? = null,
-    onNavigateToDocumentUpload: (() -> Unit)? = null
+    onNavigateToDocumentUpload: (() -> Unit)? = null,
+    onNavigateToSettings: (() -> Unit)? = null
 ) {
     val notes by viewModel.notes.observeAsState(listOf())
     val searchQuery by viewModel.searchQuery.observeAsState("")
@@ -112,6 +114,32 @@ fun HomeScreen(
                 .fillMaxSize()
                 .background(Color(0xFF121212))
         ) {
+            // Header with title and settings icon
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "EchoNote",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                IconButton(
+                    onClick = { onNavigateToSettings?.invoke() }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+            
             SearchBar(
                 query = searchQuery,
                 onQueryChange = { viewModel.searchQuery.value = it }

@@ -2314,38 +2314,44 @@ Output:
     }
     
     fun createTask(title: String, description: String, priority: String = "Medium", dueDate: Long = System.currentTimeMillis()) = viewModelScope.launch {
-        try {
-            val newTask = Task(
-                title = title,
-                description = description,
-                priority = priority,
-                dueDate = dueDate
-            )
-            repository.insertTask(newTask)
-        } catch (e: Exception) {
-            Log.e("NoteViewModel", "Error creating task", e)
-        }
+    try {
+        val newTask = Task(
+            title = title,
+            description = description,
+            priority = priority,
+            dueDate = dueDate
+        )
+        // Use the correct repository method
+        repository.taskDao.insert(newTask)  // or whatever your actual method is
+    } catch (e: Exception) {
+        Log.e("NoteViewModel", "Error creating task", e)
     }
-    
-    fun createNote(title: String = "New Note", content: String = "") = viewModelScope.launch {
-        try {
-            val newNote = Note(
-                title = title,
-                transcript = content,
-                snippet = ""
-            )
-            repository.insertNote(newNote)
-        } catch (e: Exception) {
-            Log.e("NoteViewModel", "Error creating note", e)
-        }
+}
+
+fun createNote(title: String = "New Note", content: String = "") = viewModelScope.launch {
+    try {
+        val newNote = Note(
+            title = title,
+            transcript = content,
+            snippet = ""
+        )
+        repository.noteDao.insert(newNote)  // Fixed method name
+    } catch (e: Exception) {
+        Log.e("NoteViewModel", "Error creating note", e)
     }
-    
+}
+
     fun toggleTaskComplete(taskId: Long) = viewModelScope.launch {
         try {
             val tasks = _allTasks.value
             val task = tasks.find { it.id == taskId }
             if (task != null) {
                 repository.toggleTaskComplete(taskId, !task.isCompleted)
+                _allTasks.update { tasks -> 
+                    tasks.map { 
+                        if (it.id == taskId) it.copy(isCompleted = !it.isCompleted) else it 
+                    } 
+                }
             }
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error toggling task", e)
@@ -2366,23 +2372,27 @@ Output:
         title: String, 
         description: String, 
         priority: String,
-        dueDate: Long,
-        duration: String
+        dueDate: Long
     ) = viewModelScope.launch {
         try {
-            repository.updateTask(taskId, title, description, priority, dueDate, duration)
-            _allTasks.update { tasks ->
-                tasks.map { task ->
-                    if (task.id == taskId) {
-                        task.copy(
-                            title = title,
-                            description = description,
-                            priority = priority,
-                            dueDate = dueDate,
-                            duration = duration
-                        )
-                    } else {
-                        task
+            // Get the current task first, then update it
+            val currentTasks = _allTasks.value
+            val currentTask = currentTasks.find { it.id == taskId }
+            if (currentTask != null) {
+                val updatedTask = Task(
+                    id = taskId,
+                    title = title,
+                    description = description,
+                    priority = priority,
+                    dueDate = dueDate,
+                    isCompleted = currentTask.isCompleted,
+                    createdAt = currentTask.createdAt,
+                    updatedAt = System.currentTimeMillis()
+                )
+                repository.updateTask(updatedTask)
+                _allTasks.update { tasks ->
+                    tasks.map { task ->
+                        if (task.id == taskId) updatedTask else task
                     }
                 }
             }

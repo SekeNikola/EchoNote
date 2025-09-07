@@ -47,7 +47,7 @@ public final class TaskDao_Impl implements TaskDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `tasks` (`id`,`title`,`description`,`priority`,`dueDate`,`isCompleted`,`createdAt`,`updatedAt`) VALUES (nullif(?, 0),?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `tasks` (`id`,`title`,`description`,`priority`,`dueDate`,`duration`,`isCompleted`,`createdAt`,`updatedAt`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -70,17 +70,22 @@ public final class TaskDao_Impl implements TaskDao {
           statement.bindString(4, entity.getPriority());
         }
         statement.bindLong(5, entity.getDueDate());
+        if (entity.getDuration() == null) {
+          statement.bindNull(6);
+        } else {
+          statement.bindString(6, entity.getDuration());
+        }
         final int _tmp = entity.isCompleted() ? 1 : 0;
-        statement.bindLong(6, _tmp);
-        statement.bindLong(7, entity.getCreatedAt());
-        statement.bindLong(8, entity.getUpdatedAt());
+        statement.bindLong(7, _tmp);
+        statement.bindLong(8, entity.getCreatedAt());
+        statement.bindLong(9, entity.getUpdatedAt());
       }
     };
     this.__updateAdapterOfTask = new EntityDeletionOrUpdateAdapter<Task>(__db) {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `tasks` SET `id` = ?,`title` = ?,`description` = ?,`priority` = ?,`dueDate` = ?,`isCompleted` = ?,`createdAt` = ?,`updatedAt` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `tasks` SET `id` = ?,`title` = ?,`description` = ?,`priority` = ?,`dueDate` = ?,`duration` = ?,`isCompleted` = ?,`createdAt` = ?,`updatedAt` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -103,11 +108,16 @@ public final class TaskDao_Impl implements TaskDao {
           statement.bindString(4, entity.getPriority());
         }
         statement.bindLong(5, entity.getDueDate());
+        if (entity.getDuration() == null) {
+          statement.bindNull(6);
+        } else {
+          statement.bindString(6, entity.getDuration());
+        }
         final int _tmp = entity.isCompleted() ? 1 : 0;
-        statement.bindLong(6, _tmp);
-        statement.bindLong(7, entity.getCreatedAt());
-        statement.bindLong(8, entity.getUpdatedAt());
-        statement.bindLong(9, entity.getId());
+        statement.bindLong(7, _tmp);
+        statement.bindLong(8, entity.getCreatedAt());
+        statement.bindLong(9, entity.getUpdatedAt());
+        statement.bindLong(10, entity.getId());
       }
     };
     this.__preparedStmtOfDeleteById = new SharedSQLiteStatement(__db) {
@@ -233,6 +243,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
           final int _cursorIndexOfPriority = CursorUtil.getColumnIndexOrThrow(_cursor, "priority");
           final int _cursorIndexOfDueDate = CursorUtil.getColumnIndexOrThrow(_cursor, "dueDate");
+          final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
@@ -261,6 +272,12 @@ public final class TaskDao_Impl implements TaskDao {
             }
             final long _tmpDueDate;
             _tmpDueDate = _cursor.getLong(_cursorIndexOfDueDate);
+            final String _tmpDuration;
+            if (_cursor.isNull(_cursorIndexOfDuration)) {
+              _tmpDuration = null;
+            } else {
+              _tmpDuration = _cursor.getString(_cursorIndexOfDuration);
+            }
             final boolean _tmpIsCompleted;
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
@@ -269,7 +286,7 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
             _result.add(_item);
           }
           return _result;
@@ -300,6 +317,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
           final int _cursorIndexOfPriority = CursorUtil.getColumnIndexOrThrow(_cursor, "priority");
           final int _cursorIndexOfDueDate = CursorUtil.getColumnIndexOrThrow(_cursor, "dueDate");
+          final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
@@ -328,6 +346,12 @@ public final class TaskDao_Impl implements TaskDao {
             }
             final long _tmpDueDate;
             _tmpDueDate = _cursor.getLong(_cursorIndexOfDueDate);
+            final String _tmpDuration;
+            if (_cursor.isNull(_cursorIndexOfDuration)) {
+              _tmpDuration = null;
+            } else {
+              _tmpDuration = _cursor.getString(_cursorIndexOfDuration);
+            }
             final boolean _tmpIsCompleted;
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
@@ -336,7 +360,7 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
             _result.add(_item);
           }
           return _result;
@@ -370,6 +394,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
           final int _cursorIndexOfPriority = CursorUtil.getColumnIndexOrThrow(_cursor, "priority");
           final int _cursorIndexOfDueDate = CursorUtil.getColumnIndexOrThrow(_cursor, "dueDate");
+          final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
@@ -397,6 +422,12 @@ public final class TaskDao_Impl implements TaskDao {
             }
             final long _tmpDueDate;
             _tmpDueDate = _cursor.getLong(_cursorIndexOfDueDate);
+            final String _tmpDuration;
+            if (_cursor.isNull(_cursorIndexOfDuration)) {
+              _tmpDuration = null;
+            } else {
+              _tmpDuration = _cursor.getString(_cursorIndexOfDuration);
+            }
             final boolean _tmpIsCompleted;
             final int _tmp;
             _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
@@ -405,7 +436,7 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _result = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
+            _result = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
           } else {
             _result = null;
           }

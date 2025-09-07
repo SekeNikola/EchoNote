@@ -3,9 +3,13 @@ package com.example.app.ui
 import android.Manifest
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -16,10 +20,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -132,16 +141,13 @@ fun UploadImageScreen(
                         // Display selected image
                         Card(
                             modifier = Modifier
-                                .size(200.dp)
-                                .padding(8.dp),
-                            shape = RoundedCornerShape(12.dp)
+                                .size(60.dp)
+                                .padding(2.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             selectedImageUri?.let { uri ->
-                                AsyncImage(
-                                    uri = uri,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
+                                SimpleBitmapImage(uri = uri)
                             }
                         }
 
@@ -218,35 +224,58 @@ fun UploadImageScreen(
     }
 }
 
-// Simple AsyncImage implementation (you might want to use Coil instead)
 @Composable
-private fun AsyncImage(
-    uri: Uri,
-    modifier: Modifier = Modifier,
-    contentScale: ContentScale = ContentScale.Fit
-) {
+private fun SimpleBitmapImage(uri: Uri) {
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
     val context = LocalContext.current
     
     LaunchedEffect(uri) {
+        isLoading = true
         try {
             val inputStream = context.contentResolver.openInputStream(uri)
-            bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+            val originalBitmap = BitmapFactory.decodeStream(inputStream)
             inputStream?.close()
+            
+            originalBitmap?.let { original ->
+                // Create a very small thumbnail - 60x60 pixels
+                bitmap = Bitmap.createScaledBitmap(original, 60, 60, true)
+                original.recycle()
+            }
         } catch (e: Exception) {
             // Handle error
+        } finally {
+            isLoading = false
         }
     }
     
-    bitmap?.let {
-        Image(
-            bitmap = it.asImageBitmap(),
-            contentDescription = null,
-            modifier = modifier,
-            contentScale = contentScale
-        )
+    if (isLoading) {
+        Box(
+            modifier = Modifier.size(60.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = Color(0xFF2196F3),
+                strokeWidth = 2.dp
+            )
+        }
+    } else {
+        bitmap?.let { bmp ->
+            Canvas(
+                modifier = Modifier.size(60.dp)
+            ) {
+                val paint = android.graphics.Paint().apply {
+                    isAntiAlias = true
+                }
+                
+                drawContext.canvas.nativeCanvas.drawBitmap(
+                    bmp,
+                    0f,
+                    0f,
+                    paint
+                )
+            }
+        }
     }
 }
-
-
-

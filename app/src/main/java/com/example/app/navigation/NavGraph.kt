@@ -1,4 +1,3 @@
-
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.example.app.navigation
 
@@ -44,9 +43,6 @@ fun LogionNavGraph(
                 viewModel = viewModel,
                 onAddNote = {
                     viewModel.createNote()
-                },
-                onAIVoiceClick = {
-                    navController.navigate("ai_voice")
                 }
             )
         }
@@ -67,7 +63,13 @@ fun LogionNavGraph(
             )
         }
         
-        // Image Preview Screen
+        // Settings Screen
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
         
         // Legacy screens for existing functionality
         composable(Screen.Recording.route) {
@@ -77,6 +79,7 @@ fun LogionNavGraph(
                 onHighlight = { /* TODO: highlight moment */ }
             )
         }
+        
         composable("noteDetail/{noteId}") { backStackEntry ->
             val noteId = backStackEntry.arguments?.getString("noteId")?.toLongOrNull() ?: 0L
             NoteDetailScreen(
@@ -85,12 +88,14 @@ fun LogionNavGraph(
                 onBack = { navController.popBackStack() }
             )
         }
+        
         composable(Screen.VoiceCommand.route) {
             VoiceCommandOverlay(
                 viewModel = viewModel,
                 onDismiss = { navController.popBackStack() }
             )
         }
+        
         composable(Screen.WebPage.route) {
             WebPageScreen(
                 viewModel = viewModel,
@@ -126,13 +131,6 @@ fun LogionNavGraph(
                 navController = navController,
                 viewModel = viewModel,
                 taskId = taskId
-            )
-        }
-        
-        composable(Screen.Settings.route) {
-            SettingsScreen(
-                navController = navController,
-                viewModel = viewModel
             )
         }
     }

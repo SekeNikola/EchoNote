@@ -33,6 +33,7 @@ layout activity_main
 layout widget_logion
 mipmap ic_launcher
 mipmap ic_launcher_round
+raw orb
 string app_name
 string widget_description
 style Theme.Logion

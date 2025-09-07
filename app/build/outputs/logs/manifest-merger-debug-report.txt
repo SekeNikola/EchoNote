@@ -22,6 +22,8 @@ MERGED from [io.coil-kt:coil:2.4.0] C:\Users\T\.gradle\caches\8.13\transforms\96
 MERGED from [io.coil-kt:coil-base:2.4.0] C:\Users\T\.gradle\caches\8.13\transforms\6e1cd7c629fb187f01a6f9c5b8812f84\transformed\jetified-coil-base-2.4.0\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\T\.gradle\caches\8.13\transforms\95502d347c606c7626149706b82dd0b7\transformed\jetified-appcompat-resources-1.6.1\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] C:\Users\T\.gradle\caches\8.13\transforms\ea2447631097c44d315aafdb12284cd3\transformed\constraintlayout-2.0.1\AndroidManifest.xml:2:1-11:12
+MERGED from [com.airbnb.android:lottie-compose:6.1.0] C:\Users\T\.gradle\caches\8.13\transforms\80b191f04ed33699a8b2cb9307eecb11\transformed\jetified-lottie-compose-6.1.0\AndroidManifest.xml:2:1-7:12
+MERGED from [com.airbnb.android:lottie:6.1.0] C:\Users\T\.gradle\caches\8.13\transforms\f49011d7cc875e6b7e1cd8de64c5e53a\transformed\jetified-lottie-6.1.0\AndroidManifest.xml:2:1-9:12
 MERGED from [androidx.appcompat:appcompat:1.6.1] C:\Users\T\.gradle\caches\8.13\transforms\07ef72cc5ae07459ee69aa8c7cc00479\transformed\appcompat-1.6.1\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.viewpager2:viewpager2:1.0.0] C:\Users\T\.gradle\caches\8.13\transforms\e1da4196c934d230fe1545984edcbcf3\transformed\jetified-viewpager2-1.0.0\AndroidManifest.xml:17:1-24:12
 MERGED from [com.google.mlkit:text-recognition:16.0.0] C:\Users\T\.gradle\caches\8.13\transforms\6e4a88ccd7a53a5b68363f1cf66f85a7\transformed\jetified-text-recognition-16.0.0\AndroidManifest.xml:2:1-7:12
@@ -220,6 +222,8 @@ MERGED from [com.google.android.material:material:1.11.0] C:\Users\T\.gradle\cac
 MERGED from [com.google.android.material:material:1.11.0] C:\Users\T\.gradle\caches\8.13\transforms\928b417a74d44f9a95006f5abe9ba635\transformed\material-1.11.0\AndroidManifest.xml:22:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] C:\Users\T\.gradle\caches\8.13\transforms\ea2447631097c44d315aafdb12284cd3\transformed\constraintlayout-2.0.1\AndroidManifest.xml:9:5-20
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] C:\Users\T\.gradle\caches\8.13\transforms\ea2447631097c44d315aafdb12284cd3\transformed\constraintlayout-2.0.1\AndroidManifest.xml:9:5-20
+MERGED from [com.airbnb.android:lottie:6.1.0] C:\Users\T\.gradle\caches\8.13\transforms\f49011d7cc875e6b7e1cd8de64c5e53a\transformed\jetified-lottie-6.1.0\AndroidManifest.xml:7:5-20
+MERGED from [com.airbnb.android:lottie:6.1.0] C:\Users\T\.gradle\caches\8.13\transforms\f49011d7cc875e6b7e1cd8de64c5e53a\transformed\jetified-lottie-6.1.0\AndroidManifest.xml:7:5-20
 MERGED from [com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0] C:\Users\T\.gradle\caches\8.13\transforms\7a7b5e3b941ccdb98c3910447a5545d2\transformed\jetified-play-services-mlkit-text-recognition-common-19.0.0\AndroidManifest.xml:8:5-16:19
 MERGED from [com.google.android.gms:play-services-mlkit-text-recognition-common:19.0.0] C:\Users\T\.gradle\caches\8.13\transforms\7a7b5e3b941ccdb98c3910447a5545d2\transformed\jetified-play-services-mlkit-text-recognition-common-19.0.0\AndroidManifest.xml:8:5-16:19
 MERGED from [com.google.mlkit:vision-common:17.3.0] C:\Users\T\.gradle\caches\8.13\transforms\03bb631c8cf7bf2fcca1f129041f3828\transformed\jetified-vision-common-17.3.0\AndroidManifest.xml:8:5-16:19
@@ -332,6 +336,10 @@ MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\T\.gradle\ca
 MERGED from [androidx.appcompat:appcompat-resources:1.6.1] C:\Users\T\.gradle\caches\8.13\transforms\95502d347c606c7626149706b82dd0b7\transformed\jetified-appcompat-resources-1.6.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] C:\Users\T\.gradle\caches\8.13\transforms\ea2447631097c44d315aafdb12284cd3\transformed\constraintlayout-2.0.1\AndroidManifest.xml:5:5-7:41
 MERGED from [androidx.constraintlayout:constraintlayout:2.0.1] C:\Users\T\.gradle\caches\8.13\transforms\ea2447631097c44d315aafdb12284cd3\transformed\constraintlayout-2.0.1\AndroidManifest.xml:5:5-7:41
+MERGED from [com.airbnb.android:lottie-compose:6.1.0] C:\Users\T\.gradle\caches\8.13\transforms\80b191f04ed33699a8b2cb9307eecb11\transformed\jetified-lottie-compose-6.1.0\AndroidManifest.xml:5:5-44
+MERGED from [com.airbnb.android:lottie-compose:6.1.0] C:\Users\T\.gradle\caches\8.13\transforms\80b191f04ed33699a8b2cb9307eecb11\transformed\jetified-lottie-compose-6.1.0\AndroidManifest.xml:5:5-44
+MERGED from [com.airbnb.android:lottie:6.1.0] C:\Users\T\.gradle\caches\8.13\transforms\f49011d7cc875e6b7e1cd8de64c5e53a\transformed\jetified-lottie-6.1.0\AndroidManifest.xml:5:5-44
+MERGED from [com.airbnb.android:lottie:6.1.0] C:\Users\T\.gradle\caches\8.13\transforms\f49011d7cc875e6b7e1cd8de64c5e53a\transformed\jetified-lottie-6.1.0\AndroidManifest.xml:5:5-44
 MERGED from [androidx.appcompat:appcompat:1.6.1] C:\Users\T\.gradle\caches\8.13\transforms\07ef72cc5ae07459ee69aa8c7cc00479\transformed\appcompat-1.6.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.appcompat:appcompat:1.6.1] C:\Users\T\.gradle\caches\8.13\transforms\07ef72cc5ae07459ee69aa8c7cc00479\transformed\appcompat-1.6.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.viewpager2:viewpager2:1.0.0] C:\Users\T\.gradle\caches\8.13\transforms\e1da4196c934d230fe1545984edcbcf3\transformed\jetified-viewpager2-1.0.0\AndroidManifest.xml:20:5-22:41

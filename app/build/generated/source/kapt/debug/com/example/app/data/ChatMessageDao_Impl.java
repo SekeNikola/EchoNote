@@ -42,7 +42,7 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `chat_messages` (`id`,`content`,`isUser`,`timestamp`,`sessionId`) VALUES (nullif(?, 0),?,?,?,?)";
+        return "INSERT OR REPLACE INTO `chat_messages` (`id`,`content`,`isUser`,`timestamp`,`sessionId`,`imageUri`) VALUES (nullif(?, 0),?,?,?,?,?)";
       }
 
       @Override
@@ -61,6 +61,11 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           statement.bindNull(5);
         } else {
           statement.bindString(5, entity.getSessionId());
+        }
+        if (entity.getImageUri() == null) {
+          statement.bindNull(6);
+        } else {
+          statement.bindString(6, entity.getImageUri());
         }
       }
     };
@@ -168,6 +173,7 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           final int _cursorIndexOfIsUser = CursorUtil.getColumnIndexOrThrow(_cursor, "isUser");
           final int _cursorIndexOfTimestamp = CursorUtil.getColumnIndexOrThrow(_cursor, "timestamp");
           final int _cursorIndexOfSessionId = CursorUtil.getColumnIndexOrThrow(_cursor, "sessionId");
+          final int _cursorIndexOfImageUri = CursorUtil.getColumnIndexOrThrow(_cursor, "imageUri");
           final List<ChatMessage> _result = new ArrayList<ChatMessage>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final ChatMessage _item;
@@ -191,7 +197,13 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
             } else {
               _tmpSessionId = _cursor.getString(_cursorIndexOfSessionId);
             }
-            _item = new ChatMessage(_tmpId,_tmpContent,_tmpIsUser,_tmpTimestamp,_tmpSessionId);
+            final String _tmpImageUri;
+            if (_cursor.isNull(_cursorIndexOfImageUri)) {
+              _tmpImageUri = null;
+            } else {
+              _tmpImageUri = _cursor.getString(_cursorIndexOfImageUri);
+            }
+            _item = new ChatMessage(_tmpId,_tmpContent,_tmpIsUser,_tmpTimestamp,_tmpSessionId,_tmpImageUri);
             _result.add(_item);
           }
           return _result;
@@ -228,6 +240,7 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           final int _cursorIndexOfIsUser = CursorUtil.getColumnIndexOrThrow(_cursor, "isUser");
           final int _cursorIndexOfTimestamp = CursorUtil.getColumnIndexOrThrow(_cursor, "timestamp");
           final int _cursorIndexOfSessionId = CursorUtil.getColumnIndexOrThrow(_cursor, "sessionId");
+          final int _cursorIndexOfImageUri = CursorUtil.getColumnIndexOrThrow(_cursor, "imageUri");
           final List<ChatMessage> _result = new ArrayList<ChatMessage>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final ChatMessage _item;
@@ -251,7 +264,13 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
             } else {
               _tmpSessionId = _cursor.getString(_cursorIndexOfSessionId);
             }
-            _item = new ChatMessage(_tmpId,_tmpContent,_tmpIsUser,_tmpTimestamp,_tmpSessionId);
+            final String _tmpImageUri;
+            if (_cursor.isNull(_cursorIndexOfImageUri)) {
+              _tmpImageUri = null;
+            } else {
+              _tmpImageUri = _cursor.getString(_cursorIndexOfImageUri);
+            }
+            _item = new ChatMessage(_tmpId,_tmpContent,_tmpIsUser,_tmpTimestamp,_tmpSessionId,_tmpImageUri);
             _result.add(_item);
           }
           return _result;

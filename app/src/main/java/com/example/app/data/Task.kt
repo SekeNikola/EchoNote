@@ -11,6 +11,7 @@ data class Task(
     val description: String,
     val priority: String = "Medium", // High, Medium, Low
     val dueDate: Long,
+    val duration: String = "",
     val isCompleted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
