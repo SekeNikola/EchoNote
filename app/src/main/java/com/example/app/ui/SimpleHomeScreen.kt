@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -41,6 +42,12 @@ import java.text.SimpleDateFormat
 import java.util.*
 import android.app.TimePickerDialog
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
+import java.io.File
+import com.example.app.ui.components.SimpleVoiceOrb
+import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +63,83 @@ fun SimpleHomeScreen(
     var aiInputText by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
+    
+    // Camera and file functionality
+    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // Camera launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        try {
+            if (success && capturedImageUri != null) {
+                selectedImageUri = capturedImageUri.toString()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SimpleHomeScreen", "Camera result error", e)
+        }
+    }
+    
+    // Gallery launcher
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        try {
+            uri?.let {
+                selectedImageUri = it.toString()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SimpleHomeScreen", "Gallery result error", e)
+        }
+    }
+    
+    // File picker launcher
+    val fileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        try {
+            uri?.let {
+                // Handle file selection - for now just log it
+                android.util.Log.d("SimpleHomeScreen", "File selected: $it")
+                // TODO: Add file processing logic here
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SimpleHomeScreen", "File picker result error", e)
+        }
+    }
+    
+    // Function to create temporary file for camera
+    fun createImageFile(): Uri? {
+        return try {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val imageFileName = "JPEG_${timeStamp}_"
+            
+            // Try external files directory first, then cache directory as fallback
+            val storageDir = context.getExternalFilesDir("Pictures") ?: context.cacheDir
+            
+            if (!storageDir.exists()) {
+                storageDir.mkdirs()
+            }
+            
+            val imageFile = File.createTempFile(imageFileName, ".jpg", storageDir)
+            
+            return try {
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    imageFile
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("SimpleHomeScreen", "FileProvider error, using file URI", e)
+                // Fallback to file URI if FileProvider fails
+                Uri.fromFile(imageFile)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("SimpleHomeScreen", "Error creating image file", e)
+            null
+        }
+    }
     
     // Handle incoming image from navigation
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
@@ -88,8 +172,7 @@ fun SimpleHomeScreen(
                     selectedImageUri?.let { uriString ->
                         Card(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .height(120.dp)
+                                .size(width = 160.dp, height = 120.dp)
                                 .padding(bottom = 12.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
@@ -101,7 +184,7 @@ fun SimpleHomeScreen(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .clip(RoundedCornerShape(12.dp)),
-                                    contentScale = ContentScale.Crop
+                                    contentScale = ContentScale.Fit
                                 )
                                 
                                 // Close button for image
@@ -171,7 +254,17 @@ fun SimpleHomeScreen(
                                         modifier = Modifier
                                             .clickable {
                                                 showDropDown = false
-                                                navController.navigate("image_preview?source=camera")
+                                                try {
+                                                    val tempUri = createImageFile()
+                                                    if (tempUri != null) {
+                                                        capturedImageUri = tempUri
+                                                        cameraLauncher.launch(tempUri)
+                                                    } else {
+                                                        android.util.Log.e("SimpleHomeScreen", "Failed to create image file for camera")
+                                                    }
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("SimpleHomeScreen", "Error launching camera", e)
+                                                }
                                             }
                                             .padding(12.dp)
                                     ) {
@@ -195,7 +288,11 @@ fun SimpleHomeScreen(
                                         modifier = Modifier
                                             .clickable {
                                                 showDropDown = false
-                                                navController.navigate("image_preview?source=gallery")
+                                                try {
+                                                    galleryLauncher.launch("image/*")
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("SimpleHomeScreen", "Error launching gallery", e)
+                                                }
                                             }
                                             .padding(12.dp)
                                     ) {
@@ -219,7 +316,11 @@ fun SimpleHomeScreen(
                                         modifier = Modifier
                                             .clickable {
                                                 showDropDown = false
-                                                // TODO: Handle file upload
+                                                try {
+                                                    fileLauncher.launch("*/*")
+                                                } catch (e: Exception) {
+                                                    android.util.Log.e("SimpleHomeScreen", "Error launching file picker", e)
+                                                }
                                             }
                                             .padding(12.dp)
                                     ) {
@@ -275,43 +376,55 @@ fun SimpleHomeScreen(
                                 ),
                                 singleLine = true,
                                 trailingIcon = {
-                                    Row {
-                                        if (aiInputText.isNotBlank()) {
-                                            IconButton(
-                                                onClick = {
-                                                    if (aiInputText.isNotBlank()) {
-                                                        // Navigate to AI chat with the typed text
-                                                        navController.currentBackStackEntry?.savedStateHandle?.set("initialMessage", aiInputText)
-                                                        selectedImageUri?.let {
-                                                            navController.currentBackStackEntry?.savedStateHandle?.set("selectedImageUri", it)
-                                                        }
-                                                        navController.navigate("ai_chat")
-                                                        aiInputText = ""
-                                                    }
-                                                }
-                                            ) {
-                                                Icon(
-                                                    Icons.Default.Send,
-                                                    contentDescription = "Send message",
-                                                    tint = Color(0xFF8B5CF6),
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                            }
-                                        }
+                                    if (aiInputText.isNotBlank()) {
+                                        // Show send icon when user is typing
                                         IconButton(
                                             onClick = {
-                                                // Handle voice input - could trigger voice recording
-                                                selectedImageUri?.let {
-                                                    navController.currentBackStackEntry?.savedStateHandle?.set("selectedImageUri", it)
+                                                if (aiInputText.isNotBlank()) {
+                                                    // Clear chat history to start fresh conversation
+                                                    viewModel.clearChatHistory()
+                                                    
+                                                    // Send the message directly to the AI and then navigate
+                                                    if (selectedImageUri != null) {
+                                                        viewModel.sendChatMessageWithImage(
+                                                            aiInputText,
+                                                            android.net.Uri.parse(selectedImageUri),
+                                                            context
+                                                        )
+                                                    } else {
+                                                        viewModel.sendChatMessage(aiInputText)
+                                                    }
+                                                    // Navigate to AI chat
+                                                    navController.navigate("ai_chat")
+                                                    aiInputText = ""
+                                                    selectedImageUri = null
                                                 }
-                                                navController.navigate("ai_chat")
                                             }
                                         ) {
                                             Icon(
-                                                Icons.Default.Mic,
-                                                contentDescription = "Voice input",
+                                                Icons.Default.Send,
+                                                contentDescription = "Send message",
                                                 tint = Color(0xFF8B5CF6),
                                                 modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    } else {
+                                        // Show mic icon when input is empty
+                                        IconButton(
+                                            onClick = {
+                                                // Clear chat history to start fresh voice conversation
+                                                viewModel.clearChatHistory()
+                                                
+                                                // Handle voice input - navigate to AI voice screen
+                                                selectedImageUri?.let {
+                                                    navController.currentBackStackEntry?.savedStateHandle?.set("selectedImageUri", it)
+                                                }
+                                                navController.navigate("ai_voice")
+                                            }
+                                        ) {
+                                            SimpleVoiceOrb(
+                                                size = 40.dp,
+                                                isActive = false
                                             )
                                         }
                                     }
@@ -696,7 +809,7 @@ fun NoteCard(
             Spacer(modifier = Modifier.height(4.dp))
             
             Text(
-                text = note.snippet,
+                text = extractSummaryFromSnippet(note.snippet),
                 fontSize = 12.sp,
                 color = Color(0xFFB0B0B0),
                 maxLines = 2,
@@ -755,6 +868,19 @@ fun getGreeting(): String {
         in 0..11 -> "Morning"
         in 12..17 -> "Afternoon"
         else -> "Evening"
+    }
+}
+
+fun extractSummaryFromSnippet(snippet: String): String {
+    return try {
+        if (snippet.startsWith("{") && snippet.contains("summary")) {
+            val json = org.json.JSONObject(snippet)
+            json.getString("summary")
+        } else {
+            snippet
+        }
+    } catch (e: Exception) {
+        snippet
     }
 }
 

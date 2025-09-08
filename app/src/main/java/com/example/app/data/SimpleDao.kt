@@ -11,6 +11,9 @@ interface TaskDao {
     @Query("SELECT * FROM tasks ORDER BY dueDate ASC")
     fun getAllTasks(): Flow<List<Task>>
 
+    @Query("SELECT * FROM tasks ORDER BY dueDate ASC")
+    suspend fun getAllTasksOnce(): List<Task>
+
     @Query("SELECT * FROM tasks WHERE isCompleted = 0 ORDER BY dueDate ASC")
     fun getActiveTasks(): Flow<List<Task>>
 

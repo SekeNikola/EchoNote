@@ -303,6 +303,77 @@ public final class TaskDao_Impl implements TaskDao {
   }
 
   @Override
+  public Object getAllTasksOnce(final Continuation<? super List<Task>> $completion) {
+    final String _sql = "SELECT * FROM tasks ORDER BY dueDate ASC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<Task>>() {
+      @Override
+      @NonNull
+      public List<Task> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
+          final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
+          final int _cursorIndexOfPriority = CursorUtil.getColumnIndexOrThrow(_cursor, "priority");
+          final int _cursorIndexOfDueDate = CursorUtil.getColumnIndexOrThrow(_cursor, "dueDate");
+          final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
+          final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
+          final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
+          final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
+          final List<Task> _result = new ArrayList<Task>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final Task _item;
+            final long _tmpId;
+            _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpTitle;
+            if (_cursor.isNull(_cursorIndexOfTitle)) {
+              _tmpTitle = null;
+            } else {
+              _tmpTitle = _cursor.getString(_cursorIndexOfTitle);
+            }
+            final String _tmpDescription;
+            if (_cursor.isNull(_cursorIndexOfDescription)) {
+              _tmpDescription = null;
+            } else {
+              _tmpDescription = _cursor.getString(_cursorIndexOfDescription);
+            }
+            final String _tmpPriority;
+            if (_cursor.isNull(_cursorIndexOfPriority)) {
+              _tmpPriority = null;
+            } else {
+              _tmpPriority = _cursor.getString(_cursorIndexOfPriority);
+            }
+            final long _tmpDueDate;
+            _tmpDueDate = _cursor.getLong(_cursorIndexOfDueDate);
+            final String _tmpDuration;
+            if (_cursor.isNull(_cursorIndexOfDuration)) {
+              _tmpDuration = null;
+            } else {
+              _tmpDuration = _cursor.getString(_cursorIndexOfDuration);
+            }
+            final boolean _tmpIsCompleted;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
+            _tmpIsCompleted = _tmp != 0;
+            final long _tmpCreatedAt;
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
+            final long _tmpUpdatedAt;
+            _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
   public Flow<List<Task>> getActiveTasks() {
     final String _sql = "SELECT * FROM tasks WHERE isCompleted = 0 ORDER BY dueDate ASC";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);

@@ -24,6 +24,7 @@ class NoteRepository(
     
     // Task operations
     fun getAllTasks(): Flow<List<Task>> = taskDao.getAllTasks()
+    suspend fun getAllTasksOnce(): List<Task> = taskDao.getAllTasksOnce()
     fun getActiveTasks(): Flow<List<Task>> = taskDao.getActiveTasks()
     suspend fun insertTask(task: Task) = taskDao.insert(task)
     suspend fun updateTask(task: Task) = taskDao.update(task)

@@ -628,13 +628,43 @@ fun ChatMessageItem(
                 bottomEnd = if (isUser) 4.dp else 16.dp
             )
         ) {
-            Text(
-                text = message.content,
-                fontSize = 15.sp,
-                color = Color.White,
-                lineHeight = 20.sp,
+            Column(
                 modifier = Modifier.padding(16.dp)
-            )
+            ) {
+                // Show image thumbnail if imageUri exists
+                message.imageUri?.let { imageUri ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Black.copy(alpha = 0.1f))
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(imageUri)
+                                .build(),
+                            contentDescription = "Shared image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                    
+                    if (message.content.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+                
+                // Show text content if not empty
+                if (message.content.isNotBlank()) {
+                    Text(
+                        text = message.content,
+                        fontSize = 15.sp,
+                        color = Color.White,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
         }
         
         if (isUser) {

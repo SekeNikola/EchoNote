@@ -45,6 +45,7 @@ fun AiVoiceScreen(
     
     // Auto-start listening when screen opens and start new session
     LaunchedEffect(Unit) {
+        viewModel.clearVoiceSession() // Clear previous conversation
         viewModel.startListening(context)
     }
     

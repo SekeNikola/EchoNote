@@ -1149,7 +1149,7 @@ Output:
     // Helper function to convert bitmap to base64 for OpenAI Vision API
     private fun bitmapToBase64(bitmap: android.graphics.Bitmap): String {
         // Resize bitmap if it's too large to avoid API limits and reduce processing time
-        val maxSize = 1024 // Maximum width or height
+        val maxSize = 1536 // Increased maximum size for better object recognition
         val resizedBitmap = if (bitmap.width > maxSize || bitmap.height > maxSize) {
             val ratio = minOf(maxSize.toFloat() / bitmap.width, maxSize.toFloat() / bitmap.height)
             val newWidth = (bitmap.width * ratio).toInt()
@@ -1162,8 +1162,8 @@ Output:
         }
         
         val outputStream = java.io.ByteArrayOutputStream()
-        // Use higher quality for better analysis, but not max to keep file size reasonable
-        resizedBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, outputStream)
+        // Use higher quality for better object recognition
+        resizedBitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 90, outputStream)
         val byteArray = outputStream.toByteArray()
         val base64String = android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP)
         
@@ -1193,22 +1193,30 @@ Output:
 
                 // Create a comprehensive prompt for image analysis
                 val prompt = buildString {
-                    append("You are a helpful assistant analyzing an image. Please provide a conversational, detailed description of what you see, ")
-                    append("as if you're casually explaining it to a friend. Be specific about:")
-                    append("\n- What objects, products, or items you can identify")
-                    append("\n- Any text, brands, or labels visible")
-                    append("\n- The context and purpose of what's shown")
-                    append("\n- Any useful information someone might want to know")
-                    append("\n\nWrite in a natural, conversational tone - not like a formal report. ")
-                    append("If you recognize specific products, brands, or items, explain what they are and provide context about them.")
+                    append("You are an expert at identifying objects, products, and items in images. Analyze this image carefully and provide a detailed, conversational description.")
+                    append("\n\nBe very specific about:")
+                    append("\n- EXACTLY what objects you can identify (if it's a mouse, say 'computer mouse' or 'PC mouse')")
+                    append("\n- Brand names, model numbers, or product labels you can see")
+                    append("\n- Colors, materials, and design features")
+                    append("\n- The purpose and function of items shown")
+                    append("\n- Any technical specifications or features visible")
+                    append("\n- Text, logos, or markings on the items")
+                    
+                    append("\n\nIMPORTANT: Don't use generic terms. Instead of saying 'device' or 'object', identify the specific item:")
+                    append("\n- If it's a computer mouse, say 'computer mouse' or 'PC mouse'")
+                    append("\n- If it's a keyboard, say 'keyboard'")
+                    append("\n- If it's a phone, identify the brand and model if possible")
+                    append("\n- If it's food, name the specific food item")
+                    append("\n- If it's an app interface, identify the app name")
+                    
+                    append("\n\nWrite in a natural, conversational tone. Be confident in your identifications - if you can clearly see it's a mouse, say so definitively.")
                     
                     if (extractedText.isNotBlank()) {
                         append("\n\nI can also see this text in the image: \"$extractedText\". ")
-                        append("Please help clean up any OCR errors and incorporate this text naturally into your description, ")
-                        append("explaining what role this text plays in the context of the image.")
+                        append("Use this text to help identify brands, models, or provide additional context about what's shown.")
                     }
                     
-                    append("\n\nIf there are any actionable items, recommendations, or things worth noting, mention those too in a helpful way.")
+                    append("\n\nIf you can identify where someone might buy this item or similar products, mention that as well.")
                 }
 
                 // Updated to use gpt-4o which supports vision
@@ -1232,8 +1240,8 @@ Output:
                             })
                         })
                     })
-                    put("max_tokens", 1500)  // Increased for more detailed descriptions
-                    put("temperature", 0.7)
+                    put("max_tokens", 2000)  // Increased for more detailed object identification
+                    put("temperature", 0.3)  // Lower temperature for more consistent, accurate identification
                 }
 
                 Log.d("NoteViewModel", "Sending request to OpenAI Vision API...")
@@ -1534,53 +1542,63 @@ Output:
             
             // Prepare messages for OpenAI
             val messages = mutableListOf<Message>()
+            
+            // Check if there are recent images in the conversation for better context
+            val recentMessagesWithImages = _chatMessages.value.takeLast(10)
+            val hasRecentImages = recentMessagesWithImages.any { !it.imageUri.isNullOrEmpty() }
+            
             messages.add(Message(role = "system", content = """
-                You are Logion AI, a friendly and intelligent personal assistant specializing in note-taking and productivity. 
+                You are Logion AI, a friendly and helpful personal assistant. 
                 
                 Current context: It's currently $timeContext time for the user.
                 
-                Your personality:
-                - Warm, approachable, and genuinely helpful
-                - Conversational and natural, like talking to a knowledgeable friend
-                - Enthusiastic about helping users stay organized and productive
-                - Use casual, friendly language while remaining professional
-                - Occasionally use gentle humor when appropriate
-                - Show empathy and understanding for user challenges
-                - Adapt your greeting and tone based on the time of day
+                IMPORTANT: ${if (hasRecentImages) {
+                    "The user has shared images in this recent conversation. When they ask follow-up questions about images, refer back to the detailed descriptions you provided earlier. You CAN see and remember images that were shared."
+                } else {
+                    "You can see and analyze images when users share them."
+                }}
                 
-                Your capabilities:
-                1. **Note Organization**: Help create, categorize, and structure notes effectively
-                2. **Task Management**: Convert ideas into actionable tasks with priorities and deadlines
-                3. **Content Analysis**: Extract key insights from documents, images, and conversations
-                4. **Productivity Coaching**: Offer tips and strategies for better organization
-                5. **General Assistance**: Answer questions and provide helpful information
+                Your role:
+                - Have natural, helpful conversations with users
+                - Answer questions directly and accurately
+                - When users share images, describe what you see clearly and remember the image for follow-up questions
+                - If users ask follow-up questions about images they shared earlier in the conversation, reference the specific details you described before
+                - Stay focused on the current conversation topic
+                - Don't automatically offer to create notes or save things unless specifically asked
+                - Be conversational and engaging
                 
-                IMPORTANT NOTE-TAKING GUIDELINES:
-                - When users ask to "make a note", "save this as a note", "create a note", or similar requests, respond with:
-                  "I'll create a note from our conversation! Let me summarize what we've discussed and save it for you."
-                - Then briefly summarize the key points from the conversation before confirming the note will be saved
-                - For general conversation, engage naturally without rushing to create notes
-                - Only suggest creating notes when users share substantial content or explicitly request it
-                - If creating lists, help them build it step by step before offering to save
-                - Let conversations flow naturally and let users decide when they want to save content
+                Key behaviors:
+                - Answer the user's current question directly - don't repeat previous responses
+                - Each response should be unique and address the specific question being asked
+                - If they ask about an image they shared, refer to the specific details from your previous analysis
+                - If they ask follow-up questions, provide NEW information or answer from a different angle
+                - If they ask "what is this" about an image, be very specific (e.g., "computer mouse", "wireless mouse", "gaming mouse")
+                - If they ask where to buy something, provide helpful shopping advice based on what you identified
+                - Remember images shared in this conversation and reference specific details you mentioned before
+                - Only mention note-taking or saving when the user explicitly asks for it
+                - Keep responses focused and relevant to what the user just asked
+                - Don't repeat the same answer - always provide fresh, relevant information
+                - When referencing previous images, be specific about what you saw (brands, objects, text, etc.)
                 
-                Communication style:
-                - Use "I'd be happy to..." instead of "I can..."
-                - Ask follow-up questions to better understand user needs
-                - Provide specific, actionable suggestions
-                - Acknowledge user efforts and celebrate progress
-                - Use contractions and natural speech patterns
-                - Keep responses conversational but focused
-                - Use appropriate greetings for the time of day (Good $timeContext!)
-                
-                Remember: You're not just a tool—you're a helpful companion on their productivity journey. When users want to save content, acknowledge their request and summarize what you'll be saving for them.
+                Remember: You CAN see images that users share with you. If they shared an image earlier and ask follow-up questions, reference the specific details you described about that image.
             """.trimIndent()))
             
-            // Add recent chat history (last 10 messages)
-            _chatMessages.value.takeLast(10).forEach { chatMsg ->
+            // Add recent chat history (last 10 messages) with image context
+            recentMessagesWithImages.forEach { chatMsg ->
+                val messageContent = if (chatMsg.imageUri.isNullOrEmpty()) {
+                    chatMsg.content
+                } else {
+                    if (chatMsg.isUser) {
+                        "${chatMsg.content} [User shared an image: ${chatMsg.imageUri}]"
+                    } else {
+                        // This is the AI's response to an image - keep the full detailed description
+                        chatMsg.content
+                    }
+                }
+                
                 messages.add(Message(
                     role = if (chatMsg.isUser) "user" else "assistant",
-                    content = chatMsg.content
+                    content = messageContent
                 ))
             }
             
@@ -1592,6 +1610,9 @@ Output:
             // Add AI response
             val aiMessage = ChatMessage(content = aiResponse, isUser = false)
             repository.insertChatMessage(aiMessage)
+            
+            // Check for note/task creation requests in text chat too
+            checkForNoteTaskCreation(message, aiResponse)
             
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error sending chat message", e)
@@ -1605,9 +1626,160 @@ Output:
         }
     }
     
+    // Helper function to check for note/task creation in both voice and text chat
+    private suspend fun checkForNoteTaskCreation(userMessage: String, aiResponse: String) {
+        val userWantsNote = userMessage.contains("create a note", ignoreCase = true) ||
+                           userMessage.contains("make a note", ignoreCase = true) ||
+                           userMessage.contains("save this", ignoreCase = true) ||
+                           userMessage.contains("note this", ignoreCase = true) ||
+                           userMessage.contains("write this down", ignoreCase = true) ||
+                           userMessage.contains("save as a note", ignoreCase = true) ||
+                           userMessage.contains("note down", ignoreCase = true)
+        
+        val userWantsTask = userMessage.contains("create a task", ignoreCase = true) ||
+                           userMessage.contains("make a task", ignoreCase = true) ||
+                           userMessage.contains("add a task", ignoreCase = true) ||
+                           userMessage.contains("task to", ignoreCase = true) ||
+                           userMessage.contains("remind me to", ignoreCase = true) ||
+                           userMessage.contains("need to do", ignoreCase = true)
+        
+        val aiConfirmsNote = aiResponse.contains("I'll create a note", ignoreCase = true) ||
+                            aiResponse.contains("I'll make a note", ignoreCase = true) ||
+                            aiResponse.contains("creating a note", ignoreCase = true) ||
+                            aiResponse.contains("making a note", ignoreCase = true)
+        
+        val aiConfirmsTask = aiResponse.contains("I'll create a task", ignoreCase = true) ||
+                            aiResponse.contains("creating a task", ignoreCase = true) ||
+                            aiResponse.contains("I'll make a task", ignoreCase = true) ||
+                            aiResponse.contains("making a task", ignoreCase = true)
+        
+        // Priority: explicit user intent > AI confirmation
+        when {
+            userWantsTask || aiConfirmsTask -> {
+                createTaskFromChat(userMessage, aiResponse)
+            }
+            userWantsNote || aiConfirmsNote -> {
+                saveChatAsNote(userMessage, aiResponse)
+            }
+            // If neither is explicitly requested, don't create anything - just chat
+        }
+    }
+    
+    // Create task from regular chat
+    private suspend fun createTaskFromChat(userMessage: String, aiResponse: String) {
+        try {
+            // Extract task content from user message
+            val taskContent = extractTaskFromMessage(userMessage)
+            
+            val task = Task(
+                title = taskContent.take(100), // Limit title length
+                description = "", // Remove automatic descriptions
+                priority = "Medium",
+                dueDate = System.currentTimeMillis(), // Set to today so it shows up in "Today's Tasks"
+                duration = "",
+                isCompleted = false,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
+            )
+            
+            repository.insertTask(task)
+            Log.d("NoteViewModel", "Created task from chat: ${task.title}")
+            Log.d("NoteViewModel", "Task due date: ${task.dueDate}, current time: ${System.currentTimeMillis()}")
+            
+            // Refresh tasks list to ensure it shows up immediately
+            loadTasks()
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating task from chat", e)
+        }
+    }
+    
+    // Extract the actual task content from a message containing task creation request
+    private fun extractTaskFromMessage(message: String): String {
+        // If the message is just "task please" or similar, check conversation history
+        if (message.trim().lowercase().matches(Regex("task\\s*please?|task|please"))) {
+            // Look for task content in recent chat history
+            val recentMessages = _chatMessages.value.takeLast(5)
+            for (chatMessage in recentMessages.reversed()) {
+                if (chatMessage.isUser) {
+                    val extractedFromHistory = extractTaskFromMessageContent(chatMessage.content)
+                    if (extractedFromHistory != chatMessage.content && extractedFromHistory.isNotBlank()) {
+                        return extractedFromHistory
+                    }
+                }
+            }
+            return "New task"
+        }
+        
+        return extractTaskFromMessageContent(message)
+    }
+    
+    private fun extractTaskFromMessageContent(message: String): String {
+        // Common patterns for task creation requests
+        val patterns = listOf(
+            // "I need to fix the car" -> "fix the car"
+            Regex("I\\s+need\\s+to\\s+(.+?)(?:\\s+(?:create|make|add)\\s+(?:a\\s+)?task.*?|$)", RegexOption.IGNORE_CASE),
+            // "I have to fix the car" -> "fix the car"
+            Regex("I\\s+have\\s+to\\s+(.+?)(?:\\s+(?:create|make|add)\\s+(?:a\\s+)?task.*?|$)", RegexOption.IGNORE_CASE),
+            // "I want to fix the car" -> "fix the car"
+            Regex("I\\s+want\\s+to\\s+(.+?)(?:\\s+(?:create|make|add)\\s+(?:a\\s+)?task.*?|$)", RegexOption.IGNORE_CASE),
+            // "I should fix the car" -> "fix the car"
+            Regex("I\\s+should\\s+(.+?)(?:\\s+(?:create|make|add)\\s+(?:a\\s+)?task.*?|$)", RegexOption.IGNORE_CASE),
+            // "create a task to fix the car" -> "fix the car"
+            Regex("(?:create|make|add)\\s+(?:a\\s+)?task\\s+to\\s+(.+)", RegexOption.IGNORE_CASE),
+            // "create a task for fixing the car" -> "fixing the car"
+            Regex("(?:create|make|add)\\s+(?:a\\s+)?task\\s+for\\s+(.+)", RegexOption.IGNORE_CASE),
+            // "fix the car create a task for that" -> "fix the car"
+            Regex("(.+?)\\s+(?:create|make|add)\\s+(?:a\\s+)?task", RegexOption.IGNORE_CASE)
+        )
+        
+        // Try each pattern to extract task content
+        for (pattern in patterns) {
+            val match = pattern.find(message)
+            if (match != null) {
+                val extracted = match.groupValues[1].trim()
+                if (extracted.isNotBlank() && !extracted.matches(Regex("\\b(?:that|this|it|please)\\b", RegexOption.IGNORE_CASE))) {
+                    return extracted
+                }
+            }
+        }
+        
+        // If no pattern matches, clean up the message
+        val cleanedMessage = message
+            .replace(Regex("(?:create|make|add)\\s+(?:a\\s+)?task", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("\\b(?:for\\s+)?(?:that|this|it)\\b", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("\\bplease\\b", RegexOption.IGNORE_CASE), "")
+            .trim()
+            .replace(Regex("\\s+"), " ") // Normalize whitespace
+        
+        return if (cleanedMessage.isNotBlank()) cleanedMessage else message.take(50)
+    }
+    
+    // Save chat conversation as note
+    private suspend fun saveChatAsNote(userMessage: String, aiResponse: String) {
+        try {
+            val note = Note(
+                title = "Chat Note - ${java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}",
+                snippet = "User: $userMessage",
+                transcript = "User: $userMessage\n\nAI: $aiResponse",
+                createdAt = System.currentTimeMillis()
+            )
+            
+            repository.insertNote(note)
+            Log.d("NoteViewModel", "Saved chat as note: ${note.title}")
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error saving chat as note", e)
+        }
+    }
+
     fun sendChatMessageWithImage(message: String, imageUri: android.net.Uri, context: android.content.Context) = viewModelScope.launch {
-        // Add user message with image context
-        val userMessage = ChatMessage(content = "$message [Image uploaded]", isUser = true)
+        // Add user message with image context - store the imageUri for thumbnail display
+        val userMessage = ChatMessage(
+            content = if (message.isBlank()) "I've shared an image with you" else message,
+            isUser = true,
+            imageUri = imageUri.toString()
+        )
         repository.insertChatMessage(userMessage)
         
         // Set loading state
@@ -1623,55 +1795,83 @@ Output:
                 // Get image analysis from OpenAI Vision API
                 val imageAnalysis = analyzeImageWithVision(bitmap)
                 
-                // Also extract any text with OCR
+                // Also extract any text with OCR for additional context
                 val ocrText = performOCRRaw(imageUri, context)
                 
-                // Combine image analysis and OCR text
-                val imageContext = buildString {
-                    appendLine("Image Analysis: $imageAnalysis")
-                    if (ocrText.isNotBlank()) {
-                        appendLine("Text found in image: $ocrText")
+                // If the user didn't provide a message, use the image analysis directly
+                // If they did provide a message, combine their question with the image analysis
+                val aiResponse = if (message.isBlank() || message == "I've shared an image with you") {
+                    // User just shared an image without a specific question
+                    buildString {
+                        append(imageAnalysis)
+                        if (ocrText.isNotBlank()) {
+                            append("\n\nI can also see this text in the image: \"$ocrText\"")
+                        }
                     }
+                } else {
+                    // User asked a specific question about the image
+                    // Get current hour for contextual greetings
+                    val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+                    val timeContext = when (currentHour) {
+                        in 5..11 -> "morning"
+                        in 12..17 -> "afternoon" 
+                        in 18..21 -> "evening"
+                        else -> "night"
+                    }
+                    
+                    // Create detailed context for the question
+                    val imageContext = buildString {
+                        append("Based on what I can see in the image: $imageAnalysis")
+                        if (ocrText.isNotBlank()) {
+                            append("\nText visible in the image: \"$ocrText\"")
+                        }
+                    }
+                    
+                    // Use GPT to answer the specific question with image context
+                    val messages = mutableListOf<Message>()
+                    messages.add(Message(role = "system", content = """
+                        You are Logion AI, a helpful assistant that can analyze images and answer questions about them.
+                        
+                        Current context: It's currently $timeContext time for the user.
+                        
+                        The user has uploaded an image and asked a question about it. Here's what I can see in the image:
+                        $imageContext
+                        
+                        Answer their question based on what you can see in the image. Be specific, helpful, and conversational.
+                        
+                        Remember this image analysis for any follow-up questions in this conversation.
+                    """.trimIndent()))
+                    
+                    // Add recent chat history (last 5 messages for context) with image awareness
+                    _chatMessages.value.takeLast(5).forEach { chatMsg ->
+                        val messageContent = if (chatMsg.imageUri.isNullOrEmpty()) {
+                            chatMsg.content
+                        } else {
+                            if (chatMsg.isUser) {
+                                "${chatMsg.content} [User shared an image in this message]"
+                            } else {
+                                chatMsg.content
+                            }
+                        }
+                        
+                        messages.add(Message(
+                            role = if (chatMsg.isUser) "user" else "assistant",
+                            content = messageContent
+                        ))
+                    }
+                    
+                    val request = GPTRequest(messages = messages)
+                    val response = RetrofitInstance.api.summarizeText(request)
+                    response.body()?.choices?.firstOrNull()?.message?.content?.trim() 
+                        ?: "I can see the image you uploaded. Based on what I see: $imageAnalysis"
                 }
                 
-                // Get current hour for contextual greetings
-                val currentHour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-                val timeContext = when (currentHour) {
-                    in 5..11 -> "morning"
-                    in 12..17 -> "afternoon" 
-                    in 18..21 -> "evening"
-                    else -> "night"
-                }
-                
-                // Prepare messages for OpenAI with image context
-                val messages = mutableListOf<Message>()
-                messages.add(Message(role = "system", content = """
-                    You are Logion AI, a helpful assistant that can analyze images and answer questions about them.
-                    
-                    Current context: It's currently $timeContext time for the user.
-                    
-                    The user has uploaded an image. Here's what I can see in the image:
-                    $imageContext
-                    
-                    Please respond to their question about the image in a natural, helpful way. If they ask "what is this" or similar, describe what you see in the image. Be conversational and friendly.
-                """.trimIndent()))
-                
-                // Add recent chat history (last 5 messages for context)
-                _chatMessages.value.takeLast(5).forEach { chatMsg ->
-                    messages.add(Message(
-                        role = if (chatMsg.isUser) "user" else "assistant",
-                        content = chatMsg.content
-                    ))
-                }
-                
-                val request = GPTRequest(messages = messages)
-                val response = RetrofitInstance.api.summarizeText(request)
-                val aiResponse = response.body()?.choices?.firstOrNull()?.message?.content?.trim() 
-                    ?: "I can see the image you uploaded. How can I help you with it?"
-                
-                // Add AI response
+                // Add AI response with the image analysis
                 val aiMessage = ChatMessage(content = aiResponse, isUser = false)
                 repository.insertChatMessage(aiMessage)
+                
+                // Check for note/task creation requests in image messages too
+                checkForNoteTaskCreation(message, aiResponse)
                 
             } else {
                 // Fallback if image can't be processed
@@ -1703,6 +1903,12 @@ Output:
     }
 
     // ======================= VOICE INTERFACE FUNCTIONALITY =======================
+    
+    // Clear voice session to start fresh conversation
+    fun clearVoiceSession() {
+        _voiceSessionHistory.value = emptyList()
+        _voiceText.value = ""
+    }
     
     fun startListening(context: Context) {
         if (_isListening.value || _isProcessing.value) return
@@ -2108,69 +2314,211 @@ Output:
         }
     }
     
-    private suspend fun createTaskFromVoice(originalText: String, aiResponse: String) {
-        try {
-            // Extract task details from the original text
-            val title = extractTaskTitle(originalText)
-            val description = aiResponse.ifBlank { originalText }
-            val priority = extractPriority(originalText)
-            val dueDate = extractDueDate(originalText)
+    // Smart task detection with conversation context
+    private fun detectTaskIntent(text: String, aiResponse: String, recentHistory: List<ChatMessage>): Boolean {
+        val lowerText = text.lowercase().trim()
+        
+        // Direct task creation requests
+        val userWantsTask = text.contains("create a task", ignoreCase = true) ||
+                           text.contains("make a task", ignoreCase = true) ||
+                           text.contains("add a task", ignoreCase = true) ||
+                           text.contains("task for that", ignoreCase = true) ||
+                           text.contains("task please", ignoreCase = true) ||
+                           text.matches(Regex(".*\\btask\\b.*", RegexOption.IGNORE_CASE))
+        
+        // Check if AI asked about creating a task and user confirmed
+        val aiAskedAboutTask = recentHistory.takeLast(3).any { message ->
+            !message.isUser && (
+                message.content.contains("create a task", ignoreCase = true) ||
+                message.content.contains("Should I create a task", ignoreCase = true) ||
+                message.content.contains("want a task", ignoreCase = true) ||
+                message.content.contains("task for this", ignoreCase = true) ||
+                message.content.contains("save it as a note", ignoreCase = true) // This usually comes with task option
+            )
+        }
+        
+        // User confirmations after AI asked about task
+        val userConfirmsTask = aiAskedAboutTask && (
+            lowerText == "yes" ||
+            lowerText == "task" ||
+            lowerText == "create task" ||
+            lowerText == "make task" ||
+            lowerText == "task please" ||
+            lowerText.contains("yes") && lowerText.contains("task") ||
+            lowerText.startsWith("yes") ||
+            lowerText == "sure" ||
+            lowerText == "ok" ||
+            lowerText == "okay"
+        )
+        
+        // AI confirms task creation
+        val aiConfirmsTask = aiResponse.contains("creating task", ignoreCase = true) ||
+                            aiResponse.contains("I'll create a task", ignoreCase = true) ||
+                            aiResponse.contains("got it", ignoreCase = true) && (userWantsTask || userConfirmsTask)
+        
+        Log.d("NoteViewModel", "Task detection - userWantsTask: $userWantsTask, userConfirmsTask: $userConfirmsTask, aiConfirmsTask: $aiConfirmsTask, aiAskedAboutTask: $aiAskedAboutTask")
+        Log.d("NoteViewModel", "Text: '$text', AI Response: '$aiResponse'")
+        
+        return userWantsTask || userConfirmsTask || aiConfirmsTask
+    }
+    
+    // Smart note detection 
+    private fun detectNoteIntent(text: String, aiResponse: String): Boolean {
+        val userWantsNote = text.contains("create a note", ignoreCase = true) ||
+                           text.contains("make a note", ignoreCase = true) ||
+                           text.contains("save as note", ignoreCase = true) ||
+                           text.contains("note this", ignoreCase = true)
+        
+        val aiConfirmsNote = aiResponse.contains("creating a note", ignoreCase = true) ||
+                            aiResponse.contains("I'll create a note", ignoreCase = true)
+        
+        return userWantsNote || aiConfirmsNote
+    }
+    
+    // Extract task content with conversation context awareness
+    private fun extractTaskFromConversation(currentText: String, recentHistory: List<ChatMessage>): String {
+        Log.d("NoteViewModel", "Extracting task from: '$currentText'")
+        Log.d("NoteViewModel", "Recent history size: ${recentHistory.size}")
+        
+        // Check if current text is a confirmation (yes, task, etc.)
+        val isConfirmation = currentText.trim().lowercase().matches(
+            Regex("^(yes|yeah|yep|yup|sure|ok|okay|please|task please|create task|make task|add task|task|do it|go ahead|let's do it).*", RegexOption.IGNORE_CASE)
+        )
+        
+        Log.d("NoteViewModel", "Is confirmation: $isConfirmation")
+        
+        if (isConfirmation) {
+            Log.d("NoteViewModel", "Current message is a confirmation, searching conversation for actual task...")
             
-            val newTask = Task(
-                id = System.currentTimeMillis(), // Simple ID generation
-                title = title,
-                description = description,
-                priority = priority,
-                dueDate = dueDate
+            // Look for the actual task content in recent conversation
+            for (message in recentHistory.reversed()) {
+                Log.d("NoteViewModel", "Checking history: isUser=${message.isUser}, content='${message.content}'")
+                if (message.isUser && message.content != currentText) {
+                    val taskFromHistory = extractMainActionFromMessage(message.content)
+                    Log.d("NoteViewModel", "Extracted from '${message.content}': '$taskFromHistory'")
+                    
+                    if (taskFromHistory.isNotBlank()) {
+                        Log.d("NoteViewModel", "Found task in conversation history: '$taskFromHistory'")
+                        return taskFromHistory
+                    }
+                }
+            }
+            
+            Log.d("NoteViewModel", "No task found in history, using fallback for confirmation")
+            return "New task"
+        }
+        
+        // Not a confirmation - try direct extraction
+        val directExtraction = extractTaskFromMessageContent(currentText)
+        Log.d("NoteViewModel", "Direct extraction: '$directExtraction'")
+        
+        if (directExtraction != currentText && directExtraction.isNotBlank() && 
+            !directExtraction.matches(Regex("\\b(?:new task|task|please|that|this)\\b", RegexOption.IGNORE_CASE))) {
+            Log.d("NoteViewModel", "Using direct extraction: '$directExtraction'")
+            return directExtraction
+        }
+        
+        // Look for task content in recent conversation anyway
+        for (message in recentHistory.reversed()) {
+            Log.d("NoteViewModel", "Checking history message: isUser=${message.isUser}, content='${message.content}'")
+            if (message.isUser) {
+                val taskFromHistory = extractMainActionFromMessage(message.content)
+                Log.d("NoteViewModel", "Extracted from history: '$taskFromHistory'")
+                if (taskFromHistory.isNotBlank() && taskFromHistory != message.content) {
+                    Log.d("NoteViewModel", "Found task content in history: '$taskFromHistory' from message: '${message.content}'")
+                    return taskFromHistory
+                }
+            }
+        }
+        
+        // Fallback: clean up current text
+        val fallback = extractTaskFromMessageContent(currentText).ifBlank { "New task" }
+        Log.d("NoteViewModel", "Using fallback: '$fallback'")
+        return fallback
+    }
+    
+    // Extract the main action from a message (what the user wants to do)
+    private fun extractMainActionFromMessage(message: String): String {
+        val patterns = listOf(
+            // "I need to go to grocery store" -> "go to grocery store"
+            Regex("I\\s+need\\s+to\\s+(.+?)(?:\\s+(?:create|make|add|save|note|task).*?|[.!?]|$)", RegexOption.IGNORE_CASE),
+            // "I have to go to grocery store" -> "go to grocery store"
+            Regex("I\\s+have\\s+to\\s+(.+?)(?:\\s+(?:create|make|add|save|note|task).*?|[.!?]|$)", RegexOption.IGNORE_CASE),
+            // "I want to go to grocery store" -> "go to grocery store"
+            Regex("I\\s+want\\s+to\\s+(.+?)(?:\\s+(?:create|make|add|save|note|task).*?|[.!?]|$)", RegexOption.IGNORE_CASE),
+            // "I should go to grocery store" -> "go to grocery store"
+            Regex("I\\s+should\\s+(.+?)(?:\\s+(?:create|make|add|save|note|task).*?|[.!?]|$)", RegexOption.IGNORE_CASE),
+            // "I must go to grocery store" -> "go to grocery store"
+            Regex("I\\s+must\\s+(.+?)(?:\\s+(?:create|make|add|save|note|task).*?|[.!?]|$)", RegexOption.IGNORE_CASE),
+            // "I gotta go to grocery store" -> "go to grocery store"
+            Regex("I\\s+(?:gotta|got to)\\s+(.+?)(?:\\s+(?:create|make|add|save|note|task).*?|[.!?]|$)", RegexOption.IGNORE_CASE),
+            // "remind me to go to grocery store" -> "go to grocery store"
+            Regex("(?:remind me to|don't forget to)\\s+(.+?)(?:\\s+(?:create|make|add|save|note|task).*?|[.!?]|$)", RegexOption.IGNORE_CASE),
+            // "go to grocery store" (direct action) -> "go to grocery store"
+            Regex("^((?:go to|visit|buy|get|pick up|call|email|fix|repair|clean|organize|schedule|book|cancel|update)\\s+.+?)(?:\\s+(?:create|make|add|save|note|task).*?|[.!?]|$)", RegexOption.IGNORE_CASE)
+        )
+        
+        for (pattern in patterns) {
+            val match = pattern.find(message)
+            if (match != null) {
+                val extracted = match.groupValues[1].trim()
+                if (extracted.isNotBlank()) {
+                    Log.d("NoteViewModel", "Extracted action: '$extracted' from message: '$message'")
+                    return extracted
+                }
+            }
+        }
+        
+        Log.d("NoteViewModel", "No action pattern matched for: '$message'")
+        return ""
+    }
+    
+    // Create task with proper context and single voice response
+    private suspend fun createTaskFromVoiceContext(taskContent: String, originalText: String, aiResponse: String) {
+        Log.d("NoteViewModel", "=== CREATING TASK FROM VOICE CONTEXT ===")
+        Log.d("NoteViewModel", "Task content: '$taskContent'")
+        Log.d("NoteViewModel", "Original text: '$originalText'")
+        
+        try {
+            val task = Task(
+                title = taskContent.take(100),
+                description = "", // Remove automatic descriptions
+                priority = "Medium",
+                dueDate = System.currentTimeMillis(),
+                duration = "",
+                isCompleted = false,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
             )
             
-            _allTasks.update { it + newTask }
-            Log.d("NoteViewModel", "Voice task created: $title")
+            Log.d("NoteViewModel", "Inserting task: ${task.title}")
+            repository.insertTask(task)
+            Log.d("NoteViewModel", "Task inserted successfully!")
             
-            // Update the AI response to confirm task creation
-            speakText("Task created: $title")
+            // Refresh tasks list
+            loadTasks()
+            Log.d("NoteViewModel", "Tasks list refreshed")
+            
+            // Check tasks after creation
+            val allTasks = repository.getAllTasksOnce()
+            Log.d("NoteViewModel", "Total tasks in database: ${allTasks.size}")
+            allTasks.forEach { t ->
+                Log.d("NoteViewModel", "Task: ${t.title}, Due: ${t.dueDate}, Today: ${isToday(t.dueDate)}")
+            }
+            
+            // Single response combining AI response with task confirmation
+            val confirmationResponse = if (aiResponse.contains("got it", ignoreCase = true) || 
+                                            aiResponse.contains("creating", ignoreCase = true)) {
+                "$aiResponse Task '${task.title}' created!"
+            } else {
+                "Perfect! Created task: ${task.title}"
+            }
+            
+            speakText(confirmationResponse)
             
         } catch (e: Exception) {
-            Log.e("NoteViewModel", "Error creating voice task", e)
-        }
-    }
-    
-    private fun extractTaskTitle(text: String): String {
-        // Remove common prefixes and clean up the text for a title
-        var title = text
-            .replace(Regex("^(I need to|I have to|I must|I should|remind me to)\\s*", RegexOption.IGNORE_CASE), "")
-            .replace(Regex("\\s+(today|tomorrow|this week|next week)\\s*$", RegexOption.IGNORE_CASE), "")
-            .trim()
-        
-        // Capitalize first letter
-        if (title.isNotEmpty()) {
-            title = title.first().uppercaseChar() + title.drop(1)
-        }
-        
-        // Limit length for title
-        return if (title.length > 50) {
-            title.take(47) + "..."
-        } else {
-            title.ifBlank { "Voice Task" }
-        }
-    }
-    
-    private fun extractPriority(text: String): String {
-        return when {
-            text.contains(Regex("urgent|emergency|asap|immediately|critical", RegexOption.IGNORE_CASE)) -> "High"
-            text.contains(Regex("important|soon|priority", RegexOption.IGNORE_CASE)) -> "Medium"
-            else -> "Medium"
-        }
-    }
-    
-    private fun extractDueDate(text: String): Long {
-        val now = System.currentTimeMillis()
-        return when {
-            text.contains(Regex("today|now", RegexOption.IGNORE_CASE)) -> now + (4 * 60 * 60 * 1000) // 4 hours from now
-            text.contains(Regex("tomorrow", RegexOption.IGNORE_CASE)) -> now + (24 * 60 * 60 * 1000) // Tomorrow
-            text.contains(Regex("this week", RegexOption.IGNORE_CASE)) -> now + (3 * 24 * 60 * 60 * 1000) // 3 days
-            text.contains(Regex("next week", RegexOption.IGNORE_CASE)) -> now + (7 * 24 * 60 * 60 * 1000) // 1 week
-            else -> now + (4 * 60 * 60 * 1000) // Default to today (4 hours from now)
+            Log.e("NoteViewModel", "Error creating voice task with context", e)
+            speakText("Sorry, I couldn't create that task.")
         }
     }
     
@@ -2178,78 +2526,96 @@ Output:
         _isProcessing.value = true
         
         try {
-            // Use OpenAI to process the voice command
-            val messages = listOf(
-                Message(role = "system", content = """
-                    You're Logion AI - think of yourself as a helpful, enthusiastic friend who loves to chat!
-                    
-                    SPEAKING STYLE:
-                    - Talk like a real person, not a robot! Use contractions (I'll, you're, let's, can't, won't, etc.)
-                    - Keep it brief and punchy - this is voice conversation, not an essay
-                    - Sound genuinely excited to help without being annoying
-                    - Use casual expressions: "Sure thing!", "Got it!", "Perfect!", "Love it!"
-                    - Never say stuff like "I am processing" or "Please note that" - way too robotic!
-                    
-                    NOTE SAVING:
-                    - When they want to save something ("make a note", "save this", "write this down"), just say you'll do it!
-                    - Examples: "Creating a note right now!" or "I'll save our chat for you!" 
-                    - Don't ask what to include - the whole conversation gets saved automatically
-                    - Be confident and quick about it
-                    
-                    Remember: You're having a casual chat with a friend, not giving a formal presentation. Keep it natural!
-                """.trimIndent()),
-                Message(role = "user", content = text)
-            )
+            // Get conversation context from recent messages
+            val recentHistory = _voiceSessionHistory.value.takeLast(6) // Last 3 exchanges
+            val conversationContext = if (recentHistory.isNotEmpty()) {
+                "Recent conversation:\n" + recentHistory.joinToString("\n") { 
+                    "${if (it.isUser) "User" else "AI"}: ${it.content}" 
+                }
+            } else ""
+            
+            // Use OpenAI to process the voice command with context
+            val messages = mutableListOf<Message>()
+            messages.add(Message(role = "system", content = """
+                You're Logion AI - a smart, helpful assistant that understands context and conversation flow.
+                
+                CONVERSATION INTELLIGENCE:
+                - Remember what the user mentioned in previous messages
+                - If they say "fix the car" first, then "create a task for that" - extract "fix the car" as the task content
+                - If they confirm with just "task please" or "yes, task" - use the main action from earlier in the conversation
+                - Be contextually aware and extract the ACTUAL task content, not the creation command
+                
+                RESPONSE RULES:
+                - Keep responses brief and natural (1-2 sentences max)
+                - Use contractions and casual language
+                - When creating tasks/notes, just confirm what you're doing, don't ask again
+                
+                TASK/NOTE DETECTION:
+                - "create a task", "make a task", "add a task", "task please" → Create task
+                - "create a note", "make a note", "save as note" → Create note  
+                - Unclear actions like "fix the car" → Ask: "Should I create a task for this?"
+                
+                SMART EXTRACTION:
+                - "I need to fix the car" + "create a task" → Task title: "fix the car"
+                - "Buy groceries" + "task please" → Task title: "buy groceries"
+                - "Create a task for that" → Look for the actual task in conversation history
+                
+                EXAMPLES:
+                User: "I need to fix the car"
+                AI: "Should I create a task for this?"
+                User: "create a task for that"
+                AI: "Got it! Creating task to fix the car."
+                
+                Current conversation context:
+                $conversationContext
+            """.trimIndent()))
+            
+            messages.add(Message(role = "user", content = text))
             
             val request = GPTRequest(messages = messages)
             val response = RetrofitInstance.api.summarizeText(request)
             val aiResponse = response.body()?.choices?.firstOrNull()?.message?.content?.trim()
-                ?: "I processed your request."
+                ?: "Got it!"
             
-            // Add to voice session history (not regular chat)
+            // Add to voice session history
             val userMessage = ChatMessage(content = text, isUser = true)
             val aiMessage = ChatMessage(content = aiResponse, isUser = false)
             _voiceSessionHistory.update { it + userMessage + aiMessage }
             
-            // Speak the response
-            speakText(aiResponse)
+            // Smart task/note detection with context awareness
+            val shouldCreateTask = detectTaskIntent(text, aiResponse, recentHistory)
+            val shouldCreateNote = detectNoteIntent(text, aiResponse)
             
-            // Detect note creation more reliably - check both AI response and user input
-            val userWantsNote = text.contains("make a note", ignoreCase = true) ||
-                               text.contains("create a note", ignoreCase = true) ||
-                               text.contains("save this", ignoreCase = true) ||
-                               text.contains("note this", ignoreCase = true) ||
-                               text.contains("write this down", ignoreCase = true) ||
-                               text.contains("save as a note", ignoreCase = true)
+            Log.d("NoteViewModel", "Voice processing: text='$text', aiResponse='$aiResponse'")
+            Log.d("NoteViewModel", "Should create task: $shouldCreateTask, Should create note: $shouldCreateNote")
             
-            val aiConfirmsNote = listOf(
-                "I'll create a note", "I'll make a note", "I'll save", 
-                "creating a note", "making a note", "saving", 
-                "I'll note this", "I'll record this", "I'll write this down"
-            ).any { keyword ->
-                aiResponse.contains(keyword, ignoreCase = true)
-            }
-            
-            val shouldCreateNote = userWantsNote || aiConfirmsNote
-            
-            val shouldCreateTask = aiResponse.contains("I'll create a task", ignoreCase = true) ||
-                                 aiResponse.contains("creating a task", ignoreCase = true) ||
-                                 aiResponse.contains("I'll make a task", ignoreCase = true)
-            
-            if (shouldCreateNote && !shouldCreateTask) {
-                saveVoiceSessionAsNote()
-            } else if (shouldCreateTask) {
-                createTaskFromVoice(text, aiResponse)
+            when {
+                shouldCreateTask -> {
+                    Log.d("NoteViewModel", "Creating task...")
+                    // Use voice session history for context, not chat history
+                    val voiceHistory = _voiceSessionHistory.value.takeLast(6)
+                    val taskContent = extractTaskFromConversation(text, voiceHistory)
+                    Log.d("NoteViewModel", "Extracted task content: '$taskContent'")
+                    createTaskFromVoiceContext(taskContent, text, aiResponse)
+                }
+                shouldCreateNote -> {
+                    Log.d("NoteViewModel", "Creating note...")
+                    saveVoiceSessionAsNote()
+                    speakText(aiResponse)
+                }
+                else -> {
+                    Log.d("NoteViewModel", "Just chatting - no task/note creation")
+                    // Just chat - speak the AI response
+                    speakText(aiResponse)
+                }
             }
             
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error processing voice command", e)
-            val errorResponse = "Sorry, I'm having trouble processing that. Please try again."
+            val errorResponse = "Sorry, I'm having trouble with that."
             speakText(errorResponse)
         } finally {
             _isProcessing.value = false
-            // Don't clear voice text - let user see the conversation history
-            // _voiceText.value = ""
         }
     }
 
@@ -2257,20 +2623,42 @@ Output:
     
     init {
         // Load tasks when ViewModel is created
-        loadTasks()
+        loadTasksOnce()
         loadChatMessages()
     }
     
-    private fun loadTasks() = viewModelScope.launch {
+    private fun loadTasksOnce() = viewModelScope.launch {
         try {
             repository.getAllTasks().collect { tasks ->
                 _allTasks.value = tasks
+                Log.d("NoteViewModel", "Loaded ${tasks.size} tasks")
+                tasks.forEach { task ->
+                    Log.d("NoteViewModel", "Task: ${task.title}, due: ${task.dueDate}, isToday: ${isTaskToday(task.dueDate)}")
+                }
             }
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error loading tasks", e)
             // Create some sample tasks if none exist
             createSampleTasks()
         }
+    }
+    
+    private fun loadTasks() = viewModelScope.launch {
+        try {
+            val tasks = repository.getAllTasksOnce()
+            _allTasks.value = tasks
+            Log.d("NoteViewModel", "Refreshed ${tasks.size} tasks")
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error refreshing tasks", e)
+        }
+    }
+    
+    private fun isTaskToday(date: Long): Boolean {
+        val today = java.util.Calendar.getInstance()
+        val taskDate = java.util.Calendar.getInstance().apply { timeInMillis = date }
+        
+        return today.get(java.util.Calendar.YEAR) == taskDate.get(java.util.Calendar.YEAR) &&
+               today.get(java.util.Calendar.DAY_OF_YEAR) == taskDate.get(java.util.Calendar.DAY_OF_YEAR)
     }
     
     private fun loadChatMessages() = viewModelScope.launch {
@@ -2399,5 +2787,14 @@ fun createNote(title: String = "New Note", content: String = "") = viewModelScop
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error updating task", e)
         }
+    }
+    
+    // Helper function to check if a timestamp is today
+    private fun isToday(timestamp: Long): Boolean {
+        val today = java.util.Calendar.getInstance()
+        val taskDate = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
+        
+        return today.get(java.util.Calendar.YEAR) == taskDate.get(java.util.Calendar.YEAR) &&
+               today.get(java.util.Calendar.DAY_OF_YEAR) == taskDate.get(java.util.Calendar.DAY_OF_YEAR)
     }
 }

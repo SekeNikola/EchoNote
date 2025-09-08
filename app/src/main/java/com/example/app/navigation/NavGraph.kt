@@ -15,7 +15,6 @@ sealed class Screen(val route: String) {
         fun createRoute(noteId: Long) = "noteDetail/$noteId"
     }
     object VoiceCommand : Screen("voiceCommand")
-    object WebPage : Screen("webPage")
     
     // New Simple version screens
     object AiChat : Screen("ai_chat")
@@ -23,7 +22,6 @@ sealed class Screen(val route: String) {
     object Tasks : Screen("tasks")
     object Notes : Screen("notes")
     object Chats : Screen("chats")
-    object ImagePreview : Screen("image_preview")
     object Settings : Screen("settings")
     data class TaskDetail(val taskId: Long) : Screen("task_detail/{taskId}") {
         fun createRoute(taskId: Long) = "task_detail/$taskId"
@@ -93,13 +91,6 @@ fun LogionNavGraph(
             VoiceCommandOverlay(
                 viewModel = viewModel,
                 onDismiss = { navController.popBackStack() }
-            )
-        }
-        
-        composable(Screen.WebPage.route) {
-            WebPageScreen(
-                viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
             )
         }
         
