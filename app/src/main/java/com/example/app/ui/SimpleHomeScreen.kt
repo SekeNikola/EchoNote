@@ -19,6 +19,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -48,6 +49,12 @@ import androidx.core.content.FileProvider
 import java.io.File
 import com.example.app.ui.components.SimpleVoiceOrb
 import org.json.JSONObject
+import androidx.compose.animation.core.*
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.app.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -214,136 +221,7 @@ fun SimpleHomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Plus icon with dropdown menu for media options
-                        var showDropDown by remember { mutableStateOf(false) }
-                        
-                        Box {
-                            IconButton(
-                                onClick = { showDropDown = true },
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Add,
-                                    contentDescription = "Add media",
-                                    tint = Color(0xFF8B5CF6),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-                            
-                            DropdownMenu(
-                                expanded = showDropDown,
-                                onDismissRequest = { showDropDown = false },
-                                modifier = Modifier
-                                    .background(
-                                        Color(0xFF1A1A2E),
-                                        RoundedCornerShape(16.dp)
-                                    )
-                                    .fillMaxWidth()
-                                    .padding(8.dp)
-                            ) {
-                                // Options in a row
-                                Row(
-                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(8.dp)
-                                ) {
-                                    // Camera option
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier
-                                            .clickable {
-                                                showDropDown = false
-                                                try {
-                                                    val tempUri = createImageFile()
-                                                    if (tempUri != null) {
-                                                        capturedImageUri = tempUri
-                                                        cameraLauncher.launch(tempUri)
-                                                    } else {
-                                                        android.util.Log.e("SimpleHomeScreen", "Failed to create image file for camera")
-                                                    }
-                                                } catch (e: Exception) {
-                                                    android.util.Log.e("SimpleHomeScreen", "Error launching camera", e)
-                                                }
-                                            }
-                                            .padding(12.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.CameraAlt,
-                                            contentDescription = "Camera",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            "Camera",
-                                            color = Color.White,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                    
-                                    // Gallery option
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier
-                                            .clickable {
-                                                showDropDown = false
-                                                try {
-                                                    galleryLauncher.launch("image/*")
-                                                } catch (e: Exception) {
-                                                    android.util.Log.e("SimpleHomeScreen", "Error launching gallery", e)
-                                                }
-                                            }
-                                            .padding(12.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.PhotoLibrary,
-                                            contentDescription = "Photos",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            "Photos",
-                                            color = Color.White,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                    
-                                    // Files option
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier
-                                            .clickable {
-                                                showDropDown = false
-                                                try {
-                                                    fileLauncher.launch("*/*")
-                                                } catch (e: Exception) {
-                                                    android.util.Log.e("SimpleHomeScreen", "Error launching file picker", e)
-                                                }
-                                            }
-                                            .padding(12.dp)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.AttachFile,
-                                            contentDescription = "Files",
-                                            tint = Color.White,
-                                            modifier = Modifier.size(32.dp)
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            "Files",
-                                            color = Color.White,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                        
-                        Spacer(modifier = Modifier.width(12.dp))
-                        
-                        // Chat input area with immediate typing capability
+                        // Chat input area - tap to open chat screen
                         Row(
                             modifier = Modifier
                                 .weight(1f)
@@ -351,83 +229,27 @@ fun SimpleHomeScreen(
                                     Color(0xFF404056),
                                     RoundedCornerShape(24.dp)
                                 )
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            OutlinedTextField(
-                                value = aiInputText,
-                                onValueChange = { aiInputText = it },
-                                placeholder = { 
-                                    Text(
-                                        "Ask AI Assistant...",
-                                        color = Color(0xFFB0B0B0),
-                                        fontSize = 16.sp
-                                    )
-                                },
+                            Text(
+                                text = "Ask AI Assistant...",
+                                color = Color(0xFFB0B0B0),
+                                fontSize = 14.sp,
                                 modifier = Modifier
                                     .weight(1f)
-                                    .focusRequester(focusRequester),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color.Transparent,
-                                    unfocusedBorderColor = Color.Transparent,
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    cursorColor = Color(0xFF8B5CF6)
-                                ),
-                                singleLine = true,
-                                trailingIcon = {
-                                    if (aiInputText.isNotBlank()) {
-                                        // Show send icon when user is typing
-                                        IconButton(
-                                            onClick = {
-                                                if (aiInputText.isNotBlank()) {
-                                                    // Clear chat history to start fresh conversation
-                                                    viewModel.clearChatHistory()
-                                                    
-                                                    // Send the message directly to the AI and then navigate
-                                                    if (selectedImageUri != null) {
-                                                        viewModel.sendChatMessageWithImage(
-                                                            aiInputText,
-                                                            android.net.Uri.parse(selectedImageUri),
-                                                            context
-                                                        )
-                                                    } else {
-                                                        viewModel.sendChatMessage(aiInputText)
-                                                    }
-                                                    // Navigate to AI chat
-                                                    navController.navigate("ai_chat")
-                                                    aiInputText = ""
-                                                    selectedImageUri = null
-                                                }
-                                            }
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Send,
-                                                contentDescription = "Send message",
-                                                tint = Color(0xFF8B5CF6),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                    } else {
-                                        // Show mic icon when input is empty
-                                        IconButton(
-                                            onClick = {
-                                                // Clear chat history to start fresh voice conversation
-                                                viewModel.clearChatHistory()
-                                                
-                                                // Handle voice input - navigate to AI voice screen
-                                                selectedImageUri?.let {
-                                                    navController.currentBackStackEntry?.savedStateHandle?.set("selectedImageUri", it)
-                                                }
-                                                navController.navigate("ai_voice")
-                                            }
-                                        ) {
-                                            SimpleVoiceOrb(
-                                                size = 40.dp,
-                                                isActive = false
-                                            )
-                                        }
+                                    .clickable {
+                                        // Clear chat history and start new conversation
+                                        viewModel.clearChatHistory()
+                                        // Navigate to AI chat
+                                        navController.navigate("ai_chat")
                                     }
+                            )
+                            
+                            CompactVoiceOrb(
+                                onClick = {
+                                    // Navigate to voice assistant
+                                    navController.navigate("ai_voice")
                                 }
                             )
                         }
@@ -1202,6 +1024,87 @@ fun AddTaskBottomSheet(
                 false
             )
             timePickerDialog.show()
+        }
+    }
+}
+
+// Compact version of the Lottie voice orb for home screen input field
+@Composable
+fun CompactVoiceOrb(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    CompactLottieVoiceOrb(
+        onClick = onClick,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun CompactLottieVoiceOrb(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Load the Lottie composition from raw resources
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.orb)
+    )
+    
+    // Gentle pulsing animation for idle state
+    val infiniteTransition = rememberInfiniteTransition(label = "compact_voice_orb_pulse")
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 1200,
+                easing = EaseInOut
+            ),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_scale"
+    )
+    
+    Box(
+        modifier = modifier
+            .size(32.dp)
+            .scale(pulseScale)
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        // Lottie animation - only show if composition is loaded
+        composition?.let {
+            LottieAnimation(
+                composition = it,
+                iterations = LottieConstants.IterateForever,
+                speed = 0.8f, // Slower, more gentle animation
+                modifier = Modifier
+                    .size(28.dp)
+                    .fillMaxSize()
+            )
+        } ?: run {
+            // Fallback: Show a simple orb if Lottie fails to load
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color(0xFF8B5CF6), // Purple for idle
+                                Color(0xFF7C3AED)
+                            )
+                        ),
+                        shape = CircleShape
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.MicNone,
+                    contentDescription = "Voice Assistant",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
     }
 }

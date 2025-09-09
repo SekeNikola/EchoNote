@@ -17,6 +17,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -27,12 +29,20 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import androidx.navigation.NavController
 import com.example.app.data.ChatMessage
+import com.example.app.ui.components.SimpleVoiceOrb
 import com.example.app.viewmodel.NoteViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,14 +56,85 @@ fun AiChatScreen(
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val focusRequester = remember { FocusRequester() }
+    
+    // Image handling
+    var selectedImageUri by remember { mutableStateOf<String?>(null) }
+    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // Camera launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        try {
+            if (success && capturedImageUri != null) {
+                selectedImageUri = capturedImageUri.toString()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AiChatScreen", "Camera result error", e)
+        }
+    }
+    
+    // Gallery launcher
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        try {
+            uri?.let {
+                selectedImageUri = it.toString()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AiChatScreen", "Gallery result error", e)
+        }
+    }
+    
+    // File picker launcher
+    val fileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        try {
+            uri?.let {
+                // Handle file selection - for now just log it
+                android.util.Log.d("AiChatScreen", "File selected: $it")
+                // TODO: Add file processing logic here
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AiChatScreen", "File picker result error", e)
+        }
+    }
+    
+    // Function to create temporary file for camera
+    fun createImageFile(): Uri? {
+        return try {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val imageFileName = "JPEG_${timeStamp}_"
+            
+            // Try external files directory first, then cache directory as fallback
+            val storageDir = context.getExternalFilesDir("Pictures") ?: context.cacheDir
+            
+            val imageFile = File.createTempFile(
+                imageFileName,
+                ".jpg",
+                storageDir
+            )
+            
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                imageFile
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("AiChatScreen", "Error creating image file", e)
+            null
+        }
+    }
     
     // Handle incoming image from navigation
     val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     
     LaunchedEffect(Unit) {
         savedStateHandle?.get<String>("selectedImageUri")?.let { uriString ->
-            selectedImageUri = Uri.parse(uriString)
+            selectedImageUri = uriString
             // Clear the saved state to prevent re-showing on navigation
             savedStateHandle.remove<String>("selectedImageUri")
         }
@@ -63,6 +144,12 @@ fun AiChatScreen(
             inputText = message
             // Clear the saved state to prevent re-showing on navigation
             savedStateHandle.remove<String>("initialMessage")
+        }
+        
+        // Auto-focus input when coming from homescreen (when chat is empty)
+        if (chatMessages.isEmpty()) {
+            delay(300) // Small delay to ensure UI is ready
+            focusRequester.requestFocus()
         }
     }
     
@@ -82,47 +169,9 @@ fun AiChatScreen(
         // Top App Bar
         TopAppBar(
             title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        Color(0xFF8B5CF6),
-                                        Color(0xFF3B82F6)
-                                    )
-                                ),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Mic,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(12.dp))
-                    
-                    Column {
-                        Text(
-                            text = "Logion AI",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Your AI assistant",
-                            fontSize = 12.sp,
-                            color = Color(0xFFB0B0B0)
-                        )
-                    }
-                }
+                SimpleVoiceOrb(
+                    size = 32.dp
+                )
             },
             navigationIcon = {
                 IconButton(
@@ -138,13 +187,13 @@ fun AiChatScreen(
             actions = {
                 IconButton(
                     onClick = {
-                        // Clear current chat and start new one
-                        viewModel.clearChatHistory()
+                        // Save current chat as a note
+                        viewModel.saveChatAsNote()
                     }
                 ) {
                     Icon(
-                        Icons.Default.Add,
-                        contentDescription = "New chat",
+                        Icons.Default.Save,
+                        contentDescription = "Save chat",
                         tint = Color(0xFF8B5CF6)
                     )
                 }
@@ -152,10 +201,8 @@ fun AiChatScreen(
                 IconButton(
                     onClick = { navController.navigate("ai_voice") }
                 ) {
-                    Icon(
-                        Icons.Default.Mic,
-                        contentDescription = "Voice input",
-                        tint = Color(0xFF8B5CF6)
+                    SimpleVoiceOrb(
+                        size = 24.dp
                     )
                 }
             },
@@ -221,8 +268,10 @@ fun AiChatScreen(
                         colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
-                            Image(
-                                painter = rememberAsyncImagePainter(uri),
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(uri)
+                                    .build(),
                                 contentDescription = "Selected image",
                                 modifier = Modifier
                                     .fillMaxSize()
@@ -294,7 +343,10 @@ fun AiChatScreen(
                                     modifier = Modifier
                                         .clickable {
                                             showDropDown = false
-                                            navController.navigate("image_preview?source=camera")
+                                            createImageFile()?.let { uri ->
+                                                capturedImageUri = uri
+                                                cameraLauncher.launch(uri)
+                                            }
                                         }
                                         .padding(12.dp)
                                 ) {
@@ -318,7 +370,7 @@ fun AiChatScreen(
                                     modifier = Modifier
                                         .clickable {
                                             showDropDown = false
-                                            navController.navigate("image_preview?source=gallery")
+                                            galleryLauncher.launch("image/*")
                                         }
                                         .padding(12.dp)
                                 ) {
@@ -342,7 +394,7 @@ fun AiChatScreen(
                                     modifier = Modifier
                                         .clickable {
                                             showDropDown = false
-                                            // TODO: Handle file upload
+                                            fileLauncher.launch("*/*")
                                         }
                                         .padding(12.dp)
                                 ) {
@@ -368,7 +420,9 @@ fun AiChatScreen(
                     OutlinedTextField(
                         value = inputText,
                         onValueChange = { inputText = it },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequester),
                         placeholder = {
                             Text(
                                 text = "Ask me anything...",
@@ -394,16 +448,16 @@ fun AiChatScreen(
                                 coroutineScope.launch {
                                     // Send message with optional image context
                                     if (selectedImageUri != null) {
-                                        // Send message with image
+                                        // Send message with image (use complex function for images)
                                         val messageToSend = if (inputText.isBlank()) {
                                             "I've shared an image with you. Can you describe what you see?"
                                         } else {
                                             inputText
                                         }
-                                        viewModel.sendChatMessageWithImage(messageToSend, selectedImageUri!!, context)
+                                        viewModel.sendChatMessageWithImage(messageToSend, Uri.parse(selectedImageUri!!), context)
                                     } else {
-                                        // Send text-only message
-                                        viewModel.sendChatMessage(inputText)
+                                        // Send text-only message (use immediate response function)
+                                        viewModel.askAssistant(inputText)
                                     }
                                     selectedImageUri = null
                                     inputText = ""

@@ -1522,6 +1522,66 @@ Output:
 
     // ======================= AI CHAT FUNCTIONALITY =======================
     
+    // Immediate ChatGPT-like response function with conversation context
+    fun askAssistant(question: String) = viewModelScope.launch {
+        // Add user message immediately
+        val userMessage = ChatMessage(content = question, isUser = true)
+        repository.insertChatMessage(userMessage)
+        
+        // Set loading state immediately
+        _isAiLoading.value = true
+        
+        try {
+            // Get current conversation history for context
+            val conversationHistory = _chatMessages.value.takeLast(10) // Last 10 messages for context
+            
+            // Build messages with conversation context
+            val messages = mutableListOf<Message>()
+            
+            // Add system prompt with context awareness
+            messages.add(Message(role = "system", content = """
+                You are ChatGPT, an expert AI assistant.
+                - Answer immediately in a clear, direct, conversational style.
+                - Be human-like but concise.
+                - Always remember conversation context and refer to previously discussed topics.
+                - When user says "it", "that", "this" etc., assume they're referring to the last discussed subject.
+                - Do not say "it depends what it refers to" unless absolutely no context is available.
+                - Answer directly and conversationally, like ChatGPT would.
+                - Keep track of what we're talking about across messages.
+            """.trimIndent()))
+            
+            // Add conversation history for context (excluding the current message we just added)
+            conversationHistory.dropLast(1).forEach { chatMsg ->
+                messages.add(Message(
+                    role = if (chatMsg.isUser) "user" else "assistant",
+                    content = chatMsg.content
+                ))
+            }
+            
+            // Add current user question
+            messages.add(Message(role = "user", content = question))
+            
+            val request = GPTRequest(messages = messages)
+            val response = RetrofitInstance.api.summarizeText(request)
+            val aiResponse = response.body()?.choices?.firstOrNull()?.message?.content?.trim() 
+                ?: "Sorry, I couldn't process your request."
+            
+            // Add AI response immediately
+            val aiMessage = ChatMessage(content = aiResponse, isUser = false)
+            repository.insertChatMessage(aiMessage)
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error in askAssistant", e)
+            val errorMessage = ChatMessage(
+                content = "Sorry, I encountered an error. Please try again.",
+                isUser = false
+            )
+            repository.insertChatMessage(errorMessage)
+        } finally {
+            _isAiLoading.value = false
+        }
+    }
+    
     fun sendChatMessage(message: String) = viewModelScope.launch {
         // Add user message
         val userMessage = ChatMessage(content = message, isUser = true)
@@ -1543,48 +1603,40 @@ Output:
             // Prepare messages for OpenAI
             val messages = mutableListOf<Message>()
             
-            // Check if there are recent images in the conversation for better context
-            val recentMessagesWithImages = _chatMessages.value.takeLast(10)
-            val hasRecentImages = recentMessagesWithImages.any { !it.imageUri.isNullOrEmpty() }
+            // Get current chat messages (should be empty or minimal after clearing)
+            val currentChatMessages = _chatMessages.value.takeLast(10)
+            
+            // Only check for images in the current conversation context
+            val hasRecentImages = currentChatMessages.any { !it.imageUri.isNullOrEmpty() }
             
             messages.add(Message(role = "system", content = """
                 You are Logion AI, a friendly and helpful personal assistant. 
                 
                 Current context: It's currently $timeContext time for the user.
                 
-                IMPORTANT: ${if (hasRecentImages) {
-                    "The user has shared images in this recent conversation. When they ask follow-up questions about images, refer back to the detailed descriptions you provided earlier. You CAN see and remember images that were shared."
+                ${if (hasRecentImages && currentChatMessages.isNotEmpty()) {
+                    "IMPORTANT: The user has shared images in this current conversation. When they ask follow-up questions about images, refer back to the detailed descriptions you provided earlier."
                 } else {
-                    "You can see and analyze images when users share them."
+                    "You can see and analyze images when users share them. Answer the user's question directly."
                 }}
                 
                 Your role:
-                - Have natural, helpful conversations with users
                 - Answer questions directly and accurately
-                - When users share images, describe what you see clearly and remember the image for follow-up questions
-                - If users ask follow-up questions about images they shared earlier in the conversation, reference the specific details you described before
+                - Have natural, helpful conversations with users
+                - When users share images, describe what you see clearly
                 - Stay focused on the current conversation topic
-                - Don't automatically offer to create notes or save things unless specifically asked
                 - Be conversational and engaging
                 
                 Key behaviors:
-                - Answer the user's current question directly - don't repeat previous responses
-                - Each response should be unique and address the specific question being asked
-                - If they ask about an image they shared, refer to the specific details from your previous analysis
-                - If they ask follow-up questions, provide NEW information or answer from a different angle
-                - If they ask "what is this" about an image, be very specific (e.g., "computer mouse", "wireless mouse", "gaming mouse")
-                - If they ask where to buy something, provide helpful shopping advice based on what you identified
-                - Remember images shared in this conversation and reference specific details you mentioned before
-                - Only mention note-taking or saving when the user explicitly asks for it
-                - Keep responses focused and relevant to what the user just asked
-                - Don't repeat the same answer - always provide fresh, relevant information
-                - When referencing previous images, be specific about what you saw (brands, objects, text, etc.)
-                
-                Remember: You CAN see images that users share with you. If they shared an image earlier and ask follow-up questions, reference the specific details you described about that image.
+                - Answer the user's current question directly
+                - If they ask about text topics (like "where is the moon"), provide factual information
+                - Only mention images if the user actually shared an image in this conversation
+                - Don't assume there are images unless explicitly shared
+                - Provide helpful, accurate information based on the actual question asked
             """.trimIndent()))
             
-            // Add recent chat history (last 10 messages) with image context
-            recentMessagesWithImages.forEach { chatMsg ->
+            // Add current chat history (should be minimal after clearing)
+            currentChatMessages.forEach { chatMsg ->
                 val messageContent = if (chatMsg.imageUri.isNullOrEmpty()) {
                     chatMsg.content
                 } else {

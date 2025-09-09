@@ -1,6 +1,7 @@
 package com.example.app.ui
 
 import androidx.compose.animation.core.*
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -101,25 +102,18 @@ fun AiVoiceScreen(
         
         Spacer(modifier = Modifier.weight(1f))
         
-        // Animated Voice Orb
-        val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.orb))
-        Box(
-            modifier = Modifier
-                .size(200.dp)
-                .clickable {
-                    if (isListening) {
-                        viewModel.stopListening()
-                        navController.navigateUp()
-                    }
-                },
-            contentAlignment = Alignment.Center
-        ) {
-            LottieAnimation(
-                composition = composition,
-                iterations = Integer.MAX_VALUE,
-                modifier = Modifier.size(180.dp)
-            )
-        }
+        // Enhanced Voice Orb with Pulsing Animation
+        VoiceOrb(
+            isListening = isListening,
+            isProcessing = isProcessing,
+            isSpeaking = isSpeaking,
+            onClick = {
+                if (isListening) {
+                    viewModel.stopListening()
+                    navController.navigateUp()
+                }
+            }
+        )
         
         Spacer(modifier = Modifier.height(40.dp))
         
