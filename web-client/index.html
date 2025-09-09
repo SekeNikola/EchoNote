@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EchoNote Web Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .section {
+            background-color: #2a2a2a;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        h1, h2 {
+            color: #8B5CF6;
+        }
+        
+        .connection-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .connected { background-color: #22c55e; }
+        .disconnected { background-color: #ef4444; }
+        
+        input, textarea, button {
+            background-color: #3a3a3a;
+            border: 1px solid #555;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 5px;
+        }
+        
+        button {
+            background-color: #8B5CF6;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: #7c3aed;
+        }
+        
+        .item {
+            background-color: #3a3a3a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #8B5CF6;
+        }
+        
+        .task.done {
+            opacity: 0.6;
+            text-decoration: line-through;
+        }
+        
+        .form-group {
+            margin: 10px 0;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .item-actions {
+            margin-top: 10px;
+        }
+        
+        .item-actions button {
+            margin-right: 10px;
+        }
+        
+        .edit-form {
+            display: none;
+            background-color: #4a4a4a;
+            padding: 15px;
+            margin-top: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Logion Web Client</h1>
+        
+        <div class="section">
+            <div class="form-group">
+                <label for="serverUrl">Server URL:</label>
+                <input type="text" id="serverUrl" placeholder="http://192.168.1.185:8080 or https://your-ngrok-url.ngrok.io" />
+                <button onclick="connectToServer()">Connect</button>
+            </div>
+            <div id="connectionStatus" class="connection-status disconnected">
+                Disconnected
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Tasks</h2>
+            <div class="form-group">
+                <label for="newTaskTitle">Task Title:</label>
+                <input type="text" id="newTaskTitle" placeholder="Task title" />
+            </div>
+            <div class="form-group">
+                <label for="newTaskBody">Task Description:</label>
+                <textarea id="newTaskBody" placeholder="Task description (optional)" rows="3"></textarea>
+            </div>
+            <button onclick="addTask()">Add Task</button>
+            <div id="tasksList"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Notes</h2>
+            <div class="form-group">
+                <label for="newNoteTitle">Note Title:</label>
+                <input type="text" id="newNoteTitle" placeholder="Note title" />
+            </div>
+            <div class="form-group">
+                <label for="newNoteBody">Note Body:</label>
+                <textarea id="newNoteBody" placeholder="Note content" rows="4"></textarea>
+            </div>
+            <button onclick="addNote()">Add Note</button>
+            <div id="notesList"></div>
+        </div>
+    </div>
+
+    <script>
+        let serverUrl = '';
+        let websocket = null;
+        let tasks = [];
+        let notes = [];
+
+        function connectToServer() {
+            const url = document.getElementById('serverUrl').value.trim();
+            if (!url) {
+                alert('Please enter a server URL');
+                return;
+            }
+            
+            serverUrl = url;
+            updateConnectionStatus('Connecting...');
+            
+            // Test connection
+            fetch(`${serverUrl}/tasks`)
+                .then(response => response.json())
+                .then(data => {
+                    tasks = data;
+                    renderTasks();
+                    connectWebSocket();
+                    loadNotes();
+                    updateConnectionStatus('Connected', true);
+                })
+                .catch(error => {
+                    console.error('Connection failed:', error);
+                    updateConnectionStatus('Connection failed', false);
+                });
+        }
+
+        function connectWebSocket() {
+            const wsUrl = serverUrl.replace('https://', 'wss://').replace('http://', 'ws://');
+            websocket = new WebSocket(`${wsUrl}/sync`);
+            
+            websocket.onopen = function() {
+                console.log('WebSocket connected');
+            };
+            
+            websocket.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                handleSyncMessage(message);
+            };
+            
+            websocket.onclose = function() {
+                console.log('WebSocket disconnected');
+                setTimeout(connectWebSocket, 5000); // Reconnect after 5 seconds
+            };
+        }
+
+        function handleSyncMessage(message) {
+            const data = JSON.parse(message.data);
+            
+            switch(message.type) {
+                case 'task_added':
+                    // Check if task already exists to prevent duplicates
+                    if (!tasks.find(t => t.id === data.id)) {
+                        tasks.push(data);
+                        renderTasks();
+                    }
+                    break;
+                case 'task_updated':
+                    const taskIndex = tasks.findIndex(t => t.id === data.id);
+                    if (taskIndex !== -1) {
+                        tasks[taskIndex] = data;
+                        renderTasks();
+                    }
+                    break;
+                case 'note_added':
+                    // Check if note already exists to prevent duplicates
+                    if (!notes.find(n => n.id === data.id)) {
+                        notes.push(data);
+                        renderNotes();
+                    }
+                    break;
+                case 'note_updated':
+                    const noteIndex = notes.findIndex(n => n.id === data.id);
+                    if (noteIndex !== -1) {
+                        notes[noteIndex] = data;
+                        renderNotes();
+                    }
+                    break;
+            }
+        }
+
+        function updateConnectionStatus(message, connected = false) {
+            const statusDiv = document.getElementById('connectionStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = `connection-status ${connected ? 'connected' : 'disconnected'}`;
+        }
+
+        function loadNotes() {
+            fetch(`${serverUrl}/notes`)
+                .then(response => response.json())
+                .then(data => {
+                    notes = data;
+                    renderNotes();
+                })
+                .catch(error => console.error('Failed to load notes:', error));
+        }
+
+        function addTask() {
+            const title = document.getElementById('newTaskTitle').value.trim();
+            const body = document.getElementById('newTaskBody').value.trim();
+            if (!title) return;
+            
+            fetch(`${serverUrl}/tasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: title,
+                    body: body,
+                    done: false
+                })
+            })
+            .then(response => response.json())
+            .then(task => {
+                // Add the task directly from API response to prevent WebSocket duplication
+                if (!tasks.find(t => t.id === task.id)) {
+                    tasks.push(task);
+                    renderTasks();
+                }
+                document.getElementById('newTaskTitle').value = '';
+                document.getElementById('newTaskBody').value = '';
+            })
+            .catch(error => console.error('Failed to add task:', error));
+        }
+
+        function toggleTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (!task) return;
+            
+            fetch(`${serverUrl}/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: task.title,
+                    done: !task.done
+                })
+            })
+            .catch(error => console.error('Failed to update task:', error));
+        }
+
+        function editTask(taskId) {
+            const form = document.getElementById(`edit-task-${taskId}`);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function saveTask(taskId) {
+            const title = document.getElementById(`edit-task-title-${taskId}`).value.trim();
+            const body = document.getElementById(`edit-task-body-${taskId}`).value.trim();
+            if (!title) return;
+            
+            const task = tasks.find(t => t.id === taskId);
+            
+            fetch(`${serverUrl}/tasks/${taskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: title,
+                    body: body,
+                    done: task.done
+                })
+            })
+            .then(() => {
+                document.getElementById(`edit-task-${taskId}`).style.display = 'none';
+            })
+            .catch(error => console.error('Failed to update task:', error));
+        }
+
+        function addNote() {
+            const title = document.getElementById('newNoteTitle').value.trim();
+            const body = document.getElementById('newNoteBody').value.trim();
+            if (!title || !body) return;
+            
+            fetch(`${serverUrl}/notes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: title,
+                    body: body
+                })
+            })
+            .then(response => response.json())
+            .then(note => {
+                // Add the note directly from API response to prevent WebSocket duplication
+                if (!notes.find(n => n.id === note.id)) {
+                    notes.push(note);
+                    renderNotes();
+                }
+                document.getElementById('newNoteTitle').value = '';
+                document.getElementById('newNoteBody').value = '';
+            })
+            .catch(error => console.error('Failed to add note:', error));
+        }
+
+        function editNote(noteId) {
+            const form = document.getElementById(`edit-note-${noteId}`);
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function saveNote(noteId) {
+            const title = document.getElementById(`edit-note-title-${noteId}`).value.trim();
+            const body = document.getElementById(`edit-note-body-${noteId}`).value.trim();
+            if (!title || !body) return;
+            
+            fetch(`${serverUrl}/notes/${noteId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    title: title,
+                    body: body
+                })
+            })
+            .then(() => {
+                document.getElementById(`edit-note-${noteId}`).style.display = 'none';
+            })
+            .catch(error => console.error('Failed to update note:', error));
+        }
+
+        function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            tasksList.innerHTML = tasks.map(task => `
+                <div class="item task ${task.done ? 'done' : ''}">
+                    <div>
+                        <strong>${task.title}</strong>
+                        <span style="float: right; color: #888; font-size: 12px;">
+                            ${new Date(task.updatedAt).toLocaleString()}
+                        </span>
+                    </div>
+                    ${task.body ? `<div style="margin-top: 8px; color: #ccc; font-size: 14px;">${task.body.replace(/\n/g, '<br>')}</div>` : ''}
+                    <div class="item-actions">
+                        <button onclick="toggleTask('${task.id}')">
+                            ${task.done ? 'Mark Incomplete' : 'Mark Complete'}
+                        </button>
+                        <button onclick="editTask('${task.id}')">Edit</button>
+                    </div>
+                    <div id="edit-task-${task.id}" class="edit-form">
+                        <div class="form-group">
+                            <label>Title:</label>
+                            <input type="text" id="edit-task-title-${task.id}" value="${task.title}" />
+                        </div>
+                        <div class="form-group">
+                            <label>Description:</label>
+                            <textarea id="edit-task-body-${task.id}" rows="3">${task.body || ''}</textarea>
+                        </div>
+                        <button onclick="saveTask('${task.id}')">Save</button>
+                        <button onclick="editTask('${task.id}')">Cancel</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderNotes() {
+            const notesList = document.getElementById('notesList');
+            notesList.innerHTML = notes.map(note => `
+                <div class="item">
+                    <div>
+                        <strong>${note.title}</strong>
+                        <span style="float: right; color: #888; font-size: 12px;">
+                            ${new Date(note.updatedAt).toLocaleString()}
+                        </span>
+                    </div>
+                    <div style="margin-top: 10px; color: #ccc;">
+                        ${note.body.replace(/\n/g, '<br>')}
+                    </div>
+                    <div class="item-actions">
+                        <button onclick="editNote('${note.id}')">Edit</button>
+                    </div>
+                    <div id="edit-note-${note.id}" class="edit-form">
+                        <div class="form-group">
+                            <label>Title:</label>
+                            <input type="text" id="edit-note-title-${note.id}" value="${note.title}" />
+                        </div>
+                        <div class="form-group">
+                            <label>Body:</label>
+                            <textarea id="edit-note-body-${note.id}" rows="4">${note.body}</textarea>
+                        </div>
+                        <button onclick="saveNote('${note.id}')">Save</button>
+                        <button onclick="editNote('${note.id}')">Cancel</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
