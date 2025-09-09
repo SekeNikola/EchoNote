@@ -54,34 +54,11 @@ object NgrokManager {
             val interfaces = NetworkInterface.getNetworkInterfaces()
             while (interfaces.hasMoreElements()) {
                 val networkInterface = interfaces.nextElement()
-                
-                // Skip loopback and inactive interfaces
-                if (networkInterface.isLoopback || !networkInterface.isUp) continue
-                
                 val addresses = networkInterface.inetAddresses
                 while (addresses.hasMoreElements()) {
                     val address = addresses.nextElement()
-                    
-                    // Skip loopback, IPv6, and link-local addresses
-                    if (!address.isLoopbackAddress && 
-                        address.hostAddress?.indexOf(':') == -1 && 
-                        !address.isLinkLocalAddress &&
-                        address.hostAddress?.startsWith("169.254.") != true) {
-                        
-                        val hostAddress = address.hostAddress
-                        Log.d("NgrokManager", "Found IP address: $hostAddress on interface: ${networkInterface.name}")
-                        
-                        // Prefer WiFi interfaces (common names)
-                        if (networkInterface.name?.contains("wlan", ignoreCase = true) == true ||
-                            networkInterface.name?.contains("wifi", ignoreCase = true) == true) {
-                            Log.d("NgrokManager", "Using WiFi interface IP: $hostAddress")
-                            return hostAddress
-                        }
-                        
-                        // Fall back to any valid IP if no WiFi found
-                        if (hostAddress != null) {
-                            return hostAddress
-                        }
+                    if (!address.isLoopbackAddress && address.hostAddress?.indexOf(':') == -1) {
+                        return address.hostAddress
                     }
                 }
             }
@@ -116,17 +93,7 @@ object NgrokManager {
     fun getPublicUrl(): String? = publicUrl
     fun getLocalUrl(): String? = localUrl
     
-    // Refresh the local IP address (useful when network changes)
-    fun refreshLocalUrl(): String? {
-        localUrl = getLocalIpAddress()?.let { "http://$it:8080" }
-        Log.d("NgrokManager", "Refreshed local URL: $localUrl")
-        return localUrl
-    }
-    
     fun getServerUrls(): List<String> {
-        // Always refresh the local URL to get current network IP
-        refreshLocalUrl()
-        
         val urls = mutableListOf<String>()
         localUrl?.let { urls.add("Local: $it") }
         publicUrl?.let { urls.add("Public: $it") }

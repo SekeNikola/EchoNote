@@ -162,7 +162,7 @@ fun SimpleHomeScreen(
     
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color(0xFF1A1A2E),
+        containerColor = Color(0xFF282828),
         bottomBar = {
             // Fixed AI Assistant Input at bottom
             Card(
@@ -182,7 +182,7 @@ fun SimpleHomeScreen(
                                 .size(width = 160.dp, height = 120.dp)
                                 .padding(bottom = 12.dp),
                             shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF282828))
                         ) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 Image(
@@ -267,18 +267,46 @@ fun SimpleHomeScreen(
         ) {
             Spacer(modifier = Modifier.height(20.dp))
             
-            // Header with greeting and settings
+            // Header with search bar and settings
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Good ${getGreeting()}",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                // Search bar
+                TextField(
+                    value = "", // You can add search state here
+                    onValueChange = { /* Add search functionality */ },
+                    placeholder = { 
+                        Text(
+                            "Search notes, tasks...", 
+                            color = Color(0xFF6B7280),
+                            fontSize = 14.sp
+                        ) 
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color(0xFF2A2A2A),
+                        unfocusedContainerColor = Color(0xFF2A2A2A),
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search",
+                            tint = Color(0xFF6B7280)
+                        )
+                    }
                 )
+                
+                Spacer(modifier = Modifier.width(12.dp))
+                
                 IconButton(
                     onClick = { navController.navigate("settings") }
                 ) {
@@ -301,7 +329,7 @@ fun SimpleHomeScreen(
             ) {
                 Text(
                     text = "Today's Tasks",
-                    fontSize = 20.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -310,7 +338,8 @@ fun SimpleHomeScreen(
                 ) {
                     Text(
                         "See All",
-                        color = Color(0xFF8B5CF6)
+                        color = Color(0xFF8B5CF6),
+                        fontSize = 15.sp
                     )
                 }
             }
@@ -319,28 +348,59 @@ fun SimpleHomeScreen(
             
             // Tasks List
             if (tasks.any { isToday(it.dueDate) }) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp)
-                ) {
-                    items(tasks.filter { isToday(it.dueDate) }) { task ->
+                Column {
+                    tasks.filter { isToday(it.dueDate) }.forEach { task ->
                         TaskCard(
                             task = task,
                             onClick = { navController.navigate("task_detail/${task.id}") }
                         )
                     }
                     
-                    item {
-                        AddTaskCard(
-                            onClick = { showAddTaskSheet = true }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showAddTaskSheet = true }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add Task",
+                            tint = Color(0xFF8B5CF6),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Add Task",
+                            fontSize = 14.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
             } else {
                 // Empty state with add task option
-                AddTaskCard(
-                    onClick = { showAddTaskSheet = true }
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showAddTaskSheet = true }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Task",
+                        tint = Color(0xFF8B5CF6),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Add Task",
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -353,7 +413,7 @@ fun SimpleHomeScreen(
             ) {
                 Text(
                     text = "Recent Notes",
-                    fontSize = 20.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -362,7 +422,8 @@ fun SimpleHomeScreen(
                 ) {
                     Text(
                         "See All",
-                        color = Color(0xFF8B5CF6)
+                        color = Color(0xFF8B5CF6),
+                        fontSize = 15.sp
                     )
                 }
             }
@@ -371,28 +432,59 @@ fun SimpleHomeScreen(
             
             // Notes List
             if (notes.isNotEmpty()) {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp)
-                ) {
-                    items(notes.take(5)) { note ->
+                Column {
+                    notes.take(5).forEach { note ->
                         NoteCard(
                             note = note,
                             onClick = { navController.navigate("noteDetail/${note.id}") }
                         )
                     }
                     
-                    item {
-                        AddNoteCard(
-                            onClick = { onAddNote() }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onAddNote() }
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Add Note",
+                            tint = Color(0xFF8B5CF6),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Add Note",
+                            fontSize = 14.sp,
+                            color = Color.White,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
             } else {
                 // Empty state with add note option
-                AddNoteCard(
-                    onClick = { onAddNote() }
-                )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onAddNote() }
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add Note",
+                        tint = Color(0xFF8B5CF6),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Add Note",
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(32.dp))
@@ -405,7 +497,7 @@ fun SimpleHomeScreen(
             ) {
                 Text(
                     text = "Chat",
-                    fontSize = 20.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
@@ -414,7 +506,8 @@ fun SimpleHomeScreen(
                 ) {
                     Text(
                         "See All",
-                        color = Color(0xFF8B5CF6)
+                        color = Color(0xFF8B5CF6),
+                        fontSize = 15.sp
                     )
                 }
             }
@@ -422,57 +515,16 @@ fun SimpleHomeScreen(
             Spacer(modifier = Modifier.height(12.dp))
             
             // Chat Options
-            Card(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { navController.navigate("ai_chat") },
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A3E)),
-                shape = RoundedCornerShape(16.dp)
+                    .clickable { navController.navigate("ai_chat") }
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(20.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        Color(0xFF8B5CF6),
-                                        Color(0xFF3B82F6)
-                                    )
-                                ),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Default.Chat,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.width(16.dp))
-                    
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "AI Assistant",
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Start new chat",
-                            fontSize = 14.sp,
-                            color = Color(0xFFB0B0B0),
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
             }
             
             Spacer(modifier = Modifier.height(120.dp)) // Extra space for bottom input
@@ -483,7 +535,7 @@ fun SimpleHomeScreen(
     if (showAddTaskSheet) {
         ModalBottomSheet(
             onDismissRequest = { showAddTaskSheet = false },
-            containerColor = Color(0xFF1A1A2E),
+            containerColor = Color(0xFF282828),
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             AddTaskBottomSheet(
@@ -502,86 +554,76 @@ fun TaskCard(
     task: Task,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .width(200.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A3E)),
-        shape = RoundedCornerShape(12.dp)
+    Column(
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF1f1f1f))
+                .clickable { onClick() }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Circle,
-                    contentDescription = null,
-                    tint = if (task.isCompleted) Color(0xFF10B981) else Color(0xFF6B7280),
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Task",
-                    fontSize = 12.sp,
-                    color = Color(0xFFB0B0B0)
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
+        // Checkbox for completion
+        Checkbox(
+            checked = task.isCompleted,
+            onCheckedChange = { 
+                // Note: This would need to be passed as a parameter to actually toggle completion
+                // For now it's just visual
+            },
+            colors = CheckboxDefaults.colors(
+                checkedColor = Color(0xFFFF6B00), // Very bright orange
+                uncheckedColor = Color(0xFF4A4A4A), // Darker gray for better contrast
+                checkmarkColor = Color.White // White checkmark for better visibility
+            ),
+            modifier = Modifier.size(20.dp)
+        )
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        // Priority circle
+        val priorityColor = when (task.priority.lowercase()) {
+            "high" -> Color(0xFFFF4444) // Bright red for high priority
+            "medium" -> Color(0xFFFF8C00) // Orange/amber for medium priority (matching checkbox)
+            "low" -> Color(0xFF00C851) // Green for low priority
+            else -> Color(0xFF6B7280) // Gray for unknown priority
+        }
+        
+        Icon(
+            Icons.Default.Circle,
+            contentDescription = "Priority: ${task.priority}",
+            tint = priorityColor,
+            modifier = Modifier.size(12.dp)
+        )
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = task.title,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color.White,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = formatTime(task.dueDate),
-                fontSize = 12.sp,
-                color = Color(0xFFB0B0B0)
-            )
         }
-    }
-}
-
-@Composable
-fun AddTaskCard(
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(200.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A3E)),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
+        
+        Text(
+            text = formatTime(task.dueDate),
+            fontSize = 12.sp,
+            color = Color(0xFFB0B0B0)
+        )
+        }
+        
+        // Bottom border
+        Box(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = "Add Task",
-                tint = Color(0xFF8B5CF6),
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Add Task",
-                fontSize = 14.sp,
-                color = Color.White,
-                fontWeight = FontWeight.Medium
-            )
-        }
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0xFF444444))
+        )
     }
 }
 
@@ -590,55 +632,37 @@ fun NoteCard(
     note: Note,
     onClick: () -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
-            .width(200.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A3E)),
-        shape = RoundedCornerShape(12.dp)
+            .fillMaxWidth()
+            .background(Color(0xFF1f1f1f))
+            .clickable { onClick() }
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Description,
-                    contentDescription = null,
-                    tint = Color(0xFF8B5CF6),
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                Icons.Default.Description,
+                contentDescription = null,
+                tint = Color(0xFF8B5CF6),
+                modifier = Modifier.size(16.dp)
+            )
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Note",
-                    fontSize = 12.sp,
-                    color = Color(0xFFB0B0B0)
+                    text = note.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                text = note.title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(4.dp))
-            
-            Text(
-                text = extractSummaryFromSnippet(note.snippet),
-                fontSize = 12.sp,
-                color = Color(0xFFB0B0B0),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
             
             Text(
                 text = formatDate(note.createdAt),
@@ -646,40 +670,14 @@ fun NoteCard(
                 color = Color(0xFFB0B0B0)
             )
         }
-    }
-}
-
-@Composable
-fun AddNoteCard(
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .width(200.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A3E)),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
+        
+        // Bottom border
+        Box(
             modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                Icons.Default.Add,
-                contentDescription = "Add Note",
-                tint = Color(0xFF8B5CF6),
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Add Note",
-                fontSize = 14.sp,
-                color = Color.White,
-                fontWeight = FontWeight.Medium
-            )
-        }
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0xFF444444))
+        )
     }
 }
 
@@ -998,7 +996,7 @@ fun AddTaskBottomSheet(
             DatePicker(
                 state = datePickerState,
                 colors = DatePickerDefaults.colors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = Color(0xFF282828)
                 )
             )
         }

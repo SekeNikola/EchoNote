@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        
+        .test-container {
+            background-color: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success { background-color: #22c55e; color: white; }
+        .error { background-color: #ef4444; color: white; }
+        .info { background-color: #3b82f6; color: white; }
+        
+        input, button {
+            background-color: #3a3a3a;
+            border: 1px solid #555;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin: 5px;
+        }
+        
+        button {
+            background-color: #8B5CF6;
+            cursor: pointer;
+        }
+        
+        #results {
+            margin-top: 20px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>EchoNote Server Test</h1>
+    
+    <div class="test-container">
+        <h3>Server Connection Test</h3>
+        <input type="text" id="serverUrl" placeholder="http://192.168.1.xxx:8080" style="width: 300px;">
+        <button onclick="testServer()">Test Connection</button>
+        <br><br>
+        <button onclick="testAllEndpoints()">Test All Endpoints</button>
+        <button onclick="testWebSocket()">Test WebSocket</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        let serverUrl = '';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-container ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        async function testServer() {
+            const url = document.getElementById('serverUrl').value.trim();
+            if (!url) {
+                log('Please enter a server URL', 'error');
+                return;
+            }
+            
+            serverUrl = url;
+            log(`Testing connection to: ${serverUrl}`, 'info');
+            
+            try {
+                const response = await fetch(`${serverUrl}/tasks`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Connection successful! Found ${data.length} tasks`, 'success');
+                    log(`Response: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log(`❌ Server responded with error: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Connection failed: ${error.message}`, 'error');
+                log('Possible issues:', 'info');
+                log('1. Server not running on Android device', 'info');
+                log('2. Wrong IP address or port', 'info');
+                log('3. Firewall blocking connection', 'info');
+                log('4. Not on same WiFi network', 'info');
+            }
+        }
+        
+        async function testAllEndpoints() {
+            if (!serverUrl) {
+                log('Please test connection first', 'error');
+                return;
+            }
+            
+            const endpoints = [
+                { method: 'GET', path: '/tasks', name: 'Get Tasks' },
+                { method: 'GET', path: '/notes', name: 'Get Notes' },
+                { method: 'POST', path: '/tasks', name: 'Create Task', body: { title: 'Test Task', done: false } },
+                { method: 'POST', path: '/notes', name: 'Create Note', body: { title: 'Test Note', body: 'Test content' } }
+            ];
+            
+            log('Testing all endpoints...', 'info');
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const options = {
+                        method: endpoint.method,
+                        headers: { 'Content-Type': 'application/json' }
+                    };
+                    
+                    if (endpoint.body) {
+                        options.body = JSON.stringify(endpoint.body);
+                    }
+                    
+                    const response = await fetch(`${serverUrl}${endpoint.path}`, options);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        log(`✅ ${endpoint.name}: OK`, 'success');
+                    } else {
+                        log(`❌ ${endpoint.name}: ${response.status}`, 'error');
+                    }
+                } catch (error) {
+                    log(`❌ ${endpoint.name}: ${error.message}`, 'error');
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 500)); // Wait between requests
+            }
+        }
+        
+        function testWebSocket() {
+            if (!serverUrl) {
+                log('Please test connection first', 'error');
+                return;
+            }
+            
+            const wsUrl = serverUrl.replace('http://', 'ws://');
+            log(`Testing WebSocket: ${wsUrl}/sync`, 'info');
+            
+            try {
+                const ws = new WebSocket(`${wsUrl}/sync`);
+                
+                ws.onopen = function() {
+                    log('✅ WebSocket connected successfully', 'success');
+                    ws.close();
+                };
+                
+                ws.onerror = function(error) {
+                    log(`❌ WebSocket error: ${error}`, 'error');
+                };
+                
+                ws.onclose = function() {
+                    log('WebSocket connection closed', 'info');
+                };
+                
+                setTimeout(() => {
+                    if (ws.readyState === WebSocket.CONNECTING) {
+                        ws.close();
+                        log('❌ WebSocket connection timeout', 'error');
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                log(`❌ WebSocket failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Auto-fill with likely IP
+        document.getElementById('serverUrl').value = 'http://192.168.1.100:8080';
+        log('Server test tool loaded. Enter your Android device IP address above.', 'info');
+        log('You can find the IP in your Android app Settings → Server Status', 'info');
+    </script>
+</body>
+</html>

@@ -30,6 +30,10 @@
     <!-- Wake lock for background processing -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     
+    <!-- Foreground service permission for server -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    
     <!-- Vibration for feedback -->
     <uses-permission android:name="android.permission.VIBRATE" />
     
@@ -50,6 +54,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Ktor Server Service -->
+        <service
+            android:name=".server.ServerService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Widget Configuration -->
         <receiver android:name=".widget.LogionWidget"

@@ -1,6 +1,7 @@
 package com.example.app
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -37,6 +38,7 @@ import com.example.app.viewmodel.NoteViewModel
 import com.example.app.util.ApiKeyProvider
 import com.example.app.util.ApiKeyValidator
 import com.example.app.network.RetrofitInstance
+import com.example.app.server.ServerService
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -58,6 +60,10 @@ class MainActivity : ComponentActivity() {
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+
+		// Start the server service
+		val serverIntent = Intent(this, ServerService::class.java)
+		startService(serverIntent)
 
 		// Handle widget intents
 		val widgetAction = intent.getStringExtra("widget_action")
