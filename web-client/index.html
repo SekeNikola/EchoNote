@@ -287,6 +287,14 @@
                         renderNotes();
                     }
                     break;
+                case 'task_deleted':
+                    tasks = tasks.filter(t => t.id !== data.id);
+                    renderTasks();
+                    break;
+                case 'note_deleted':
+                    notes = notes.filter(n => n.id !== data.id);
+                    renderNotes();
+                    break;
             }
         }
 
@@ -435,6 +443,38 @@
             .catch(error => console.error('Failed to update note:', error));
         }
 
+        function deleteTask(taskId) {
+            if (!confirm('Are you sure you want to delete this task?')) {
+                return;
+            }
+            
+            fetch(`${serverUrl}/tasks/${taskId}`, {
+                method: 'DELETE'
+            })
+            .then(() => {
+                // Remove from local array and re-render
+                tasks = tasks.filter(t => t.id !== taskId);
+                renderTasks();
+            })
+            .catch(error => console.error('Failed to delete task:', error));
+        }
+
+        function deleteNote(noteId) {
+            if (!confirm('Are you sure you want to delete this note?')) {
+                return;
+            }
+            
+            fetch(`${serverUrl}/notes/${noteId}`, {
+                method: 'DELETE'
+            })
+            .then(() => {
+                // Remove from local array and re-render
+                notes = notes.filter(n => n.id !== noteId);
+                renderNotes();
+            })
+            .catch(error => console.error('Failed to delete note:', error));
+        }
+
         function renderTasks() {
             const tasksList = document.getElementById('tasksList');
             tasksList.innerHTML = tasks.map(task => `
@@ -451,6 +491,7 @@
                             ${task.done ? 'Mark Incomplete' : 'Mark Complete'}
                         </button>
                         <button onclick="editTask('${task.id}')">Edit</button>
+                        <button onclick="deleteTask('${task.id}')" style="background-color: #ef4444;">Delete</button>
                     </div>
                     <div id="edit-task-${task.id}" class="edit-form">
                         <div class="form-group">
@@ -483,6 +524,7 @@
                     </div>
                     <div class="item-actions">
                         <button onclick="editNote('${note.id}')">Edit</button>
+                        <button onclick="deleteNote('${note.id}')" style="background-color: #ef4444;">Delete</button>
                     </div>
                     <div id="edit-note-${note.id}" class="edit-form">
                         <div class="form-group">

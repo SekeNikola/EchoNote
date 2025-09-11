@@ -14,6 +14,9 @@ interface NoteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(note: Note)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAndGetId(note: Note): Long
+
     @Query("SELECT * FROM notes WHERE isArchived = 0 ORDER BY createdAt DESC")
     fun getAllNotes(): Flow<List<Note>>
     

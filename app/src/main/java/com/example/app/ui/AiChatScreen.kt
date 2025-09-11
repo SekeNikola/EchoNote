@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -193,45 +194,99 @@ fun AiChatScreen(
                 }
             },
             actions = {
-                IconButton(
-                    onClick = {
-                        // Save current chat as a note
-                        viewModel.saveChatAsNote()
+                // 3-dot menu with save options
+                var showMenu by remember { mutableStateOf(false) }
+                
+                Box {
+                    IconButton(onClick = { showMenu = true }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Save options",
+                            tint = Color.White
+                        )
                     }
-                ) {
-                    Icon(
-                        Icons.Default.NoteAdd,
-                        contentDescription = "Save as note",
-                        tint = Color(0xFFFF8C00)
-                    )
+                    
+                    DropdownMenu(
+                        expanded = showMenu,
+                        onDismissRequest = { showMenu = false },
+                        modifier = Modifier.background(Color(0xFF2A2A3E))
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Outlined.NoteAdd,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF8C00),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Save as Note", color = Color.White)
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                viewModel.saveChatAsNote()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Outlined.AddTask,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF8C00),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Save as Task", color = Color.White)
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                viewModel.saveChatAsTask()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Outlined.AddComment,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF8C00),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Save Chat", color = Color.White)
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                viewModel.saveChatAsChat(chatMessages)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.Outlined.Delete,
+                                        contentDescription = null,
+                                        tint = Color(0xFFFF5252),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Delete Chat", color = Color(0xFFFF5252))
+                                }
+                            },
+                            onClick = {
+                                showMenu = false
+                                viewModel.clearChatHistory()
+                            }
+                        )
+                    }
                 }
                 
-                IconButton(
-                    onClick = {
-                        // Save current chat as a task
-                        viewModel.saveChatAsTask()
-                    }
-                ) {
-                    Icon(
-                        Icons.Default.AddTask,
-                        contentDescription = "Save as task",
-                        tint = Color(0xFFFF8C00)
-                    )
-                }
-                
-                IconButton(
-                    onClick = {
-                        // Save current chat for continuation
-                        viewModel.saveChatAsChat(chatMessages)
-                    }
-                ) {
-                    Icon(
-                        Icons.Default.Chat,
-                        contentDescription = "Save chat",
-                        tint = Color(0xFFFF8C00)
-                    )
-                }
-                
+                // Voice orb - separate from menu for easy access
                 IconButton(
                     onClick = { navController.navigate("ai_voice") }
                 ) {

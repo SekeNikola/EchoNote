@@ -40,7 +40,9 @@ fun LogionNavGraph(
                 navController = navController,
                 viewModel = viewModel,
                 onAddNote = {
-                    viewModel.createNote()
+                    viewModel.createNoteAndNavigate { noteId ->
+                        navController.navigate("noteDetail/$noteId")
+                    }
                 }
             )
         }

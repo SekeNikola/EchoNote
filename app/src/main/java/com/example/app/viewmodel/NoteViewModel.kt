@@ -301,11 +301,14 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     private val compressedAudioRecorder = CompressedAudioRecorder(app.applicationContext)
     private var compressedAudioFile: File? = null
     fun stopAndSaveNote() {
+        Log.d("NoteViewModel", "=== STOP AND SAVE NOTE STARTED ===")
         isRecording.value = false
         speechRecognizer?.stopListening()
         val transcript = fullTranscript.value
+        Log.d("NoteViewModel", "Transcript length: ${transcript.length}")
         if (transcript.isNotBlank()) {
             viewModelScope.launch {
+                Log.d("NoteViewModel", "Starting OpenAI processing...")
                 val result = extractSummaryAndTasksWithOpenAI(transcript)
                 val summaryOut = result?.first ?: ""
                 val tasks = result?.second ?: emptyList<String>()
@@ -313,15 +316,20 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                 json.put("summary", summaryOut)
                 if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
                 
+                Log.d("NoteViewModel", "Summary extracted: ${summaryOut.take(50)}...")
+                
                 // Use smart title generation
                 val title = generateSmartTitle(transcript)
+                Log.d("NoteViewModel", "Generated title: $title")
                 
                 val note = Note(
                     title = title,
                     snippet = json.toString(),
                     transcript = transcript
                 )
+                Log.d("NoteViewModel", "About to insert note to database...")
                 repository.noteDao.insert(note)
+                Log.d("NoteViewModel", "Note inserted to database successfully")
                 
                 // Sync to web server for real-time updates
                 try {
@@ -331,12 +339,16 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                         body = transcript,
                         updatedAt = System.currentTimeMillis().toString()
                     )
+                    Log.d("NoteViewModel", "About to sync to web server...")
                     com.example.app.server.KtorServer.addNoteWithBroadcast(serverNote)
                     Log.d("NoteViewModel", "Synced note to web server: $title")
                 } catch (e: Exception) {
                     Log.w("NoteViewModel", "Failed to sync note to web server", e)
                 }
+                Log.d("NoteViewModel", "=== STOP AND SAVE NOTE COMPLETED ===")
             }
+        } else {
+            Log.d("NoteViewModel", "Transcript is blank, not saving note")
         }
         // Compress and send audio to OpenAI after recording
         compressAndSendAudioToOpenAI()
@@ -388,7 +400,17 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     }
 
     fun deleteNote(id: Long) = viewModelScope.launch {
-        repository.noteDao.deleteById(id)
+        try {
+            // Delete from local database
+            repository.noteDao.deleteById(id)
+            
+            // Notify WebUI by removing from server and broadcasting the deletion
+            com.example.app.server.KtorServer.deleteNoteWithBroadcast(id.toString())
+            
+            Log.d("NoteViewModel", "Deleted note ID: $id and synced to WebUI")
+        } catch (e: Exception) {
+            Log.w("NoteViewModel", "Failed to delete note or sync to WebUI", e)
+        }
     }
     val notes = repository.getAllNotes().asLiveData()
     val searchQuery = MutableLiveData("")
@@ -2987,15 +3009,54 @@ Output:
     }
 
 fun createNote(title: String = "New Note", content: String = "") = viewModelScope.launch {
+    Log.d("NoteViewModel", "=== CREATE NOTE STARTED ===")
+    Log.d("NoteViewModel", "Title: $title, Content: ${content.take(50)}...")
     try {
         val newNote = Note(
             title = title,
             transcript = content,
             snippet = ""
         )
+        Log.d("NoteViewModel", "About to insert note to database...")
         repository.noteDao.insert(newNote)  // Fixed method name
+        Log.d("NoteViewModel", "Create note completed successfully")
     } catch (e: Exception) {
         Log.e("NoteViewModel", "Error creating note", e)
+    }
+    Log.d("NoteViewModel", "=== CREATE NOTE COMPLETED ===")
+}
+
+suspend fun createNoteAndReturn(title: String = "New Note", content: String = ""): Long? {
+    Log.d("NoteViewModel", "=== CREATE NOTE STARTED ===")
+    Log.d("NoteViewModel", "Title: $title, Content: ${content.take(50)}...")
+    return try {
+        val newNote = Note(
+            title = title,
+            transcript = content,
+            snippet = ""
+        )
+        Log.d("NoteViewModel", "About to insert note to database...")
+        val noteId = repository.noteDao.insertAndGetId(newNote)  // Returns the new note ID
+        Log.d("NoteViewModel", "Create note completed successfully with ID: $noteId")
+        noteId
+    } catch (e: Exception) {
+        Log.e("NoteViewModel", "Error creating note", e)
+        null
+    }.also {
+        Log.d("NoteViewModel", "=== CREATE NOTE COMPLETED ===")
+    }
+}
+
+fun createNoteAndNavigate(onNavigate: (Long) -> Unit) {
+    viewModelScope.launch {
+        try {
+            val noteId = createNoteAndReturn()
+            if (noteId != null) {
+                onNavigate(noteId)
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating note for navigation", e)
+        }
     }
 }
 
@@ -3020,6 +3081,11 @@ fun createNote(title: String = "New Note", content: String = "") = viewModelScop
         try {
             repository.deleteTask(taskId)
             _allTasks.update { tasks -> tasks.filter { it.id != taskId } }
+            
+            // Notify WebUI by removing from server and broadcasting the deletion
+            com.example.app.server.KtorServer.deleteTaskWithBroadcast(taskId.toString())
+            
+            Log.d("NoteViewModel", "Deleted task ID: $taskId and synced to WebUI")
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error deleting task", e)
         }
