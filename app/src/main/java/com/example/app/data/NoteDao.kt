@@ -16,6 +16,9 @@ interface NoteDao {
 
     @Query("SELECT * FROM notes WHERE isArchived = 0 ORDER BY createdAt DESC")
     fun getAllNotes(): Flow<List<Note>>
+    
+    @Query("SELECT * FROM notes WHERE isArchived = 0 ORDER BY createdAt DESC")
+    suspend fun getAllNotesOnce(): List<Note>
 
     @Query("SELECT * FROM notes WHERE (title LIKE :query OR transcript LIKE :query) AND isArchived = 0 ORDER BY createdAt DESC")
     fun searchNotes(query: String): Flow<List<Note>>

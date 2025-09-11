@@ -25,14 +25,14 @@ fun SimpleVoiceOrb(
                 brush = if (isActive) {
                     Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFF8B5CF6),
+                            Color(0xFFFF8C00),
                             Color(0xFF3B82F6)
                         )
                     )
                 } else {
                     Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFF8B5CF6).copy(alpha = 0.8f),
+                            Color(0xFFFF8C00).copy(alpha = 0.8f),
                             Color(0xFF3B82F6).copy(alpha = 0.8f)
                         )
                     )

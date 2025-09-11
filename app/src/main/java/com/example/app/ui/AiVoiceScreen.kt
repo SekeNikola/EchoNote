@@ -56,7 +56,7 @@ fun AiVoiceScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A2E))
+            .background(Color(0xFF282828))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -92,7 +92,7 @@ fun AiVoiceScreen(
                 Icon(
                     Icons.Default.Chat,
                     contentDescription = "Chat",
-                    tint = Color(0xFF8B5CF6),
+                    tint = Color(0xFFFF8C00),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -264,8 +264,8 @@ fun LottieVoiceOrb(
                             )
                             else -> Brush.radialGradient(
                                 colors = listOf(
-                                    Color(0xFF8B5CF6), // Purple for idle
-                                    Color(0xFF7C3AED)
+                                    Color(0xFFFF8C00), // Purple for idle
+                                    Color(0xFFFF7F00)
                                 )
                             )
                         },

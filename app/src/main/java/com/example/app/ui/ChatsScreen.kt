@@ -29,20 +29,12 @@ fun ChatsScreen(
     navController: NavController,
     viewModel: NoteViewModel
 ) {
-    val chatMessages by viewModel.chatMessages.collectAsState()
-    
-    // Group chat messages by conversation/session
-    val groupedChats = remember(chatMessages) {
-        chatMessages.groupBy { 
-            // Group by date for now - you might want to implement proper conversation grouping
-            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp))
-        }.toList().sortedByDescending { it.second.maxOf { msg -> msg.timestamp } }
-    }
+    val savedChats by viewModel.savedChats.collectAsState()
     
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A2E))
+            .background(Color(0xFF282828))
             .padding(16.dp)
     ) {
         // Header with new chat button
@@ -64,7 +56,7 @@ fun ChatsScreen(
                 Icon(
                     Icons.Default.Add,
                     contentDescription = "New chat",
-                    tint = Color(0xFF8B5CF6),
+                    tint = Color(0xFFFF8C00),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -72,7 +64,7 @@ fun ChatsScreen(
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        if (groupedChats.isEmpty()) {
+        if (savedChats.isEmpty()) {
             // Empty state
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -108,7 +100,7 @@ fun ChatsScreen(
                 Button(
                     onClick = { navController.navigate("ai_chat") },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF8B5CF6)
+                        containerColor = Color(0xFFFF8C00)
                     )
                 ) {
                     Icon(
@@ -124,11 +116,14 @@ fun ChatsScreen(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(groupedChats) { (date, messages) ->
-                    ChatGroupCard(
-                        date = date,
-                        messages = messages,
-                        onClick = { navController.navigate("ai_chat") }
+                items(savedChats) { chatNote ->
+                    SavedChatCard(
+                        chat = chatNote,
+                        onClick = { 
+                            // Load this chat for continuation
+                            viewModel.loadChatForContinuation(chatNote.id)
+                            navController.navigate("ai_chat") 
+                        }
                     )
                 }
             }
@@ -142,14 +137,11 @@ fun ChatGroupCard(
     messages: List<ChatMessage>,
     onClick: () -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFF2A2A3E)
-        ),
-        shape = RoundedCornerShape(16.dp)
+            .background(Color(0xFF1f1f1f))
+            .clickable { onClick() }
     ) {
         Column(
             modifier = Modifier.padding(20.dp)
@@ -169,7 +161,7 @@ fun ChatGroupCard(
                 Text(
                     text = "${messages.size} messages",
                     fontSize = 12.sp,
-                    color = Color(0xFF8B5CF6)
+                    color = Color(0xFFFF8C00)
                 )
             }
             
@@ -187,6 +179,14 @@ fun ChatGroupCard(
                 )
             }
         }
+        
+        // Bottom border
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0xFF444444))
+        )
     }
 }
 

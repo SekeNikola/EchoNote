@@ -48,7 +48,7 @@ fun SettingsScreen(
     
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color(0xFF1A1A2E),
+        containerColor = Color(0xFF282828),
         topBar = {
             TopAppBar(
                 title = {
@@ -71,7 +71,7 @@ fun SettingsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1A1A2E)
+                    containerColor = Color(0xFF282828)
                 )
             )
         }
@@ -83,6 +83,65 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Server Status Section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF2A2A3E)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Server Status",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    val serverUrls = com.example.app.server.NgrokManager.getServerUrls()
+                    
+                    serverUrls.forEach { url ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Color(0xFF3A3A4E),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                if (url.startsWith("Local:")) Icons.Default.Computer else Icons.Default.Public,
+                                contentDescription = null,
+                                tint = Color(0xFFFF8C00),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = url,
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                    
+                    Text(
+                        text = "Use these URLs to access the web client from any device",
+                        fontSize = 12.sp,
+                        color = Color(0xFFB0B0B0)
+                    )
+                }
+            }
+            
             // Permissions Section
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -113,7 +172,7 @@ fun SettingsScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF8B5CF6)
+                            containerColor = Color(0xFFFF8C00)
                         )
                     ) {
                         Icon(
@@ -155,7 +214,7 @@ fun SettingsScreen(
                         onClick = { showApiKeyDialog = true },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF8B5CF6)
+                            containerColor = Color(0xFFFF8C00)
                         )
                     ) {
                         Icon(
@@ -210,11 +269,11 @@ fun SettingsScreen(
                                 .menuAnchor()
                                 .fillMaxWidth(),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color(0xFF8B5CF6),
+                                focusedBorderColor = Color(0xFFFF8C00),
                                 unfocusedBorderColor = Color(0xFF4A4A5E),
                                 focusedTextColor = Color.White,
                                 unfocusedTextColor = Color.White,
-                                cursorColor = Color(0xFF8B5CF6)
+                                cursorColor = Color(0xFFFF8C00)
                             )
                         )
                         
@@ -244,7 +303,7 @@ fun SettingsScreen(
                                                 Icon(
                                                     Icons.Default.PlayArrow,
                                                     contentDescription = "Preview",
-                                                    tint = Color(0xFF8B5CF6),
+                                                    tint = Color(0xFFFF8C00),
                                                     modifier = Modifier.size(20.dp)
                                                 )
                                             }
@@ -300,17 +359,17 @@ fun SettingsScreen(
                                 Icon(
                                     if (showApiKey) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                     contentDescription = if (showApiKey) "Hide" else "Show",
-                                    tint = Color(0xFF8B5CF6)
+                                    tint = Color(0xFFFF8C00)
                                 )
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF8B5CF6),
+                            focusedBorderColor = Color(0xFFFF8C00),
                             unfocusedBorderColor = Color(0xFF4A4A5E),
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            cursorColor = Color(0xFF8B5CF6)
+                            cursorColor = Color(0xFFFF8C00)
                         ),
                         singleLine = true
                     )
@@ -326,7 +385,7 @@ fun SettingsScreen(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF8B5CF6)
+                        containerColor = Color(0xFFFF8C00)
                     )
                 ) {
                     Text("Save", color = Color.White)
@@ -340,7 +399,7 @@ fun SettingsScreen(
                         showApiKey = false
                     },
                     colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color(0xFF8B5CF6)
+                        contentColor = Color(0xFFFF8C00)
                     )
                 ) {
                     Text("Cancel")

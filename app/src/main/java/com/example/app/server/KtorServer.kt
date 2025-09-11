@@ -68,8 +68,20 @@ object KtorServer {
         tasks[task.id] = task
     }
     
+    suspend fun addTaskWithBroadcast(task: ServerTask) {
+        tasks[task.id] = task
+        // Broadcast to WebSocket clients for real-time updates
+        broadcastSync("task_added", Json.encodeToString(ServerTask.serializer(), task))
+    }
+    
     fun addNote(note: ServerNote) {
         notes[note.id] = note
+    }
+    
+    suspend fun addNoteWithBroadcast(note: ServerNote) {
+        notes[note.id] = note
+        // Broadcast to WebSocket clients for real-time updates
+        broadcastSync("note_added", Json.encodeToString(ServerNote.serializer(), note))
     }
     
     fun clearData() {

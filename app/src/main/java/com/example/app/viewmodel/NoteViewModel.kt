@@ -322,6 +322,20 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                     transcript = transcript
                 )
                 repository.noteDao.insert(note)
+                
+                // Sync to web server for real-time updates
+                try {
+                    val serverNote = com.example.app.server.ServerNote(
+                        id = java.util.UUID.randomUUID().toString(),
+                        title = title,
+                        body = transcript,
+                        updatedAt = System.currentTimeMillis().toString()
+                    )
+                    com.example.app.server.KtorServer.addNoteWithBroadcast(serverNote)
+                    Log.d("NoteViewModel", "Synced note to web server: $title")
+                } catch (e: Exception) {
+                    Log.w("NoteViewModel", "Failed to sync note to web server", e)
+                }
             }
         }
         // Compress and send audio to OpenAI after recording
@@ -790,6 +804,20 @@ Output:
             repository.noteDao.insert(note)
             Log.d("NoteViewModel", "List saved: $smartTitle with ${currentListItems.size} items")
             
+            // Sync to web server for real-time updates
+            try {
+                val serverNote = com.example.app.server.ServerNote(
+                    id = java.util.UUID.randomUUID().toString(),
+                    title = smartTitle,
+                    body = currentListItems.joinToString(", "),
+                    updatedAt = System.currentTimeMillis().toString()
+                )
+                com.example.app.server.KtorServer.addNoteWithBroadcast(serverNote)
+                Log.d("NoteViewModel", "Synced list to web server: $smartTitle")
+            } catch (e: Exception) {
+                Log.w("NoteViewModel", "Failed to sync list to web server", e)
+            }
+            
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error saving list: ${e.message}")
         }
@@ -856,6 +884,21 @@ Output:
                 Log.d("NoteViewModel", "About to insert note...")
                 repository.noteDao.insert(note)
                 Log.d("NoteViewModel", "Note inserted successfully!")
+                
+                // Sync to web server for real-time updates
+                try {
+                    val serverNote = com.example.app.server.ServerNote(
+                        id = java.util.UUID.randomUUID().toString(),
+                        title = finalTitle,
+                        body = transcript,
+                        updatedAt = System.currentTimeMillis().toString()
+                    )
+                    com.example.app.server.KtorServer.addNoteWithBroadcast(serverNote)
+                    Log.d("NoteViewModel", "Synced chat note to web server: $finalTitle")
+                } catch (e: Exception) {
+                    Log.w("NoteViewModel", "Failed to sync chat note to web server", e)
+                }
+                
                 Log.d("NoteViewModel", "=== SAVE CHAT SUCCESS ===")
                 
             } else {
@@ -865,6 +908,121 @@ Output:
             Log.e("NoteViewModel", "=== SAVE CHAT ERROR ===", e)
             Log.e("NoteViewModel", "Error details: ${e.message}")
             Log.e("NoteViewModel", "Error stack: ${e.stackTraceToString()}")
+        }
+    }
+    
+    // Save chat conversation as a task
+    fun saveChatAsTask() = viewModelScope.launch {
+        try {
+            val chatMessages = _chatMessages.value
+            Log.d("NoteViewModel", "=== SAVE CHAT AS TASK START ===")
+            Log.d("NoteViewModel", "Chat messages size: ${chatMessages.size}")
+            
+            if (chatMessages.isNotEmpty()) {
+                // Get the latest user message and AI response
+                val lastUserMessage = chatMessages.findLast { it.isUser }?.content ?: ""
+                val lastAiResponse = chatMessages.findLast { !it.isUser }?.content ?: ""
+                
+                // Use the existing createTaskFromChat method
+                createTaskFromChat(lastUserMessage, lastAiResponse)
+                
+                Log.d("NoteViewModel", "=== SAVE CHAT AS TASK SUCCESS ===")
+            } else {
+                Log.d("NoteViewModel", "Chat messages are empty - nothing to save as task")
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "=== SAVE CHAT AS TASK ERROR ===", e)
+            Log.e("NoteViewModel", "Error details: ${e.message}")
+        }
+    }
+    
+    // Save chat conversation for continuation
+    fun saveChatAsChat(messages: List<ChatMessage>) = viewModelScope.launch {
+        try {
+            Log.d("NoteViewModel", "=== SAVE CHAT FOR CONTINUATION START ===")
+            Log.d("NoteViewModel", "Chat messages size: ${messages.size}")
+            
+            if (messages.isNotEmpty()) {
+                // Create a title based on the first few messages
+                val firstUserMessage = messages.find { it.isUser }?.content ?: "New Chat"
+                val title = generateTitle(firstUserMessage.take(50))
+                
+                // Create a JSON object to store the chat messages for continuation
+                val chatData = org.json.JSONObject()
+                val messagesArray = org.json.JSONArray()
+                
+                messages.forEach { message ->
+                    val messageObj = org.json.JSONObject()
+                    messageObj.put("content", message.content)
+                    messageObj.put("isUser", message.isUser)
+                    messageObj.put("timestamp", message.timestamp)
+                    messagesArray.put(messageObj)
+                }
+                
+                chatData.put("type", "chat_continuation")
+                chatData.put("messages", messagesArray)
+                chatData.put("savedAt", System.currentTimeMillis())
+                
+                // Create a note with special chat continuation format
+                val note = Note(
+                    title = title,
+                    snippet = chatData.toString(),
+                    transcript = "Chat conversation: $title"
+                )
+                
+                repository.noteDao.insert(note)
+                Log.d("NoteViewModel", "=== SAVE CHAT FOR CONTINUATION SUCCESS ===")
+                
+                // Don't clear chat - keep it visible for user
+                // _chatMessages.value = emptyList()  // Removed this line
+                
+            } else {
+                Log.d("NoteViewModel", "Chat messages are empty - nothing to save")
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "=== SAVE CHAT FOR CONTINUATION ERROR ===", e)
+            Log.e("NoteViewModel", "Error details: ${e.message}")
+        }
+    }
+    
+    // Load saved chat for continuation
+    fun loadChatForContinuation(noteId: Long) = viewModelScope.launch {
+        try {
+            Log.d("NoteViewModel", "=== LOAD CHAT FOR CONTINUATION START ===")
+            
+            repository.getNoteById(noteId).collect { note ->
+                if (note != null) {
+                    try {
+                        val chatData = org.json.JSONObject(note.snippet)
+                        if (chatData.getString("type") == "chat_continuation") {
+                            val messagesArray = chatData.getJSONArray("messages")
+                            val chatMessages = mutableListOf<ChatMessage>()
+                            
+                            for (i in 0 until messagesArray.length()) {
+                                val messageObj = messagesArray.getJSONObject(i)
+                                val message = ChatMessage(
+                                    content = messageObj.getString("content"),
+                                    isUser = messageObj.getBoolean("isUser"),
+                                    timestamp = messageObj.getLong("timestamp")
+                                )
+                                chatMessages.add(message)
+                            }
+                            
+                            _chatMessages.value = chatMessages
+                            Log.d("NoteViewModel", "=== LOAD CHAT FOR CONTINUATION SUCCESS ===")
+                            Log.d("NoteViewModel", "Loaded ${chatMessages.size} messages")
+                        } else {
+                            Log.w("NoteViewModel", "Note is not a chat continuation type")
+                        }
+                    } catch (jsonException: Exception) {
+                        Log.e("NoteViewModel", "Error parsing chat data", jsonException)
+                    }
+                } else {
+                    Log.w("NoteViewModel", "Note not found with ID: $noteId")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "=== LOAD CHAT FOR CONTINUATION ERROR ===", e)
         }
     }
     
@@ -1738,6 +1896,21 @@ Output:
             Log.d("NoteViewModel", "Created task from chat: ${task.title}")
             Log.d("NoteViewModel", "Task due date: ${task.dueDate}, current time: ${System.currentTimeMillis()}")
             
+            // Sync to web server in real-time
+            try {
+                val serverTask = com.example.app.server.ServerTask(
+                    id = task.id.toString(),
+                    title = task.title,
+                    body = task.description,
+                    done = task.isCompleted,
+                    updatedAt = java.time.Instant.ofEpochMilli(task.updatedAt).toString()
+                )
+                com.example.app.server.KtorServer.addTaskWithBroadcast(serverTask)
+                Log.d("NoteViewModel", "Task from chat synced to web server")
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Failed to sync chat task to web server", e)
+            }
+            
             // Refresh tasks list to ensure it shows up immediately
             loadTasks()
             
@@ -2547,6 +2720,21 @@ Output:
             repository.insertTask(task)
             Log.d("NoteViewModel", "Task inserted successfully!")
             
+            // Sync to web server in real-time
+            try {
+                val serverTask = com.example.app.server.ServerTask(
+                    id = task.id.toString(),
+                    title = task.title,
+                    body = task.description,
+                    done = task.isCompleted,
+                    updatedAt = java.time.Instant.ofEpochMilli(task.updatedAt).toString()
+                )
+                com.example.app.server.KtorServer.addTaskWithBroadcast(serverTask)
+                Log.d("NoteViewModel", "Voice task synced to web server")
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Failed to sync voice task to web server", e)
+            }
+            
             // Refresh tasks list
             loadTasks()
             Log.d("NoteViewModel", "Tasks list refreshed")
@@ -2747,6 +2935,20 @@ Output:
             )
             sampleTasks.forEach { task ->
                 repository.insertTask(task)
+                
+                // Sync sample tasks to web server too
+                try {
+                    val serverTask = com.example.app.server.ServerTask(
+                        id = task.id.toString(),
+                        title = task.title,
+                        body = task.description,
+                        done = task.isCompleted,
+                        updatedAt = java.time.Instant.ofEpochMilli(task.updatedAt).toString()
+                    )
+                    com.example.app.server.KtorServer.addTaskWithBroadcast(serverTask)
+                } catch (e: Exception) {
+                    Log.e("NoteViewModel", "Failed to sync sample task to web server", e)
+                }
             }
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error creating sample tasks", e)
@@ -2754,19 +2956,35 @@ Output:
     }
     
     fun createTask(title: String, description: String, priority: String = "Medium", dueDate: Long = System.currentTimeMillis()) = viewModelScope.launch {
-    try {
-        val newTask = Task(
-            title = title,
-            description = description,
-            priority = priority,
-            dueDate = dueDate
-        )
-        // Use the correct repository method
-        repository.taskDao.insert(newTask)  // or whatever your actual method is
-    } catch (e: Exception) {
-        Log.e("NoteViewModel", "Error creating task", e)
+        try {
+            val newTask = Task(
+                title = title,
+                description = description,
+                priority = priority,
+                dueDate = dueDate
+            )
+            // Insert into local database
+            repository.taskDao.insert(newTask)
+            
+            // Sync to web server in real-time
+            try {
+                val serverTask = com.example.app.server.ServerTask(
+                    id = newTask.id.toString(),
+                    title = newTask.title,
+                    body = newTask.description,
+                    done = newTask.isCompleted,
+                    updatedAt = java.time.Instant.ofEpochMilli(newTask.updatedAt).toString()
+                )
+                com.example.app.server.KtorServer.addTaskWithBroadcast(serverTask)
+                    
+                Log.d("NoteViewModel", "Task created and synced to web server: $title")
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Failed to sync task to web server", e)
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating task", e)
+        }
     }
-}
 
 fun createNote(title: String = "New Note", content: String = "") = viewModelScope.launch {
     try {
@@ -2838,6 +3056,37 @@ fun createNote(title: String = "New Note", content: String = "") = viewModelScop
             }
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error updating task", e)
+        }
+    }
+    
+    // Get saved chat conversations from notes
+    private val _savedChats = MutableStateFlow<List<Note>>(emptyList())
+    val savedChats: StateFlow<List<Note>> = _savedChats.asStateFlow()
+    
+    init {
+        // Load saved chats when ViewModel is created
+        loadSavedChats()
+    }
+    
+    private fun loadSavedChats() = viewModelScope.launch {
+        try {
+            repository.getAllNotes().collect { notes ->
+                // Filter notes that are saved chats (contain chat_continuation type)
+                val chatNotes = notes.filter { note ->
+                    try {
+                        if (note.snippet.isNotBlank()) {
+                            val chatData = org.json.JSONObject(note.snippet)
+                            chatData.optString("type") == "chat_continuation"
+                        } else false
+                    } catch (e: Exception) {
+                        false
+                    }
+                }.sortedByDescending { it.createdAt }
+                
+                _savedChats.value = chatNotes
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error loading saved chats", e)
         }
     }
     

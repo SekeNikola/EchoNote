@@ -49,7 +49,7 @@ fun RecordingScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF121212))
+            .background(Color(0xFF282828))
     ) {
         // Transcript at the top
         Column(

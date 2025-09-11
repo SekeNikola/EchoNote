@@ -65,7 +65,7 @@ fun TaskDetailScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A2E))
+            .background(Color(0xFF282828))
     ) {
         // Top App Bar
         TopAppBar(
@@ -168,7 +168,7 @@ fun TaskDetailScreen(
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF1A1A2E)
+                containerColor = Color(0xFF282828)
             )
         )
         
@@ -264,9 +264,9 @@ fun TaskDetailScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF8B5CF6),
+                        focusedBorderColor = Color(0xFFFF8C00),
                         unfocusedBorderColor = Color(0xFF404056),
-                        cursorColor = Color(0xFF8B5CF6)
+                        cursorColor = Color(0xFFFF8C00)
                     ),
                     textStyle = TextStyle(fontSize = 28.sp, fontWeight = FontWeight.Bold)
                 )
@@ -292,9 +292,9 @@ fun TaskDetailScreen(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFF8B5CF6),
+                        focusedBorderColor = Color(0xFFFF8C00),
                         unfocusedBorderColor = Color(0xFF404056),
-                        cursorColor = Color(0xFF8B5CF6)
+                        cursorColor = Color(0xFFFF8C00)
                     ),
                     minLines = 3
                 )
@@ -361,7 +361,7 @@ fun TaskDetailScreen(
                     Icon(
                         Icons.Default.Schedule,
                         contentDescription = null,
-                        tint = Color(0xFF8B5CF6),
+                        tint = Color(0xFFFF8C00),
                         modifier = Modifier.size(20.dp)
                     )
                     
@@ -427,7 +427,7 @@ fun TaskDetailScreen(
                         .fillMaxWidth()
                         .height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (task.isCompleted) Color(0xFF404056) else Color(0xFF8B5CF6)
+                        containerColor = if (task.isCompleted) Color(0xFF404056) else Color(0xFFFF8C00)
                     ),
                     shape = RoundedCornerShape(16.dp)
                 ) {

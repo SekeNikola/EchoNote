@@ -53,7 +53,7 @@ fun NoteDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF121212))
+            .background(Color(0xFF282828))
     ) {
         Column(
             modifier = Modifier
@@ -105,7 +105,7 @@ fun NoteDetailScreen(
             val tabTitles = listOf("Summary", "Transcript")
             TabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = Color(0xFF181818),
+                containerColor = Color(0xFF282828),
                 contentColor = Color.White,
                 modifier = Modifier.padding(horizontal = 16.dp)
             ) {
@@ -131,7 +131,7 @@ fun NoteDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color(0xFF181818))
+                                .background(Color(0xFF2A2A2A))
                         ) {
                             val scrollState = summaryScrollState
                             Row(modifier = Modifier.fillMaxSize()) {
@@ -365,7 +365,7 @@ fun NoteDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color(0xFF181818))
+                                .background(Color(0xFF2A2A2A))
                         ) {
                             val scrollState = transcriptScrollState
                             Row(modifier = Modifier.fillMaxSize()) {

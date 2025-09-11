@@ -1315,6 +1315,7 @@ int color accent_material_dark 0x7f050019
 int color accent_material_light 0x7f05001a
 int color androidx_core_ripple_material_light 0x7f05001b
 int color androidx_core_secondary_text_default_material_light 0x7f05001c
+int color app_background 0x7f050315
 int color background_floating_material_dark 0x7f05001d
 int color background_floating_material_light 0x7f05001e
 int color background_material_dark 0x7f05001f

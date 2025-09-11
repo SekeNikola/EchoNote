@@ -9,25 +9,23 @@
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #1a1a1a;
+            background-color: #282828;
             color: white;
         }
         
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
         
-        .section {
-            background-color: #2a2a2a;
+        .notes, .tasks, .server {
+            background-color: #1f1f1f;
             margin: 20px 0;
             padding: 20px;
-            border-radius: 8px;
-            width: 100%;
+            border-radius: 8px
         }
         
+        .notes, .tasks {
+            flex: 1;
+        }
         h1, h2 {
-            color: #8B5CF6;
+            color: #ff8c00;
         }
         
         .connection-status {
@@ -50,7 +48,7 @@
         }
         
         button {
-            background-color: #8B5CF6;
+            background-color: #ff8c00;
             cursor: pointer;
         }
         
@@ -63,7 +61,7 @@
             padding: 15px;
             margin: 10px 0;
             border-radius: 4px;
-            border-left: 4px solid #8B5CF6;
+            border-left: 4px solid #ff8c00;
         }
         
         .task.done {
@@ -161,7 +159,7 @@
     <div class="container">
         <h1>Logion Web Client</h1>
         
-        <div class="section">
+        <div class="server">
             <div class="form-group">
                 <label for="serverIp">Server URL:</label>
                 <div class="server-input-container">
@@ -176,7 +174,7 @@
             </div>
         </div>
         <div class="task-notes">
-        <div class="section">
+        <div class="tasks">
             <h2>Tasks</h2>
             <div class="form-group">
                 <label for="newTaskTitle">Task Title:</label>
@@ -190,7 +188,7 @@
             <div id="tasksList"></div>
         </div>
         
-        <div class="section">
+        <div class="notes">
             <h2>Notes</h2>
             <div class="form-group">
                 <label for="newNoteTitle">Note Title:</label>

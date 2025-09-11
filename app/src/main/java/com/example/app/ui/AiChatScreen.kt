@@ -1,6 +1,7 @@
 package com.example.app.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,19 +18,27 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
 import androidx.navigation.NavController
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.example.app.R
 import com.example.app.data.ChatMessage
 import com.example.app.ui.components.SimpleVoiceOrb
+import com.example.app.ui.CompactVoiceOrb
 import com.example.app.viewmodel.NoteViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -57,6 +66,7 @@ fun AiChatScreen(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
     
     // Image handling
     var selectedImageUri by remember { mutableStateOf<String?>(null) }
@@ -164,14 +174,12 @@ fun AiChatScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A2E))
+            .background(Color(0xFF282828))
     ) {
         // Top App Bar
         TopAppBar(
             title = {
-                SimpleVoiceOrb(
-                    size = 32.dp
-                )
+              
             },
             navigationIcon = {
                 IconButton(
@@ -192,22 +200,48 @@ fun AiChatScreen(
                     }
                 ) {
                     Icon(
-                        Icons.Default.Save,
+                        Icons.Default.NoteAdd,
+                        contentDescription = "Save as note",
+                        tint = Color(0xFFFF8C00)
+                    )
+                }
+                
+                IconButton(
+                    onClick = {
+                        // Save current chat as a task
+                        viewModel.saveChatAsTask()
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.AddTask,
+                        contentDescription = "Save as task",
+                        tint = Color(0xFFFF8C00)
+                    )
+                }
+                
+                IconButton(
+                    onClick = {
+                        // Save current chat for continuation
+                        viewModel.saveChatAsChat(chatMessages)
+                    }
+                ) {
+                    Icon(
+                        Icons.Default.Chat,
                         contentDescription = "Save chat",
-                        tint = Color(0xFF8B5CF6)
+                        tint = Color(0xFFFF8C00)
                     )
                 }
                 
                 IconButton(
                     onClick = { navController.navigate("ai_voice") }
                 ) {
-                    SimpleVoiceOrb(
-                        size = 24.dp
+                    CompactVoiceOrb(
+                        onClick = { navController.navigate("ai_voice") }
                     )
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF1A1A2E)
+                containerColor = Color(0xFF282828)
             )
         )
         
@@ -220,18 +254,6 @@ fun AiChatScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            if (chatMessages.isEmpty()) {
-                item {
-                    WelcomeMessage(
-                        onSuggestionClick = { suggestion ->
-                            // Extract the text without emoji and send it
-                            val cleanText = suggestion.replace(Regex("^[\\p{So}\\p{Sk}]+ "), "")
-                            inputText = cleanText
-                        }
-                    )
-                }
-            }
-            
             items(chatMessages) { message ->
                 ChatMessageItem(
                     message = message,
@@ -249,7 +271,7 @@ fun AiChatScreen(
         // Input Area with image preview
         Surface(
             modifier = Modifier.fillMaxWidth(),
-            color = Color(0xFF2A2A3E),
+            color = Color(0xFF1f1f1f),
             shadowElevation = 8.dp
         ) {
             Column(
@@ -265,7 +287,7 @@ fun AiChatScreen(
                             .height(120.dp)
                             .padding(bottom = 12.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E))
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF282828))
                     ) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             AsyncImage(
@@ -303,8 +325,12 @@ fun AiChatScreen(
                 }
                 
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.Bottom
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF282828))
+                        .padding(16.dp)
+                        .height(48.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     // Plus icon with dropdown menu for media options
                     var showDropDown by remember { mutableStateOf(false) }
@@ -317,7 +343,7 @@ fun AiChatScreen(
                             Icon(
                                 Icons.Default.Add,
                                 contentDescription = "Add media",
-                                tint = Color(0xFF8B5CF6),
+                                tint = Color(0xFFFF8C00),
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -327,7 +353,7 @@ fun AiChatScreen(
                             onDismissRequest = { showDropDown = false },
                             modifier = Modifier
                                 .background(
-                                    Color(0xFF1A1A2E),
+                                    Color(0xFF1f1f1f),
                                     RoundedCornerShape(16.dp)
                                 )
                                 .padding(8.dp)
@@ -426,17 +452,25 @@ fun AiChatScreen(
                         placeholder = {
                             Text(
                                 text = "Ask me anything...",
-                                color = Color(0xFFB0B0B0)
+                                color = Color(0xFFB0B0B0),
+                                fontSize = 14.sp,
+                                lineHeight = 10.sp
                             )
                         },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedBorderColor = Color(0xFF8B5CF6),
+                            focusedBorderColor = Color(0xFFFF8C00),
                             unfocusedBorderColor = Color(0xFF404056),
-                            cursorColor = Color(0xFF8B5CF6)
+                            cursorColor = Color(0xFFFF8C00),
+                            focusedContainerColor = Color(0xFF1f1f1f),
+                            unfocusedContainerColor = Color(0xFF1f1f1f)
                         ),
                         shape = RoundedCornerShape(24.dp),
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            fontSize = 14.sp,
+                            color = Color.White
+                        ),
                         maxLines = 4
                     )
                     
@@ -445,6 +479,10 @@ fun AiChatScreen(
                     FloatingActionButton(
                         onClick = {
                             if ((inputText.isNotBlank() || selectedImageUri != null) && !isLoading) {
+                                // Hide keyboard
+                                keyboardController?.hide()
+                                focusRequester.freeFocus()
+                                
                                 coroutineScope.launch {
                                     // Send message with optional image context
                                     if (selectedImageUri != null) {
@@ -466,7 +504,7 @@ fun AiChatScreen(
                         },
                         modifier = Modifier.size(48.dp),
                         containerColor = if ((inputText.isNotBlank() || selectedImageUri != null) && !isLoading) {
-                            Color(0xFF8B5CF6)
+                            Color(0xFFFF8C00)
                         } else {
                             Color(0xFF404056)
                         }
@@ -507,7 +545,7 @@ fun WelcomeMessage(
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFF8B5CF6),
+                            Color(0xFFFF8C00),
                             Color(0xFF3B82F6)
                         )
                     ),
@@ -608,7 +646,7 @@ fun SuggestionChip(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        color = Color(0xFF2A2A3E),
+        color = Color(0xFF1f1f1f),
         shape = RoundedCornerShape(16.dp),
         shadowElevation = 2.dp
     ) {
@@ -630,7 +668,7 @@ fun SuggestionChip(
             Icon(
                 Icons.Default.ArrowForward,
                 contentDescription = null,
-                tint = Color(0xFF8B5CF6),
+                tint = Color(0xFFFF8C00),
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -653,7 +691,7 @@ fun ChatMessageItem(
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                Color(0xFF8B5CF6),
+                                Color(0xFFFF8C00),
                                 Color(0xFF3B82F6)
                             )
                         ),
@@ -674,7 +712,7 @@ fun ChatMessageItem(
         
         Surface(
             modifier = Modifier.widthIn(max = 280.dp),
-            color = if (isUser) Color(0xFF8B5CF6) else Color(0xFF2A2A3E),
+            color = if (isUser) Color(0xFFFF8C00) else Color(0xFF1f1f1f),
             shape = RoundedCornerShape(
                 topStart = 16.dp,
                 topEnd = 16.dp,
@@ -728,7 +766,7 @@ fun ChatMessageItem(
                 modifier = Modifier
                     .size(32.dp)
                     .background(
-                        Color(0xFF8B5CF6),
+                        Color(0xFFFF8C00),
                         shape = CircleShape
                     ),
                 contentAlignment = Alignment.Center
@@ -756,7 +794,7 @@ fun TypingIndicator() {
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFF8B5CF6),
+                            Color(0xFFFF8C00),
                             Color(0xFF3B82F6)
                         )
                     ),
@@ -775,7 +813,7 @@ fun TypingIndicator() {
         Spacer(modifier = Modifier.width(12.dp))
         
         Surface(
-            color = Color(0xFF2A2A3E),
+            color = Color(0xFF1f1f1f),
             shape = RoundedCornerShape(16.dp)
         ) {
             Row(

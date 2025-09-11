@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.collectAsState
@@ -24,6 +25,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,12 +67,37 @@ fun SimpleHomeScreen(
 ) {
     val notes by viewModel.notes.observeAsState(emptyList())
     val tasks by viewModel.allTasks.collectAsState()
+    val savedChats by viewModel.savedChats.collectAsState()
     var selectedImageUri by remember { mutableStateOf<String?>(null) }
     var showAddTaskSheet by remember { mutableStateOf(false) }
     var aiInputText by remember { mutableStateOf("") }
+    var searchQuery by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
     val context = LocalContext.current
+    
+    // Filter notes and tasks based on search query
+    val filteredNotes = remember(notes, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            notes
+        } else {
+            notes.filter { note ->
+                note.title.contains(searchQuery, ignoreCase = true) ||
+                note.transcript.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
+    
+    val filteredTasks = remember(tasks, searchQuery) {
+        if (searchQuery.isEmpty()) {
+            tasks
+        } else {
+            tasks.filter { task ->
+                task.title.contains(searchQuery, ignoreCase = true) ||
+                task.description.contains(searchQuery, ignoreCase = true)
+            }
+        }
+    }
     
     // Camera and file functionality
     var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
@@ -168,7 +195,7 @@ fun SimpleHomeScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(0.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF2A2A3E))
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF282828))
             ) {
                 Column(
                     modifier = Modifier
@@ -226,7 +253,7 @@ fun SimpleHomeScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .background(
-                                    Color(0xFF404056),
+                                    Color(0xFF1f1f1f),
                                     RoundedCornerShape(24.dp)
                                 )
                                 .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -274,35 +301,55 @@ fun SimpleHomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Search bar
-                TextField(
-                    value = "", // You can add search state here
-                    onValueChange = { /* Add search functionality */ },
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
                     placeholder = { 
                         Text(
                             "Search notes, tasks...", 
-                            color = Color(0xFF6B7280),
-                            fontSize = 14.sp
+                            color = Color(0xFFB0B0B0),
+                            fontSize = 14.sp,
+                            lineHeight = 10.sp
                         ) 
                     },
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color(0xFF2A2A2A),
-                        unfocusedContainerColor = Color(0xFF2A2A2A),
-                        focusedIndicatorColor = Color.Transparent,
-                        unfocusedIndicatorColor = Color.Transparent,
+                    colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFFFF8C00),
+                        unfocusedBorderColor = Color(0xFF404056),
+                        cursorColor = Color(0xFFFF8C00),
+                        focusedContainerColor = Color(0xFF1f1f1f),
+                        unfocusedContainerColor = Color(0xFF1f1f1f)
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    singleLine = true,
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        fontSize = 14.sp,
+                        color = Color.White
+                    ),
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
-                            tint = Color(0xFF6B7280)
+                            tint = Color(0xFFB0B0B0)
                         )
-                    }
+                    },
+                    trailingIcon = if (searchQuery.isNotEmpty()) {
+                        {
+                            IconButton(
+                                onClick = { searchQuery = "" }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Clear search",
+                                    tint = Color(0xFFB0B0B0)
+                                )
+                            }
+                        }
+                    } else null
                 )
                 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -321,38 +368,47 @@ fun SimpleHomeScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Today's Tasks Section
+            // Tasks Section
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Today's Tasks",
+                    text = if (searchQuery.isNotEmpty()) "Search Results - Tasks" else "Today's Tasks",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
-                TextButton(
-                    onClick = { navController.navigate("tasks") }
-                ) {
-                    Text(
-                        "See All",
-                        color = Color(0xFF8B5CF6),
-                        fontSize = 15.sp
-                    )
+                if (searchQuery.isEmpty()) {
+                    TextButton(
+                        onClick = { navController.navigate("tasks") }
+                    ) {
+                        Text(
+                            "See All",
+                            color = Color(0xFFFF8C00),
+                            fontSize = 15.sp
+                        )
+                    }
                 }
             }
             
             Spacer(modifier = Modifier.height(12.dp))
             
             // Tasks List
-            if (tasks.any { isToday(it.dueDate) }) {
+            val tasksToShow = if (searchQuery.isNotEmpty()) {
+                filteredTasks.take(10)
+            } else {
+                filteredTasks.filter { isToday(it.dueDate) && !it.isCompleted }
+            }
+            
+            if (tasksToShow.isNotEmpty()) {
                 Column {
-                    tasks.filter { isToday(it.dueDate) }.forEach { task ->
+                    tasksToShow.forEach { task ->
                         TaskCard(
                             task = task,
-                            onClick = { navController.navigate("task_detail/${task.id}") }
+                            onClick = { navController.navigate("task_detail/${task.id}") },
+                            onCompleteToggle = { taskId -> viewModel.toggleTaskComplete(taskId) }
                         )
                     }
                     
@@ -366,7 +422,7 @@ fun SimpleHomeScreen(
                         Icon(
                             Icons.Default.Add,
                             contentDescription = "Add Task",
-                            tint = Color(0xFF8B5CF6),
+                            tint = Color(0xFFFF8C00),
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
@@ -390,7 +446,7 @@ fun SimpleHomeScreen(
                     Icon(
                         Icons.Default.Add,
                         contentDescription = "Add Task",
-                        tint = Color(0xFF8B5CF6),
+                        tint = Color(0xFFFF8C00),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -405,35 +461,43 @@ fun SimpleHomeScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Recent Notes Section
+            // Notes Section
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Recent Notes",
+                    text = if (searchQuery.isNotEmpty()) "Search Results - Notes" else "Recent Notes",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
-                TextButton(
-                    onClick = { navController.navigate("notes") }
-                ) {
-                    Text(
-                        "See All",
-                        color = Color(0xFF8B5CF6),
-                        fontSize = 15.sp
-                    )
+                if (searchQuery.isEmpty()) {
+                    TextButton(
+                        onClick = { navController.navigate("notes") }
+                    ) {
+                        Text(
+                            "See All",
+                            color = Color(0xFFFF8C00),
+                            fontSize = 15.sp
+                        )
+                    }
                 }
             }
             
             Spacer(modifier = Modifier.height(12.dp))
             
             // Notes List
-            if (notes.isNotEmpty()) {
+            val notesToShow = if (searchQuery.isNotEmpty()) {
+                filteredNotes.take(10)
+            } else {
+                filteredNotes.take(5)
+            }
+            
+            if (notesToShow.isNotEmpty()) {
                 Column {
-                    notes.take(5).forEach { note ->
+                    notesToShow.forEach { note ->
                         NoteCard(
                             note = note,
                             onClick = { navController.navigate("noteDetail/${note.id}") }
@@ -450,7 +514,7 @@ fun SimpleHomeScreen(
                         Icon(
                             Icons.Default.Add,
                             contentDescription = "Add Note",
-                            tint = Color(0xFF8B5CF6),
+                            tint = Color(0xFFFF8C00),
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
@@ -474,7 +538,7 @@ fun SimpleHomeScreen(
                     Icon(
                         Icons.Default.Add,
                         contentDescription = "Add Note",
-                        tint = Color(0xFF8B5CF6),
+                        tint = Color(0xFFFF8C00),
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
@@ -496,35 +560,76 @@ fun SimpleHomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Chat",
+                    text = if (searchQuery.isNotEmpty()) "Search Results - Chats" else "Recent Chats",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
-                TextButton(
-                    onClick = { navController.navigate("chats") }
-                ) {
-                    Text(
-                        "See All",
-                        color = Color(0xFF8B5CF6),
-                        fontSize = 15.sp
-                    )
+                if (searchQuery.isEmpty()) {
+                    TextButton(
+                        onClick = { navController.navigate("chats") }
+                    ) {
+                        Text(
+                            "See All",
+                            color = Color(0xFFFF8C00),
+                            fontSize = 15.sp
+                        )
+                    }
                 }
             }
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Chat Options
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navController.navigate("ai_chat") }
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
+            // Saved Chats List
+            val chatsToShow = if (searchQuery.isNotEmpty()) {
+                savedChats.filter { 
+                    it.title.contains(searchQuery, ignoreCase = true) || 
+                    it.transcript.contains(searchQuery, ignoreCase = true) 
+                }.take(10)
+            } else {
+                savedChats.take(3)
+            }
+            
+            if (chatsToShow.isNotEmpty()) {
+                Column {
+                    chatsToShow.forEach { chat ->
+                        SavedChatCard(
+                            chat = chat,
+                            onClick = { 
+                                viewModel.loadChatForContinuation(chat.id)
+                                navController.navigate("ai_chat") 
+                            }
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            } else {
+                // Show empty state or start new chat option
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { navController.navigate("ai_chat") }
+                        .background(
+                            Color(0xFF1f1f1f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Start new chat",
+                        tint = Color(0xFFFF8C00),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = if (searchQuery.isNotEmpty()) "No chats found" else "Start new chat",
+                        fontSize = 14.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(120.dp)) // Extra space for bottom input
@@ -552,7 +657,8 @@ fun SimpleHomeScreen(
 @Composable
 fun TaskCard(
     task: Task,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onCompleteToggle: ((Long) -> Unit)? = null
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -569,8 +675,7 @@ fun TaskCard(
         Checkbox(
             checked = task.isCompleted,
             onCheckedChange = { 
-                // Note: This would need to be passed as a parameter to actually toggle completion
-                // For now it's just visual
+                onCompleteToggle?.invoke(task.id)
             },
             colors = CheckboxDefaults.colors(
                 checkedColor = Color(0xFFFF6B00), // Very bright orange
@@ -647,7 +752,7 @@ fun NoteCard(
             Icon(
                 Icons.Default.Description,
                 contentDescription = null,
-                tint = Color(0xFF8B5CF6),
+                tint = Color(0xFFFF8C00),
                 modifier = Modifier.size(16.dp)
             )
             
@@ -787,11 +892,11 @@ fun AddTaskBottomSheet(
             placeholder = { Text("Add Your Title", color = Color(0xFFB0B0B0)) },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF8B5CF6),
+                focusedBorderColor = Color(0xFFFF8C00),
                 unfocusedBorderColor = Color(0xFF4A4A5E),
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
-                cursorColor = Color(0xFF8B5CF6)
+                cursorColor = Color(0xFFFF8C00)
             ),
             singleLine = true
         )
@@ -805,11 +910,11 @@ fun AddTaskBottomSheet(
             placeholder = { Text("Write here Description", color = Color(0xFFB0B0B0)) },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFF8B5CF6),
+                focusedBorderColor = Color(0xFFFF8C00),
                 unfocusedBorderColor = Color(0xFF4A4A5E),
                 focusedTextColor = Color.White,
                 unfocusedTextColor = Color.White,
-                cursorColor = Color(0xFF8B5CF6)
+                cursorColor = Color(0xFFFF8C00)
             ),
             minLines = 3,
             maxLines = 3
@@ -833,21 +938,21 @@ fun AddTaskBottomSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
                         Icons.Default.AccessTime,
                         contentDescription = null,
-                        tint = Color(0xFF8B5CF6),
-                        modifier = Modifier.size(16.dp)
+                        tint = Color(0xFFFF8C00),
+                        modifier = Modifier.size(14.dp)
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = formatTime(selectedDate),
                         color = Color.White,
-                        fontSize = 14.sp
+                        fontSize = 12.sp
                     )
                     Icon(
                         Icons.Default.ArrowDropDown,
@@ -869,22 +974,22 @@ fun AddTaskBottomSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Text(
                         text = formatDateShort(selectedDate),
-                        color = Color(0xFF8B5CF6),
-                        fontSize = 14.sp,
+                        color = Color(0xFFFF8C00),
+                        fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
                     Icon(
                         Icons.Default.DateRange,
                         contentDescription = null,
-                        tint = Color(0xFF8B5CF6),
-                        modifier = Modifier.size(16.dp)
+                        tint = Color(0xFFFF8C00),
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }
@@ -903,21 +1008,21 @@ fun AddTaskBottomSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
                             text = priority,
                             color = Color.White,
-                            fontSize = 14.sp
+                            fontSize = 12.sp
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             Icons.Default.ArrowDropDown,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(14.dp)
                         )
                     }
                 }
@@ -953,7 +1058,7 @@ fun AddTaskBottomSheet(
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF8B5CF6)
+                containerColor = Color(0xFFFF8C00)
             ),
             enabled = title.isNotBlank(),
             shape = RoundedCornerShape(16.dp)
@@ -984,7 +1089,7 @@ fun AddTaskBottomSheet(
                         showDatePicker = false
                     }
                 ) {
-                    Text("OK", color = Color(0xFF8B5CF6))
+                    Text("OK", color = Color(0xFFFF8C00))
                 }
             },
             dismissButton = {
@@ -1088,8 +1193,8 @@ fun CompactLottieVoiceOrb(
                     .background(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                Color(0xFF8B5CF6), // Purple for idle
-                                Color(0xFF7C3AED)
+                                Color(0xFFFF8C00), // Orange for idle
+                                Color(0xFFFF7F00)
                             )
                         ),
                         shape = CircleShape
@@ -1101,6 +1206,47 @@ fun CompactLottieVoiceOrb(
                     contentDescription = "Voice Assistant",
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SavedChatCard(
+    chat: Note,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1f1f1f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = chat.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(chat.createdAt)),
+                    fontSize = 12.sp,
+                    color = Color(0xFFB0B0B0)
                 )
             }
         }

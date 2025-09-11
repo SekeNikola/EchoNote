@@ -8,6 +8,7 @@ plugins {
     id("com.android.application") version "8.12.2"
         kotlin("android") version "1.9.23"
         id("org.jetbrains.kotlin.kapt") version "1.9.23"
+        kotlin("plugin.serialization") version "1.9.23"
 }
 
 repositories {
@@ -46,6 +47,24 @@ android {
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.11"
+    }
+    
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "META-INF/INDEX.LIST"
+            excludes += "META-INF/DEPENDENCIES"
+            excludes += "META-INF/LICENSE"
+            excludes += "META-INF/LICENSE.txt"
+            excludes += "META-INF/license.txt"
+            excludes += "META-INF/NOTICE"
+            excludes += "META-INF/NOTICE.txt"
+            excludes += "META-INF/notice.txt"
+            excludes += "META-INF/ASL2.0"
+            excludes += "META-INF/*.kotlin_module"
+            excludes += "META-INF/io.netty.versions.properties"
+            excludes += "META-INF/native-image/**"
+        }
     }
 }
 dependencies {
@@ -113,6 +132,14 @@ dependencies {
 
     // HTML parsing for web content
     implementation("org.jsoup:jsoup:1.17.2")
+    
+    // Ktor Server dependencies
+    implementation("io.ktor:ktor-server-core:2.3.7")
+    implementation("io.ktor:ktor-server-netty:2.3.7")
+    implementation("io.ktor:ktor-server-content-negotiation:2.3.7")
+    implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.7")
+    implementation("io.ktor:ktor-server-websockets:2.3.7")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 
     // File I/O utilities - using built-in Android functions instead
 

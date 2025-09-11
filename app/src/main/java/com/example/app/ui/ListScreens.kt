@@ -33,7 +33,7 @@ fun TasksScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A2E))
+            .background(Color(0xFF282828))
     ) {
         // Top App Bar
         TopAppBar(
@@ -63,12 +63,12 @@ fun TasksScreen(
                     Icon(
                         Icons.Default.Add,
                         contentDescription = "Add task",
-                        tint = Color(0xFF8B5CF6)
+                        tint = Color(0xFFFF8C00)
                     )
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF1A1A2E)
+                containerColor = Color(0xFF282828)
             )
         )
         
@@ -84,7 +84,7 @@ fun TasksScreen(
                     Icon(
                         Icons.Default.Task,
                         contentDescription = null,
-                        tint = Color(0xFF8B5CF6),
+                        tint = Color(0xFFFF8C00),
                         modifier = Modifier.size(64.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -106,12 +106,13 @@ fun TasksScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 items(tasks) { task ->
                     TaskCard(
                         task = task,
-                        onClick = { navController.navigate("task_detail/${task.id}") }
+                        onClick = { navController.navigate("task_detail/${task.id}") },
+                        onCompleteToggle = { taskId -> viewModel.toggleTaskComplete(taskId) }
                     )
                 }
             }
@@ -130,7 +131,7 @@ fun NotesListScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1A1A2E))
+            .background(Color(0xFF282828))
     ) {
         // Top App Bar
         TopAppBar(
@@ -160,12 +161,12 @@ fun NotesListScreen(
                     Icon(
                         Icons.Default.Add,
                         contentDescription = "Add note",
-                        tint = Color(0xFF8B5CF6)
+                        tint = Color(0xFFFF8C00)
                     )
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFF1A1A2E)
+                containerColor = Color(0xFF282828)
             )
         )
         
@@ -181,7 +182,7 @@ fun NotesListScreen(
                     Icon(
                         Icons.Default.Note,
                         contentDescription = null,
-                        tint = Color(0xFF8B5CF6),
+                        tint = Color(0xFFFF8C00),
                         modifier = Modifier.size(64.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
@@ -203,7 +204,7 @@ fun NotesListScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 items(notes) { note ->
                     Card(
@@ -211,23 +212,39 @@ fun NotesListScreen(
                             .fillMaxWidth()
                             .clickable { navController.navigate("noteDetail/${note.id}") },
                         colors = CardDefaults.cardColors(
-                            containerColor = Color(0xFF2A2A3E)
+                            containerColor = Color(0xFF1f1f1f)
                         ),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(12.dp)
                         ) {
-                            Text(
-                                text = note.title,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color.White,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = note.title,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Text(
+                                    text = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(note.createdAt)),
+                                    fontSize = 12.sp,
+                                    color = Color(0xFF666680),
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
                             
-                            Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             
                             Text(
                                 text = note.transcript.take(100),
@@ -235,15 +252,6 @@ fun NotesListScreen(
                                 color = Color(0xFFB0B0B0),
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis
-                            )
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
-                            Text(
-                                text = java.text.SimpleDateFormat("MMM dd", java.util.Locale.getDefault()).format(java.util.Date(note.createdAt)),
-                                fontSize = 12.sp,
-                                color = Color(0xFF666680),
-                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
