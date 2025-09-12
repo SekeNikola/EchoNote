@@ -19,7 +19,9 @@ data class Note(
     val createdAt: Long = System.currentTimeMillis(),
     val reminderTime: Long? = null,
     /** Stores checklist state as a JSON string, e.g. [true, false, true] */
-    val checklistState: String? = null
+    val checklistState: String? = null,
+    /** Server ID for synchronization with web UI */
+    val serverId: String? = null
 )
 
 fun Note.createdAtFormattedDate(): String {

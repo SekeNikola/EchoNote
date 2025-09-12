@@ -14,5 +14,6 @@ data class Task(
     val duration: String = "",
     val isCompleted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis()
+    val updatedAt: Long = System.currentTimeMillis(),
+    val serverId: String? = null // UUID from web UI for sync purposes
 )

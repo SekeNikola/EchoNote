@@ -47,7 +47,7 @@ public final class TaskDao_Impl implements TaskDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `tasks` (`id`,`title`,`description`,`priority`,`dueDate`,`duration`,`isCompleted`,`createdAt`,`updatedAt`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `tasks` (`id`,`title`,`description`,`priority`,`dueDate`,`duration`,`isCompleted`,`createdAt`,`updatedAt`,`serverId`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
@@ -79,13 +79,18 @@ public final class TaskDao_Impl implements TaskDao {
         statement.bindLong(7, _tmp);
         statement.bindLong(8, entity.getCreatedAt());
         statement.bindLong(9, entity.getUpdatedAt());
+        if (entity.getServerId() == null) {
+          statement.bindNull(10);
+        } else {
+          statement.bindString(10, entity.getServerId());
+        }
       }
     };
     this.__updateAdapterOfTask = new EntityDeletionOrUpdateAdapter<Task>(__db) {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `tasks` SET `id` = ?,`title` = ?,`description` = ?,`priority` = ?,`dueDate` = ?,`duration` = ?,`isCompleted` = ?,`createdAt` = ?,`updatedAt` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `tasks` SET `id` = ?,`title` = ?,`description` = ?,`priority` = ?,`dueDate` = ?,`duration` = ?,`isCompleted` = ?,`createdAt` = ?,`updatedAt` = ?,`serverId` = ? WHERE `id` = ?";
       }
 
       @Override
@@ -117,7 +122,12 @@ public final class TaskDao_Impl implements TaskDao {
         statement.bindLong(7, _tmp);
         statement.bindLong(8, entity.getCreatedAt());
         statement.bindLong(9, entity.getUpdatedAt());
-        statement.bindLong(10, entity.getId());
+        if (entity.getServerId() == null) {
+          statement.bindNull(10);
+        } else {
+          statement.bindString(10, entity.getServerId());
+        }
+        statement.bindLong(11, entity.getId());
       }
     };
     this.__preparedStmtOfDeleteById = new SharedSQLiteStatement(__db) {
@@ -139,7 +149,7 @@ public final class TaskDao_Impl implements TaskDao {
   }
 
   @Override
-  public Object insert(final Task task, final Continuation<? super Unit> arg1) {
+  public Object insert(final Task task, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -153,11 +163,11 @@ public final class TaskDao_Impl implements TaskDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
-  public Object update(final Task task, final Continuation<? super Unit> arg1) {
+  public Object update(final Task task, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -171,11 +181,11 @@ public final class TaskDao_Impl implements TaskDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
-  public Object deleteById(final long id, final Continuation<? super Unit> arg1) {
+  public Object deleteById(final long id, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -196,12 +206,12 @@ public final class TaskDao_Impl implements TaskDao {
           __preparedStmtOfDeleteById.release(_stmt);
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
   public Object updateCompleted(final long id, final boolean isCompleted,
-      final Continuation<? super Unit> arg2) {
+      final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -225,7 +235,7 @@ public final class TaskDao_Impl implements TaskDao {
           __preparedStmtOfUpdateCompleted.release(_stmt);
         }
       }
-    }, arg2);
+    }, $completion);
   }
 
   @Override
@@ -247,6 +257,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final List<Task> _result = new ArrayList<Task>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Task _item;
@@ -286,7 +297,13 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt,_tmpServerId);
             _result.add(_item);
           }
           return _result;
@@ -303,7 +320,7 @@ public final class TaskDao_Impl implements TaskDao {
   }
 
   @Override
-  public Object getAllTasksOnce(final Continuation<? super List<Task>> arg0) {
+  public Object getAllTasksOnce(final Continuation<? super List<Task>> $completion) {
     final String _sql = "SELECT * FROM tasks ORDER BY dueDate ASC";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
     final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
@@ -322,6 +339,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final List<Task> _result = new ArrayList<Task>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Task _item;
@@ -361,7 +379,13 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt,_tmpServerId);
             _result.add(_item);
           }
           return _result;
@@ -370,7 +394,7 @@ public final class TaskDao_Impl implements TaskDao {
           _statement.release();
         }
       }
-    }, arg0);
+    }, $completion);
   }
 
   @Override
@@ -392,6 +416,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final List<Task> _result = new ArrayList<Task>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Task _item;
@@ -431,7 +456,13 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
+            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt,_tmpServerId);
             _result.add(_item);
           }
           return _result;
@@ -448,7 +479,7 @@ public final class TaskDao_Impl implements TaskDao {
   }
 
   @Override
-  public Object getTaskById(final long id, final Continuation<? super Task> arg1) {
+  public Object getTaskById(final long id, final Continuation<? super Task> $completion) {
     final String _sql = "SELECT * FROM tasks WHERE id = ?";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
     int _argIndex = 1;
@@ -469,6 +500,7 @@ public final class TaskDao_Impl implements TaskDao {
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final Task _result;
           if (_cursor.moveToFirst()) {
             final long _tmpId;
@@ -507,7 +539,13 @@ public final class TaskDao_Impl implements TaskDao {
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            _result = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
+            _result = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt,_tmpServerId);
           } else {
             _result = null;
           }
@@ -517,7 +555,7 @@ public final class TaskDao_Impl implements TaskDao {
           _statement.release();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @NonNull

@@ -8,9 +8,11 @@ import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
-import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.plugins.cors.routing.CORS
+import io.ktor.http.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
@@ -41,13 +43,15 @@ data class ServerNote(
 data class TaskRequest(
     val title: String,
     val body: String = "",
-    val done: Boolean = false
+    val done: Boolean = false,
+    val timestamp: Long? = null
 )
 
 @Serializable
 data class NoteRequest(
     val title: String,
-    val body: String
+    val body: String,
+    val timestamp: Long? = null
 )
 
 @Serializable
@@ -68,38 +72,106 @@ object KtorServer {
         tasks[task.id] = task
     }
     
-    suspend fun addTaskWithBroadcast(task: ServerTask) {
-        tasks[task.id] = task
-        // Broadcast to WebSocket clients for real-time updates
-        broadcastSync("task_added", Json.encodeToString(ServerTask.serializer(), task))
-    }
-    
     fun addNote(note: ServerNote) {
         notes[note.id] = note
     }
     
+    suspend fun updateNoteWithBroadcast(note: ServerNote) {
+        notes[note.id] = note
+        
+        // Sync to Android database
+        try {
+            DataSyncManager.syncNoteToDatabase(note)
+        } catch (e: Exception) {
+            Log.w("KtorServer", "Failed to sync note to database", e)
+        }
+        
+        // Broadcast to WebSocket clients
+        broadcastSync("note_updated", Json.encodeToString(ServerNote.serializer(), note))
+    }
+    
+    suspend fun updateTaskWithBroadcast(task: ServerTask) {
+        tasks[task.id] = task
+        
+        // Sync to Android database
+        try {
+            DataSyncManager.syncTaskToDatabase(task)
+        } catch (e: Exception) {
+            Log.w("KtorServer", "Failed to sync task to database", e)
+        }
+        
+        // Broadcast to WebSocket clients
+        broadcastSync("task_updated", Json.encodeToString(ServerTask.serializer(), task))
+    }
+    
     suspend fun addNoteWithBroadcast(note: ServerNote) {
         notes[note.id] = note
-        // Broadcast to WebSocket clients for real-time updates
+        
+        // Sync to Android database
+        try {
+            DataSyncManager.syncNoteToDatabase(note)
+        } catch (e: Exception) {
+            Log.w("KtorServer", "Failed to sync note to database", e)
+        }
+        
+        // Broadcast to WebSocket clients
         broadcastSync("note_added", Json.encodeToString(ServerNote.serializer(), note))
     }
     
-    suspend fun deleteNoteWithBroadcast(noteId: String) {
-        val noteToDelete = notes[noteId]
-        if (noteToDelete != null) {
-            notes.remove(noteId)
-            // Broadcast to WebSocket clients for real-time updates
-            broadcastSync("note_deleted", Json.encodeToString(ServerNote.serializer(), noteToDelete))
+    suspend fun addTaskWithBroadcast(task: ServerTask) {
+        tasks[task.id] = task
+        
+        // Sync to Android database
+        try {
+            DataSyncManager.syncTaskToDatabase(task)
+        } catch (e: Exception) {
+            Log.w("KtorServer", "Failed to sync task to database", e)
         }
+        
+        // Broadcast to WebSocket clients
+        broadcastSync("task_added", Json.encodeToString(ServerTask.serializer(), task))
+    }
+    
+    suspend fun deleteNoteWithBroadcast(noteId: String) {
+        notes.remove(noteId)
+        
+        // Broadcast to WebSocket clients
+        broadcastSync("note_deleted", noteId)
+    }
+    
+    suspend fun deleteNoteWithBroadcastByTitle(noteTitle: String) {
+        // Remove note by title from server memory
+        val noteToRemove = notes.values.find { it.title == noteTitle }
+        if (noteToRemove != null) {
+            notes.remove(noteToRemove.id)
+        }
+        
+        // Broadcast to WebSocket clients with note title
+        broadcastSync("note_deleted", noteTitle)
     }
     
     suspend fun deleteTaskWithBroadcast(taskId: String) {
-        val taskToDelete = tasks[taskId]
+        val taskToDelete = tasks.remove(taskId)
+        
         if (taskToDelete != null) {
-            tasks.remove(taskId)
-            // Broadcast to WebSocket clients for real-time updates
-            broadcastSync("task_deleted", Json.encodeToString(ServerTask.serializer(), taskToDelete))
+            // Broadcast to WebSocket clients with task title for mobile app sync
+            broadcastSync("task_deleted", taskToDelete.title)
+        } else {
+            // If task not found in server memory, broadcast the ID as fallback
+            Log.w("KtorServer", "Task not found in server memory for deletion: $taskId")
+            broadcastSync("task_deleted", taskId)
         }
+    }
+    
+    suspend fun deleteTaskWithBroadcastByTitle(taskTitle: String) {
+        // Remove task by title from server memory
+        val taskToRemove = tasks.values.find { it.title == taskTitle }
+        if (taskToRemove != null) {
+            tasks.remove(taskToRemove.id)
+        }
+        
+        // Broadcast to WebSocket clients with task title
+        broadcastSync("task_deleted", taskTitle)
     }
     
     fun clearData() {
@@ -109,6 +181,16 @@ object KtorServer {
     
     suspend fun start() {
         embeddedServer(Netty, host = "0.0.0.0", port = 8080) {
+            install(CORS) {
+                allowMethod(HttpMethod.Options)
+                allowMethod(HttpMethod.Put)
+                allowMethod(HttpMethod.Delete)
+                allowMethod(HttpMethod.Patch)
+                allowHeader(HttpHeaders.Authorization)
+                allowHeader(HttpHeaders.ContentType)
+                anyHost() // Allow all hosts for development
+            }
+            
             install(ContentNegotiation) {
                 json(Json {
                     prettyPrint = true
@@ -124,29 +206,23 @@ object KtorServer {
             }
             
             routing {
-                // CORS headers
-                options("{...}") {
-                    call.response.header("Access-Control-Allow-Origin", "*")
-                    call.response.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-                    call.response.header("Access-Control-Allow-Headers", "Content-Type")
-                    call.respond(HttpStatusCode.OK)
+                
+                get("/") {
+                    call.respondText("EchoNote Server is running!")
                 }
                 
-                // Tasks endpoints
                 get("/tasks") {
-                    call.response.header("Access-Control-Allow-Origin", "*")
                     call.respond(tasks.values.toList())
                 }
                 
                 post("/tasks") {
-                    call.response.header("Access-Control-Allow-Origin", "*")
                     val request = call.receive<TaskRequest>()
                     val task = ServerTask(
                         id = UUID.randomUUID().toString(),
                         title = request.title,
                         body = request.body,
                         done = request.done,
-                        updatedAt = getCurrentTimestamp()
+                        updatedAt = request.timestamp?.toString() ?: getCurrentTimestamp()
                     )
                     tasks[task.id] = task
                     
@@ -160,20 +236,18 @@ object KtorServer {
                     // Broadcast to WebSocket clients
                     broadcastSync("task_added", Json.encodeToString(ServerTask.serializer(), task))
                     
-                    call.respond(HttpStatusCode.Created, task)
+                    call.respond(task)
                 }
                 
                 put("/tasks/{id}") {
-                    call.response.header("Access-Control-Allow-Origin", "*")
-                    val id = call.parameters["id"] ?: return@put call.respond(HttpStatusCode.BadRequest)
+                    val id = call.parameters["id"] ?: return@put call.respondText("Missing task ID", status = HttpStatusCode.BadRequest)
                     val request = call.receive<TaskRequest>()
-                    
-                    val existingTask = tasks[id] ?: return@put call.respond(HttpStatusCode.NotFound)
-                    val updatedTask = existingTask.copy(
+                    val updatedTask = ServerTask(
+                        id = id,
                         title = request.title,
                         body = request.body,
                         done = request.done,
-                        updatedAt = getCurrentTimestamp()
+                        updatedAt = request.timestamp?.toString() ?: getCurrentTimestamp()
                     )
                     tasks[id] = updatedTask
                     
@@ -181,7 +255,7 @@ object KtorServer {
                     try {
                         DataSyncManager.syncTaskToDatabase(updatedTask)
                     } catch (e: Exception) {
-                        Log.w("KtorServer", "Failed to sync updated task to database", e)
+                        Log.w("KtorServer", "Failed to sync task to database", e)
                     }
                     
                     // Broadcast to WebSocket clients
@@ -191,41 +265,36 @@ object KtorServer {
                 }
                 
                 delete("/tasks/{id}") {
-                    call.response.header("Access-Control-Allow-Origin", "*")
-                    val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                    val id = call.parameters["id"] ?: return@delete call.respondText("Missing task ID", status = HttpStatusCode.BadRequest)
+                    val deletedTask = tasks.remove(id)
                     
-                    val taskToDelete = tasks[id] ?: return@delete call.respond(HttpStatusCode.NotFound)
-                    tasks.remove(id)
-                    
-                    // Sync deletion to Android database
-                    try {
-                        DataSyncManager.deleteTaskFromDatabase(id)
-                    } catch (e: Exception) {
-                        Log.w("KtorServer", "Failed to delete task from database", e)
+                    if (deletedTask != null) {
+                        // Sync deletion to Android database using task title
+                        try {
+                            DataSyncManager.handleTaskDeletion(deletedTask.title)
+                        } catch (e: Exception) {
+                            Log.w("KtorServer", "Failed to sync task deletion to database", e)
+                        }
+                        
+                        // Broadcast to WebSocket clients with task title for matching
+                        broadcastSync("task_deleted", deletedTask.title)
+                        call.respond(mapOf("message" to "Task deleted successfully"))
+                    } else {
+                        call.respondText("Task not found", status = HttpStatusCode.NotFound)
                     }
-                    
-                    // Broadcast to WebSocket clients
-                    broadcastSync("task_deleted", Json.encodeToString(ServerTask.serializer(), taskToDelete))
-                    
-                    call.respond(HttpStatusCode.NoContent)
                 }
                 
-                // Notes endpoints
                 get("/notes") {
-                    call.response.header("Access-Control-Allow-Origin", "*")
-                    // Sort notes by updatedAt descending (newest first)
-                    val sortedNotes = notes.values.sortedByDescending { it.updatedAt }
-                    call.respond(sortedNotes)
+                    call.respond(notes.values.toList())
                 }
                 
                 post("/notes") {
-                    call.response.header("Access-Control-Allow-Origin", "*")
                     val request = call.receive<NoteRequest>()
                     val note = ServerNote(
                         id = UUID.randomUUID().toString(),
                         title = request.title,
                         body = request.body,
-                        updatedAt = getCurrentTimestamp()
+                        updatedAt = request.timestamp?.toString() ?: getCurrentTimestamp()
                     )
                     notes[note.id] = note
                     
@@ -239,16 +308,14 @@ object KtorServer {
                     // Broadcast to WebSocket clients
                     broadcastSync("note_added", Json.encodeToString(ServerNote.serializer(), note))
                     
-                    call.respond(HttpStatusCode.Created, note)
+                    call.respond(note)
                 }
                 
                 put("/notes/{id}") {
-                    call.response.header("Access-Control-Allow-Origin", "*")
-                    val id = call.parameters["id"] ?: return@put call.respond(HttpStatusCode.BadRequest)
+                    val id = call.parameters["id"] ?: return@put call.respondText("Missing note ID", status = HttpStatusCode.BadRequest)
                     val request = call.receive<NoteRequest>()
-                    
-                    val existingNote = notes[id] ?: return@put call.respond(HttpStatusCode.NotFound)
-                    val updatedNote = existingNote.copy(
+                    val updatedNote = ServerNote(
+                        id = id,
                         title = request.title,
                         body = request.body,
                         updatedAt = getCurrentTimestamp()
@@ -269,23 +336,23 @@ object KtorServer {
                 }
                 
                 delete("/notes/{id}") {
-                    call.response.header("Access-Control-Allow-Origin", "*")
-                    val id = call.parameters["id"] ?: return@delete call.respond(HttpStatusCode.BadRequest)
+                    val id = call.parameters["id"] ?: return@delete call.respondText("Missing note ID", status = HttpStatusCode.BadRequest)
+                    val deletedNote = notes.remove(id)
                     
-                    val noteToDelete = notes[id] ?: return@delete call.respond(HttpStatusCode.NotFound)
-                    notes.remove(id)
-                    
-                    // Sync deletion to Android database
-                    try {
-                        DataSyncManager.deleteNoteFromDatabase(id)
-                    } catch (e: Exception) {
-                        Log.w("KtorServer", "Failed to delete note from database", e)
+                    if (deletedNote != null) {
+                        // Sync deletion to Android database using note title
+                        try {
+                            DataSyncManager.handleNoteDeletion(deletedNote.title)
+                        } catch (e: Exception) {
+                            Log.w("KtorServer", "Failed to sync note deletion to database", e)
+                        }
+                        
+                        // Broadcast to WebSocket clients with note title for matching
+                        broadcastSync("note_deleted", deletedNote.title)
+                        call.respond(mapOf("message" to "Note deleted successfully"))
+                    } else {
+                        call.respondText("Note not found", status = HttpStatusCode.NotFound)
                     }
-                    
-                    // Broadcast to WebSocket clients
-                    broadcastSync("note_deleted", Json.encodeToString(ServerNote.serializer(), noteToDelete))
-                    
-                    call.respond(HttpStatusCode.NoContent)
                 }
                 
                 // WebSocket endpoint
@@ -293,7 +360,32 @@ object KtorServer {
                     connections.add(this)
                     try {
                         for (frame in incoming) {
-                            // Handle incoming messages if needed
+                            if (frame is Frame.Text) {
+                                try {
+                                    val message = Json.decodeFromString<SyncData>(frame.readText())
+                                    
+                                    // Handle incoming sync messages from clients
+                                    when (message.type) {
+                                        "task_deleted" -> {
+                                            // When web UI deletes a task, remove it from mobile app too
+                                            val taskTitle = message.data
+                                            DataSyncManager.handleTaskDeletion(taskTitle)
+                                            Log.d("KtorServer", "Processed task deletion from client: $taskTitle")
+                                        }
+                                        "note_deleted" -> {
+                                            // When web UI deletes a note, remove it from mobile app too
+                                            val noteTitle = message.data
+                                            DataSyncManager.handleNoteDeletion(noteTitle)
+                                            Log.d("KtorServer", "Processed note deletion from client: $noteTitle")
+                                        }
+                                        else -> {
+                                            Log.d("KtorServer", "Unknown sync message type: ${message.type}")
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("KtorServer", "Failed to process sync message", e)
+                                }
+                            }
                         }
                     } catch (e: ClosedReceiveChannelException) {
                         // Connection closed

@@ -88,7 +88,7 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
   }
 
   @Override
-  public Object insert(final ChatMessage message, final Continuation<? super Unit> arg1) {
+  public Object insert(final ChatMessage message, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -102,11 +102,11 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
-  public Object deleteAll(final Continuation<? super Unit> arg0) {
+  public Object deleteAll(final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -125,11 +125,12 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           __preparedStmtOfDeleteAll.release(_stmt);
         }
       }
-    }, arg0);
+    }, $completion);
   }
 
   @Override
-  public Object deleteSession(final String sessionId, final Continuation<? super Unit> arg1) {
+  public Object deleteSession(final String sessionId,
+      final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -154,7 +155,7 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           __preparedStmtOfDeleteSession.release(_stmt);
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override

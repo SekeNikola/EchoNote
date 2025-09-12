@@ -40,9 +40,7 @@ fun LogionNavGraph(
                 navController = navController,
                 viewModel = viewModel,
                 onAddNote = {
-                    viewModel.createNoteAndNavigate { noteId ->
-                        navController.navigate("noteDetail/$noteId")
-                    }
+                    viewModel.createNote()
                 }
             )
         }
@@ -81,7 +79,7 @@ fun LogionNavGraph(
         }
         
         composable("noteDetail/{noteId}") { backStackEntry ->
-            val noteId = backStackEntry.arguments?.getString("noteId")?.toLongOrNull() ?: 0L
+            val noteId = backStackEntry.arguments?.getString("noteId") ?: "0"
             NoteDetailScreen(
                 noteId = noteId,
                 viewModel = viewModel,
