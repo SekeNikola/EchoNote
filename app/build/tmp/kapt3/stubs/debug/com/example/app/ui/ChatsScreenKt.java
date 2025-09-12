@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontWeight;
 import androidx.compose.ui.text.style.TextOverflow;
 import androidx.navigation.NavController;
 import com.example.app.data.ChatMessage;
+import com.example.app.data.Note;
 import com.example.app.viewmodel.NoteViewModel;
 import java.text.SimpleDateFormat;
 import java.util.*;

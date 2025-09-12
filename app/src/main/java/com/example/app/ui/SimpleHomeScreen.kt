@@ -67,9 +67,10 @@ fun SimpleHomeScreen(
 ) {
     val notes by viewModel.notes.observeAsState(emptyList())
     val tasks by viewModel.allTasks.collectAsState()
-    val savedChats by viewModel.savedChats.collectAsState()
     var selectedImageUri by remember { mutableStateOf<String?>(null) }
     var showAddTaskSheet by remember { mutableStateOf(false) }
+    var showAddNoteSheet by remember { mutableStateOf(false) }
+    var noteSheetCounter by remember { mutableStateOf(0) }
     var aiInputText by remember { mutableStateOf("") }
     var searchQuery by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -408,7 +409,7 @@ fun SimpleHomeScreen(
                         TaskCard(
                             task = task,
                             onClick = { navController.navigate("task_detail/${task.id}") },
-                            onCompleteToggle = { taskId -> viewModel.toggleTaskComplete(taskId) }
+                            onCompleteToggle = { taskId: Long -> viewModel.toggleTaskComplete(taskId) }
                         )
                     }
                     
@@ -507,7 +508,10 @@ fun SimpleHomeScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onAddNote() }
+                            .clickable { 
+                                noteSheetCounter++
+                                showAddNoteSheet = true 
+                            }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -531,7 +535,10 @@ fun SimpleHomeScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onAddNote() }
+                        .clickable { 
+                            noteSheetCounter++
+                            showAddNoteSheet = true 
+                        }
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -560,76 +567,35 @@ fun SimpleHomeScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (searchQuery.isNotEmpty()) "Search Results - Chats" else "Recent Chats",
+                    text = "Chat",
                     fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
-                if (searchQuery.isEmpty()) {
-                    TextButton(
-                        onClick = { navController.navigate("chats") }
-                    ) {
-                        Text(
-                            "See All",
-                            color = Color(0xFFFF8C00),
-                            fontSize = 15.sp
-                        )
-                    }
+                TextButton(
+                    onClick = { navController.navigate("chats") }
+                ) {
+                    Text(
+                        "See All",
+                        color = Color(0xFFFF8C00),
+                        fontSize = 15.sp
+                    )
                 }
             }
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // Saved Chats List
-            val chatsToShow = if (searchQuery.isNotEmpty()) {
-                savedChats.filter { 
-                    it.title.contains(searchQuery, ignoreCase = true) || 
-                    it.transcript.contains(searchQuery, ignoreCase = true) 
-                }.take(10)
-            } else {
-                savedChats.take(3)
-            }
-            
-            if (chatsToShow.isNotEmpty()) {
-                Column {
-                    chatsToShow.forEach { chat ->
-                        SavedChatCard(
-                            chat = chat,
-                            onClick = { 
-                                viewModel.loadChatForContinuation(chat.id)
-                                navController.navigate("ai_chat") 
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
-            } else {
-                // Show empty state or start new chat option
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { navController.navigate("ai_chat") }
-                        .background(
-                            Color(0xFF1f1f1f),
-                            RoundedCornerShape(12.dp)
-                        )
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Start new chat",
-                        tint = Color(0xFFFF8C00),
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = if (searchQuery.isNotEmpty()) "No chats found" else "Start new chat",
-                        fontSize = 14.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
+            // Chat Options
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { navController.navigate("ai_chat") }
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
             }
             
             Spacer(modifier = Modifier.height(120.dp)) // Extra space for bottom input
@@ -649,6 +615,24 @@ fun SimpleHomeScreen(
                     showAddTaskSheet = false
                 },
                 onDismiss = { showAddTaskSheet = false }
+            )
+        }
+    }
+    
+    // Add Note Bottom Sheet
+    if (showAddNoteSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddNoteSheet = false },
+            containerColor = Color(0xFF282828),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        ) {
+            AddNoteBottomSheet(
+                onCreateNote = { title, content ->
+                    viewModel.addNoteWithBroadcast(title, content)
+                    showAddNoteSheet = false
+                },
+                onDismiss = { showAddNoteSheet = false },
+                key = noteSheetCounter
             )
         }
     }
@@ -1131,6 +1115,114 @@ fun AddTaskBottomSheet(
     }
 }
 
+@Composable
+fun AddNoteBottomSheet(
+    onCreateNote: (String, String) -> Unit,
+    onDismiss: () -> Unit,
+    key: Int = 0
+) {
+    var title by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf("") }
+    
+    // Reset state when the key changes (when bottom sheet is reopened)
+    LaunchedEffect(key) {
+        title = ""
+        content = ""
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .padding(bottom = 32.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Add New Note",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = Color.White
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Title input
+        OutlinedTextField(
+            value = title,
+            onValueChange = { title = it },
+            placeholder = { Text("Note Title", color = Color(0xFFB0B0B0)) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFFFF8C00),
+                unfocusedBorderColor = Color(0xFF555555),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = Color(0xFFFF8C00)
+            ),
+            shape = RoundedCornerShape(8.dp)
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Content input
+        OutlinedTextField(
+            value = content,
+            onValueChange = { content = it },
+            placeholder = { Text("Note content...", color = Color(0xFFB0B0B0)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFFFF8C00),
+                unfocusedBorderColor = Color(0xFF555555),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = Color(0xFFFF8C00)
+            ),
+            shape = RoundedCornerShape(8.dp),
+            maxLines = 5,
+            singleLine = false
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
+        // Create button
+        Button(
+            onClick = {
+                if (title.isNotBlank()) {
+                    onCreateNote(title, content)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFFFF8C00),
+                contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(8.dp),
+            enabled = title.isNotBlank()
+        ) {
+            Text(
+                text = "Create Note",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
+    }
+}
+
 // Compact version of the Lottie voice orb for home screen input field
 @Composable
 fun CompactVoiceOrb(
@@ -1206,47 +1298,6 @@ fun CompactLottieVoiceOrb(
                     contentDescription = "Voice Assistant",
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun SavedChatCard(
-    chat: Note,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1f1f1f)),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = chat.title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.White,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(chat.createdAt)),
-                    fontSize = 12.sp,
-                    color = Color(0xFFB0B0B0)
                 )
             }
         }

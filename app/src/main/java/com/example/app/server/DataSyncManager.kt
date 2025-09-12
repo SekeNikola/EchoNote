@@ -6,9 +6,19 @@ import com.example.app.data.Note
 import kotlinx.coroutines.*
 import android.util.Log
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import java.text.SimpleDateFormat
+import java.util.*
 
 object DataSyncManager {
     private var database: AppDatabase? = null
+    
+    // Helper function to convert timestamp to ISO string (API 24 compatible)
+    private fun timestampToIsoString(timestamp: Long): String {
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        return sdf.format(Date(timestamp))
+    }
     
     fun initialize(db: AppDatabase) {
         database = db
@@ -23,11 +33,11 @@ object DataSyncManager {
                 
                 dbTasks.forEach { dbTask ->
                     val serverTask = ServerTask(
-                        id = dbTask.serverId ?: dbTask.id.toString(), // Use serverId if available, fallback to Long ID
+                        id = dbTask.id.toString(),
                         title = dbTask.title,
                         body = dbTask.description,
                         done = dbTask.isCompleted,
-                        updatedAt = java.time.Instant.ofEpochMilli(dbTask.updatedAt).toString()
+                        updatedAt = timestampToIsoString(dbTask.updatedAt)
                     )
                     KtorServer.addTask(serverTask)
                 }
@@ -49,7 +59,7 @@ object DataSyncManager {
                         id = dbNote.id.toString(),
                         title = dbNote.title,
                         body = dbNote.transcript.ifEmpty { dbNote.snippet }, // Use transcript first, fallback to snippet
-                        updatedAt = java.time.Instant.ofEpochMilli(dbNote.createdAt).toString()
+                        updatedAt = timestampToIsoString(dbNote.createdAt)
                     )
                     KtorServer.addNote(serverNote)
                 }
@@ -62,50 +72,22 @@ object DataSyncManager {
     suspend fun syncTaskToDatabase(serverTask: ServerTask) {
         database?.let { db ->
             try {
-                // First try to find by serverId (exact match for web UI tasks)
-                val existingTasks = db.taskDao().getAllTasksOnce()
-                var existingTask = existingTasks.find { it.serverId == serverTask.id }
+                val dbTask = Task(
+                    id = if (serverTask.id.toLongOrNull() != null) serverTask.id.toLong() else 0,
+                    title = serverTask.title,
+                    description = serverTask.body,
+                    isCompleted = serverTask.done,
+                    dueDate = System.currentTimeMillis() + 86400000, // Default to 1 day from now
+                    updatedAt = System.currentTimeMillis()
+                )
                 
-                // If no exact serverId match, try to match by title and content (for backwards compatibility)
-                if (existingTask == null) {
-                    existingTask = existingTasks.find { 
-                        it.title == serverTask.title && 
-                        (serverTask.body.isEmpty() || it.description == serverTask.body)
-                    }
-                }
-                
-                if (existingTask != null) {
-                    // Update existing task - preserve original creation time and ID, but update serverId
-                    val updatedTask = existingTask.copy(
-                        title = serverTask.title,
-                        description = serverTask.body,
-                        isCompleted = serverTask.done,
-                        updatedAt = System.currentTimeMillis(),
-                        serverId = serverTask.id // Ensure we store the server ID for future updates
-                    )
-                    db.taskDao().update(updatedTask)
-                    Log.d("DataSyncManager", "Updated existing task: ${existingTask.title} -> ${serverTask.title}")
+                if (serverTask.id.toLongOrNull() != null) {
+                    db.taskDao().update(dbTask)
                 } else {
-                    // Insert new task - it's genuinely new
-                    // Parse the timestamp from the server task if available
-                    val timestamp = try {
-                        serverTask.updatedAt.toLongOrNull() ?: System.currentTimeMillis()
-                    } catch (e: Exception) {
-                        System.currentTimeMillis()
-                    }
-                    
-                    val dbTask = Task(
-                        id = 0, // Let the database generate the ID
-                        title = serverTask.title,
-                        description = serverTask.body,
-                        isCompleted = serverTask.done,
-                        dueDate = timestamp, // Use the provided timestamp as due date
-                        updatedAt = timestamp, // Use the provided timestamp as updated time
-                        serverId = serverTask.id // Store the server UUID for future sync
-                    )
                     db.taskDao().insert(dbTask)
-                    Log.d("DataSyncManager", "Inserted new task: ${serverTask.title} with timestamp: $timestamp")
                 }
+                
+                Log.d("DataSyncManager", "Synced task to database: ${serverTask.title}")
             } catch (e: Exception) {
                 Log.e("DataSyncManager", "Failed to sync task to database", e)
             }
@@ -115,87 +97,45 @@ object DataSyncManager {
     suspend fun syncNoteToDatabase(serverNote: ServerNote) {
         database?.let { db ->
             try {
-                // First, try to find an existing note by serverId for exact matching
-                val existingNotes = db.noteDao().getAllNotes().first()
-                var existingNote = existingNotes.find { it.serverId == serverNote.id }
+                val noteId = serverNote.id.toLongOrNull()
                 
-                if (existingNote != null) {
-                    // Update existing note found by serverId
-                    val updatedNote = existingNote.copy(
-                        title = serverNote.title,
-                        transcript = serverNote.body,
-                        serverId = serverNote.id
-                    )
-                    db.noteDao().update(updatedNote)
-                    Log.d("DataSyncManager", "Updated existing note by serverId: ${serverNote.title}")
-                } else {
-                    // Fallback: try to find by title and content to avoid duplicates
-                    existingNote = existingNotes.find { 
-                        it.title == serverNote.title && (it.transcript == serverNote.body || it.snippet == serverNote.body)
-                    }
-                    
+                if (noteId != null && noteId > 0) {
+                    // Update existing note
+                    val existingNote = db.noteDao().getNoteById(noteId).firstOrNull()
                     if (existingNote != null) {
-                        // Update existing note and set serverId
                         val updatedNote = existingNote.copy(
                             title = serverNote.title,
                             transcript = serverNote.body,
-                            serverId = serverNote.id
+                            snippet = serverNote.body
                         )
                         db.noteDao().update(updatedNote)
-                        Log.d("DataSyncManager", "Updated existing note and set serverId: ${serverNote.title}")
+                        Log.d("DataSyncManager", "Updated existing note: ${serverNote.title}")
                     } else {
-                        // Insert new note
-                        val dbNote = Note(
-                            id = 0, // Let the database generate the ID
+                        // Note ID doesn't exist, treat as new
+                        val newNote = Note(
+                            id = 0, // Let Room generate new ID
                             title = serverNote.title,
-                            transcript = serverNote.body, // Using transcript field to store body content
-                            createdAt = System.currentTimeMillis(),
-                            serverId = serverNote.id
+                            transcript = serverNote.body,
+                            snippet = serverNote.body,
+                            createdAt = System.currentTimeMillis()
                         )
-                        db.noteDao().insert(dbNote)
-                        Log.d("DataSyncManager", "Inserted new note: ${serverNote.title}")
+                        db.noteDao().insert(newNote)
+                        Log.d("DataSyncManager", "Inserted new note (ID not found): ${serverNote.title}")
                     }
+                } else {
+                    // No valid ID, create new note
+                    val newNote = Note(
+                        id = 0, // Let Room generate new ID
+                        title = serverNote.title,
+                        transcript = serverNote.body,
+                        snippet = serverNote.body,
+                        createdAt = System.currentTimeMillis()
+                    )
+                    db.noteDao().insert(newNote)
+                    Log.d("DataSyncManager", "Inserted new note: ${serverNote.title}")
                 }
             } catch (e: Exception) {
                 Log.e("DataSyncManager", "Failed to sync note to database", e)
-            }
-        }
-    }
-    
-    suspend fun handleTaskDeletion(taskTitle: String) {
-        database?.let { db ->
-            try {
-                // Find task by title and delete it
-                val existingTasks = db.taskDao().getAllTasksOnce()
-                val taskToDelete = existingTasks.find { it.title == taskTitle }
-                
-                if (taskToDelete != null) {
-                    db.taskDao().deleteById(taskToDelete.id)
-                    Log.d("DataSyncManager", "Deleted task: ${taskToDelete.title}")
-                } else {
-                    Log.w("DataSyncManager", "Task not found for deletion: $taskTitle")
-                }
-            } catch (e: Exception) {
-                Log.e("DataSyncManager", "Failed to delete task", e)
-            }
-        }
-    }
-    
-    suspend fun handleNoteDeletion(noteTitle: String) {
-        database?.let { db ->
-            try {
-                // Find note by title and delete it
-                val existingNotes = db.noteDao().getAllNotesOnce()
-                val noteToDelete = existingNotes.find { it.title == noteTitle }
-                
-                if (noteToDelete != null) {
-                    db.noteDao().deleteById(noteToDelete.id)
-                    Log.d("DataSyncManager", "Deleted note: ${noteToDelete.title}")
-                } else {
-                    Log.w("DataSyncManager", "Note not found for deletion: $noteTitle")
-                }
-            } catch (e: Exception) {
-                Log.e("DataSyncManager", "Failed to delete note", e)
             }
         }
     }

@@ -112,7 +112,7 @@ fun TasksScreen(
                     TaskCard(
                         task = task,
                         onClick = { navController.navigate("task_detail/${task.id}") },
-                        onCompleteToggle = { taskId -> viewModel.toggleTaskComplete(taskId) }
+                        onCompleteToggle = { taskId: Long -> viewModel.toggleTaskComplete(taskId) }
                     )
                 }
             }

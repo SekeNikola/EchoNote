@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.app.data.ChatMessage
+import com.example.app.data.Note
 import com.example.app.viewmodel.NoteViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,7 +30,15 @@ fun ChatsScreen(
     navController: NavController,
     viewModel: NoteViewModel
 ) {
-    val savedChats by viewModel.savedChats.collectAsState()
+    val chatMessages by viewModel.chatMessages.collectAsState()
+    
+    // Group chat messages by conversation/session
+    val groupedChats = remember(chatMessages) {
+        chatMessages.groupBy { 
+            // Group by date for now - you might want to implement proper conversation grouping
+            SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp))
+        }.toList().sortedByDescending { it.second.maxOf { msg -> msg.timestamp } }
+    }
     
     Column(
         modifier = Modifier
@@ -64,7 +73,7 @@ fun ChatsScreen(
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        if (savedChats.isEmpty()) {
+        if (groupedChats.isEmpty()) {
             // Empty state
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -116,14 +125,11 @@ fun ChatsScreen(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(savedChats) { chatNote ->
-                    SavedChatCard(
-                        chat = chatNote,
-                        onClick = { 
-                            // Load this chat for continuation
-                            viewModel.loadChatForContinuation(chatNote.id)
-                            navController.navigate("ai_chat") 
-                        }
+                items(groupedChats) { (date, messages) ->
+                    ChatGroupCard(
+                        date = date,
+                        messages = messages,
+                        onClick = { navController.navigate("ai_chat") }
                     )
                 }
             }
