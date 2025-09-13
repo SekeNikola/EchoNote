@@ -11,6 +11,7 @@ data class Note(
     val id: String,
     val title: String,
     val body: String,
+    val imagePath: String? = null,
     val updatedAt: String
 )
 

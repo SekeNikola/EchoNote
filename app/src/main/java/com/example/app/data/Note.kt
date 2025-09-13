@@ -9,19 +9,19 @@ import java.util.Locale
 @Entity(tableName = "notes")
 data class Note(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val serverId: String? = null,
     val title: String = "",
     val snippet: String = "",
     val transcript: String = "",
     val audioPath: String? = null,
+    val imagePath: String? = null,
     val highlights: List<String> = emptyList(),
     val isFavorite: Boolean = false,
     val isArchived: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val reminderTime: Long? = null,
     /** Stores checklist state as a JSON string, e.g. [true, false, true] */
-    val checklistState: String? = null,
-    /** Server ID for synchronization with web UI */
-    val serverId: String? = null
+    val checklistState: String? = null
 )
 
 fun Note.createdAtFormattedDate(): String {

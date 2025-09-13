@@ -7,11 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 
-@Database(
-    entities = [Note::class, Task::class, NoteCrossRef::class, ChatMessage::class, Reminder::class],
-    version = 8,
-    exportSchema = false
-)
+@Database(entities = [Note::class, Reminder::class, NoteCrossRef::class, Task::class, ChatMessage::class], version = 6)
 @TypeConverters(Converters::class, ReminderConverters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
@@ -28,7 +24,8 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "logion_db"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .fallbackToDestructiveMigration()
                 .build().also { INSTANCE = it }
             }
 
@@ -83,29 +80,9 @@ abstract class AppDatabase : RoomDatabase() {
         
         val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
-                // Add serverId column to tasks table to map web UI UUIDs to database IDs
-                database.execSQL("ALTER TABLE tasks ADD COLUMN serverId TEXT")
-            }
-        }
-        
-        val MIGRATION_6_7 = object : Migration(6, 7) {
-            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
-                // Add serverId column to notes table to map web UI UUIDs to database IDs
+                // Add serverId and imagePath columns to notes table
                 database.execSQL("ALTER TABLE notes ADD COLUMN serverId TEXT")
-            }
-        }
-        
-        val MIGRATION_7_8 = object : Migration(7, 8) {
-            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
-                // Create reminders table
-                database.execSQL("""
-                    CREATE TABLE IF NOT EXISTS reminders (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                        noteId INTEGER NOT NULL,
-                        time INTEGER NOT NULL,
-                        isDone INTEGER NOT NULL DEFAULT 0
-                    )
-                """)
+                database.execSQL("ALTER TABLE notes ADD COLUMN imagePath TEXT")
             }
         }
     }

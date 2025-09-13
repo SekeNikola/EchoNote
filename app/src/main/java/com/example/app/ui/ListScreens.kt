@@ -287,8 +287,8 @@ fun NotesListScreen(
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             AddNoteBottomSheet(
-                onCreateNote = { title, content ->
-                    viewModel.createNote(title, content)
+                onCreateNote = { title, content, imageUri ->
+                    viewModel.createNote(title, content, imageUri)
                     showAddNoteSheet = false
                 },
                 onDismiss = { showAddNoteSheet = false }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <!-- Purple circular background -->
+    <path android:fillColor="#8A2BE2" 
+          android:pathData="M24,24m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0"/>
+    <!-- Sparkle icon centered -->
+    <group android:translateX="12" android:translateY="12">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M8.5,2.5 L10,7 L14.5,8.5 L10,10 L8.5,14.5 L7,10 L2.5,8.5 L7,7 Z M19,13 L20,16 L23,17 L20,18 L19,21 L18,18 L15,17 L18,16 Z M12,17 L13,19 L15,20 L13,21 L12,23 L11,21 L9,20 L11,19 Z"/>
+    </group>
+</vector>

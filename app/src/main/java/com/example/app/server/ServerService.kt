@@ -1,4 +1,4 @@
-package com.example.app.server
+﻿package com.example.app.server
 
 import android.app.Service
 import android.content.Intent
@@ -8,38 +8,42 @@ import kotlinx.coroutines.*
 import com.example.app.data.AppDatabase
 
 class ServerService : Service() {
-    private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var serverJob: Job? = null
-    private var ngrokJob: Job? = null
+    private var serviceScope: CoroutineScope? = null
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onCreate() {
+        super.onCreate()
+        Log.d("ServerService", "Service created")
+        
+        serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+        
+        // Initialize the database sync manager
+        val database = AppDatabase.getDatabase(applicationContext)
+        DataSyncManager.initialize(database)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("ServerService", "Starting server service")
         
-        // Initialize DataSyncManager with database
-        val database = AppDatabase.getDatabase(applicationContext)
-        DataSyncManager.initialize(database)
-        
-        serverJob = serviceScope.launch {
+        serviceScope?.launch {
             try {
+                // Set context for image handling
+                KtorServer.setContext(this@ServerService)
+                
                 // Load existing data from database into server memory
                 DataSyncManager.syncTasksFromDatabase()
                 DataSyncManager.syncNotesFromDatabase()
                 
+                // Start the Ktor server
                 KtorServer.start()
+                Log.d("ServerService", "Ktor server started successfully")
+                
+                // Start ngrok tunnel (if needed)
+                NgrokManager.startTunnel()
+                Log.d("ServerService", "Server URLs: {NgrokManager.getServerUrls()}")
+                
             } catch (e: Exception) {
                 Log.e("ServerService", "Failed to start server", e)
-            }
-        }
-        
-        ngrokJob = serviceScope.launch {
-            delay(3000) // Wait for server to start
-            try {
-                NgrokManager.startTunnel()
-                Log.d("ServerService", "Server URLs: ${NgrokManager.getServerUrls()}")
-            } catch (e: Exception) {
-                Log.e("ServerService", "Failed to start tunnel", e)
             }
         }
         
@@ -49,9 +53,18 @@ class ServerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d("ServerService", "Stopping server service")
+        
+        serviceScope?.launch {
+            try {
+                NgrokManager.stopTunnel()
+            } catch (e: Exception) {
+                Log.e("ServerService", "Error stopping server", e)
+            }
+        }
+        
         serverJob?.cancel()
-        ngrokJob?.cancel()
-        serviceScope.cancel()
-        NgrokManager.stopTunnel()
+        serviceScope?.cancel()
     }
+
+    override fun onBind(intent: Intent?): IBinder? = null
 }

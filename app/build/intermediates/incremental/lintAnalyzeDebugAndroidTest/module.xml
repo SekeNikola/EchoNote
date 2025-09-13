@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="E:\EchoNote\app"
+    name=":app"
+    type="APP"
+    maven="Logion:app:unspecified"
+    agpVersion="8.12.3"
+    buildFolder="build"
+    bootClassPath="C:\Program Files\Eclipse Adoptium\jdk-17.0.16.8-hotspot\platforms\android-34\android.jar;C:\Program Files\Eclipse Adoptium\jdk-17.0.16.8-hotspot\build-tools\35.0.0\core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-34"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="debug"/>
+</lint-module>

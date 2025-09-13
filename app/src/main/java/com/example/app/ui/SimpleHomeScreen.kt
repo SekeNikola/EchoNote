@@ -37,7 +37,9 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.navigation.NavController
 import android.net.Uri
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.example.app.data.Note
 import com.example.app.data.Task
 import com.example.app.viewmodel.NoteViewModel
@@ -728,8 +730,8 @@ fun SimpleHomeScreen(
             shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
         ) {
             AddNoteBottomSheet(
-                onCreateNote = { title, content ->
-                    viewModel.addNoteWithBroadcast(title, content)
+                onCreateNote = { title, content, imageUri ->
+                    viewModel.addNoteWithBroadcast(title, content, imageUri)
                     showAddNoteSheet = false
                 },
                 onDismiss = { showAddNoteSheet = false },
@@ -1218,17 +1220,72 @@ fun AddTaskBottomSheet(
 
 @Composable
 fun AddNoteBottomSheet(
-    onCreateNote: (String, String) -> Unit,
+    onCreateNote: (String, String, String?) -> Unit,
     onDismiss: () -> Unit,
     key: Int = 0
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
+    var selectedImageUri by remember { mutableStateOf<String?>(null) }
+    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // Camera launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        try {
+            if (success && capturedImageUri != null) {
+                selectedImageUri = capturedImageUri.toString()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AddNoteBottomSheet", "Camera result error", e)
+        }
+    }
+    
+    // Gallery launcher
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        try {
+            uri?.let {
+                selectedImageUri = it.toString()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AddNoteBottomSheet", "Gallery result error", e)
+        }
+    }
+    
+    // Function to create temporary file for camera
+    fun createImageFile(): Uri? {
+        return try {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val imageFileName = "JPEG_${timeStamp}_"
+            
+            val storageDir = context.getExternalFilesDir("Pictures") ?: context.cacheDir
+            
+            val imageFile = File.createTempFile(
+                imageFileName,
+                ".jpg",
+                storageDir
+            )
+            
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                imageFile
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("AddNoteBottomSheet", "Error creating image file", e)
+            null
+        }
+    }
     
     // Reset state when the key changes (when bottom sheet is reopened)
     LaunchedEffect(key) {
         title = ""
         content = ""
+        selectedImageUri = null
     }
     
     Column(
@@ -1298,13 +1355,111 @@ fun AddNoteBottomSheet(
             singleLine = false
         )
         
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Image preview
+        selectedImageUri?.let { uri ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .padding(bottom = 12.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF383838))
+            ) {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(uri)
+                            .build(),
+                        contentDescription = "Selected image",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                    
+                    // Close button for image
+                    IconButton(
+                        onClick = { selectedImageUri = null },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(8.dp)
+                            .size(32.dp)
+                            .background(
+                                Color.Black.copy(alpha = 0.6f),
+                                CircleShape
+                            )
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Remove image",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Photo options row
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Camera button
+            OutlinedButton(
+                onClick = {
+                    createImageFile()?.let { uri ->
+                        capturedImageUri = uri
+                        cameraLauncher.launch(uri)
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFFFF8C00)
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF8C00)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.CameraAlt,
+                    contentDescription = "Camera",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Camera")
+            }
+            
+            // Gallery button
+            OutlinedButton(
+                onClick = {
+                    galleryLauncher.launch("image/*")
+                },
+                modifier = Modifier.weight(1f),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = Color(0xFFFF8C00)
+                ),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF8C00)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Photo,
+                    contentDescription = "Gallery",
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Gallery")
+            }
+        }
+        
         Spacer(modifier = Modifier.height(24.dp))
         
         // Create button
         Button(
             onClick = {
                 if (title.isNotBlank()) {
-                    onCreateNote(title, content)
+                    onCreateNote(title, content, selectedImageUri)
                 }
             },
             modifier = Modifier.fillMaxWidth(),

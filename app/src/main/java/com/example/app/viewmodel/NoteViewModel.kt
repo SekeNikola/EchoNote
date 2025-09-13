@@ -155,6 +155,25 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     }
     fun updateTranscript(noteId: Long, transcript: String) = viewModelScope.launch {
         repository.updateTranscript(noteId, transcript)
+        
+        // Broadcast note update to server for web sync
+        try {
+            // Get the updated note to send to server
+            val note = repository.noteDao.getNoteById(noteId).firstOrNull()
+            if (note != null) {
+                val serverNote = ServerNote(
+                    id = note.serverId ?: noteId.toString(),
+                    title = note.title,
+                    body = note.transcript.ifEmpty { note.snippet },
+                    imagePath = note.imagePath,
+                    updatedAt = java.time.Instant.now().toString()
+                )
+                KtorServer.updateNoteWithBroadcast(serverNote)
+                Log.d("NoteViewModel", "Note transcript update broadcasted to server: ${note.title}")
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Failed to broadcast note transcript update to server", e)
+        }
     }
     /**
      * Use OpenAI GPT to extract summary and tasks from transcript.
@@ -304,6 +323,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                     id = noteId.toString(),
                     title = note.title,
                     body = note.snippet, // Use snippet content for the body
+                    imagePath = note.imagePath,
                     updatedAt = getCurrentTimestamp()
                 )
                 
@@ -316,6 +336,25 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
 
     fun updateChecklistState(noteId: Long, checklistState: String) = viewModelScope.launch {
         repository.updateChecklistState(noteId, checklistState)
+        
+        // Broadcast note update to server for web sync
+        try {
+            // Get the updated note to send to server
+            val note = repository.noteDao.getNoteById(noteId).firstOrNull()
+            if (note != null) {
+                val serverNote = ServerNote(
+                    id = note.serverId ?: noteId.toString(),
+                    title = note.title,
+                    body = note.transcript.ifEmpty { note.snippet },
+                    imagePath = note.imagePath,
+                    updatedAt = java.time.Instant.now().toString()
+                )
+                KtorServer.updateNoteWithBroadcast(serverNote)
+                Log.d("NoteViewModel", "Note checklist update broadcasted to server: ${note.title}")
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Failed to broadcast note checklist update to server", e)
+        }
     }
     private val compressedAudioRecorder = CompressedAudioRecorder(app.applicationContext)
     private var compressedAudioFile: File? = null
@@ -533,6 +572,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                     id = id.toString(),
                     title = title,
                     body = note.snippet, // Use snippet content for the body
+                    imagePath = note.imagePath,
                     updatedAt = getCurrentTimestamp()
                 )
                 
@@ -847,12 +887,22 @@ Output:
             Log.d("NoteViewModel", "Chat messages size: ${chatMessages.size}")
             
             if (chatMessages.isNotEmpty()) {
+                // Find the most recent image from chat if any
+                val recentImageUri = chatMessages.findLast { it.imageUri != null }?.imageUri
+                
+                // Convert content URI to actual file path if image exists
+                val actualImagePath = recentImageUri?.let { uri ->
+                    copyImageToAppStorage(uri)
+                }
+                
                 // Convert chat messages to transcript format
                 val transcript = chatMessages.joinToString("\n\n") { message ->
                     if (message.isUser) "User: ${message.content}" else "Assistant: ${message.content}"
                 }
                 
                 Log.d("NoteViewModel", "Full transcript: '$transcript'")
+                Log.d("NoteViewModel", "Recent image URI: $recentImageUri")
+                Log.d("NoteViewModel", "Actual image path: $actualImagePath")
                 
                 // Use the same logic as stopAndSaveNote() - extract summary and tasks with OpenAI
                 Log.d("NoteViewModel", "Calling extractSummaryAndTasksWithOpenAI...")
@@ -890,11 +940,12 @@ Output:
                 Log.d("NoteViewModel", "Final title: '$finalTitle'")
                 Log.d("NoteViewModel", "Final summary: '$finalSummary'")
                 
-                // Create and save the note with plain text summary
+                // Create and save the note with plain text summary and image
                 val note = Note(
                     title = finalTitle,
                     snippet = finalSummary, // Store just the summary as plain text
-                    transcript = transcript
+                    transcript = transcript,
+                    imagePath = actualImagePath
                 )
                 
                 Log.d("NoteViewModel", "About to insert note...")
@@ -907,6 +958,7 @@ Output:
                         id = noteId.toString(),
                         title = finalTitle,
                         body = transcript, // Full conversation for web UI
+                        imagePath = actualImagePath,
                         updatedAt = getCurrentTimestamp()
                     )
                     KtorServer.addNoteWithBroadcast(serverNote)
@@ -1285,6 +1337,37 @@ Output:
         Log.d("NoteViewModel", "Compressed image size: ${byteArray.size} bytes")
         
         return base64String
+    }
+    
+    // Copy image from content URI to app storage and return file path
+    private fun copyImageToAppStorage(contentUri: String): String? {
+        return try {
+            val uri = Uri.parse(contentUri)
+            val context = getApplication<Application>().applicationContext
+            
+            // Create app-specific directory for images
+            val imagesDir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "EchoNote")
+            if (!imagesDir.exists()) {
+                imagesDir.mkdirs()
+            }
+            
+            // Generate unique filename
+            val fileName = "note_image_${System.currentTimeMillis()}.jpg"
+            val imageFile = File(imagesDir, fileName)
+            
+            // Copy the image from content URI to our app storage
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                imageFile.outputStream().use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            }
+            
+            Log.d("NoteViewModel", "Image copied to: ${imageFile.absolutePath}")
+            return imageFile.absolutePath
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Failed to copy image to app storage", e)
+            null
+        }
     }
     
     // Analyze image content using OpenAI Vision API
@@ -1793,7 +1876,7 @@ Output:
     }
     
     // Helper function to check for note/task creation in both voice and text chat
-    private suspend fun checkForNoteTaskCreation(userMessage: String, aiResponse: String) {
+    private suspend fun checkForNoteTaskCreation(userMessage: String, aiResponse: String, imageUri: String? = null) {
         val userWantsNote = userMessage.contains("create a note", ignoreCase = true) ||
                            userMessage.contains("make a note", ignoreCase = true) ||
                            userMessage.contains("save this", ignoreCase = true) ||
@@ -1825,7 +1908,7 @@ Output:
                 createTaskFromChat(userMessage, aiResponse)
             }
             userWantsNote || aiConfirmsNote -> {
-                saveChatAsNote(userMessage, aiResponse)
+                saveChatAsNote(userMessage, aiResponse, imageUri)
             }
             // If neither is explicitly requested, don't create anything - just chat
         }
@@ -1937,12 +2020,18 @@ Output:
     }
     
     // Save chat conversation as note
-    private suspend fun saveChatAsNote(userMessage: String, aiResponse: String) {
+    private suspend fun saveChatAsNote(userMessage: String, aiResponse: String, imageUri: String? = null) {
         try {
+            // Convert image URI to actual file path if image exists
+            val actualImagePath = imageUri?.let { uri ->
+                copyImageToAppStorage(uri)
+            }
+            
             val note = Note(
                 title = "Chat Note - ${java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}",
                 snippet = "User: $userMessage",
                 transcript = "User: $userMessage\n\nAI: $aiResponse",
+                imagePath = actualImagePath,
                 createdAt = System.currentTimeMillis()
             )
             
@@ -1955,6 +2044,7 @@ Output:
                     id = java.util.UUID.randomUUID().toString(),
                     title = note.title,
                     body = note.snippet,
+                    imagePath = note.imagePath,
                     updatedAt = java.time.Instant.ofEpochMilli(note.createdAt).toString()
                 )
                 KtorServer.addNoteWithBroadcast(serverNote)
@@ -2066,7 +2156,7 @@ Output:
                 repository.insertChatMessage(aiMessage)
                 
                 // Check for note/task creation requests in image messages too
-                checkForNoteTaskCreation(message, aiResponse)
+                checkForNoteTaskCreation(message, aiResponse, userMessage.imageUri)
                 
             } else {
                 // Fallback if image can't be processed
@@ -2943,12 +3033,18 @@ Output:
         }
     }
 
-fun createNote(title: String = "New Note", content: String = "") = viewModelScope.launch {
+fun createNote(title: String = "New Note", content: String = "", imageUri: String? = null) = viewModelScope.launch {
     try {
+        // Convert image URI to actual file path if image exists
+        val actualImagePath = imageUri?.let { uri ->
+            copyImageToAppStorage(uri)
+        }
+        
         val newNote = Note(
             title = title,
             transcript = content,
             snippet = content,
+            imagePath = actualImagePath,
             createdAt = System.currentTimeMillis()
         )
         repository.insertNote(newNote)
@@ -2959,6 +3055,7 @@ fun createNote(title: String = "New Note", content: String = "") = viewModelScop
                 id = java.util.UUID.randomUUID().toString(),
                 title = newNote.title,
                 body = newNote.snippet,
+                imagePath = newNote.imagePath,
                 updatedAt = java.time.Instant.ofEpochMilli(newNote.createdAt).toString()
             )
             KtorServer.addNoteWithBroadcast(serverNote)
@@ -2971,13 +3068,19 @@ fun createNote(title: String = "New Note", content: String = "") = viewModelScop
     }
 }
 
-fun addNoteWithBroadcast(title: String, content: String) = viewModelScope.launch {
+fun addNoteWithBroadcast(title: String, content: String, imageUri: String? = null) = viewModelScope.launch {
     try {
+        // Convert image URI to actual file path if image exists
+        val actualImagePath = imageUri?.let { uri ->
+            copyImageToAppStorage(uri)
+        }
+        
         // Create server note for broadcasting (server will handle database sync)
         val serverNote = ServerNote(
             id = UUID.randomUUID().toString(), // Generate a unique ID for the server
             title = title,
             body = content,
+            imagePath = actualImagePath,
             updatedAt = System.currentTimeMillis().toString()
         )
         

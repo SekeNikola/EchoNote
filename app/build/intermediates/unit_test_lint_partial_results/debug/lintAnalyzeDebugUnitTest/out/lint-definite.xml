@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<incidents format="6" by="lint 8.12.3" type="incidents">
+
+    <incident
+        id="Aligned16KB"
+        severity="warning"
+        message="The native library `arm64-v8a/libmlkit_google_ocr_pipeline.so` (from `com.google.mlkit:text-recognition-bundled-common:16.0.0`) is not 16 KB aligned">
+        <location
+            file="$GRADLE_USER_HOME/caches/8.13/transforms/bb4d61a6df5a9992699696028d7420b9/transformed/jetified-text-recognition-bundled-common-16.0.0/jni/arm64-v8a/libmlkit_google_ocr_pipeline.so"/>
+    </incident>
+
+</incidents>

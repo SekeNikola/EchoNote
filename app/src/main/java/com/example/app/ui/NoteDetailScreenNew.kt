@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
@@ -13,7 +14,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,6 +27,8 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.example.app.viewmodel.NoteViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -148,6 +154,40 @@ fun NoteDetailScreenNew(
                                 Icon(Icons.Outlined.Edit, contentDescription = null)
                             }
                         )
+                        DropdownMenuItem(
+                            text = { Text("Share") },
+                            onClick = {
+                                showMenu = false
+                                // Share action
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Share, contentDescription = null)
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (note?.isFavorite == true) "Remove from favorites" else "Add to favorites") },
+                            onClick = {
+                                showMenu = false
+                                note?.let { noteObj: com.example.app.data.Note -> viewModel.toggleFavorite(noteObj) }
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    if (note?.isFavorite == true) Icons.Filled.Star else Icons.Outlined.Star,
+                                    contentDescription = null,
+                                    tint = if (note?.isFavorite == true) Color(0xFFFFC107) else Color.Unspecified
+                                )
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Delete", color = Color(0xFFFF5252)) },
+                            onClick = {
+                                showMenu = false
+                                note?.let { noteObj: com.example.app.data.Note -> viewModel.deleteNote(noteObj.id); onBack() }
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Outlined.Delete, contentDescription = null, tint = Color(0xFFFF5252))
+                            }
+                        )
                     }
                 }
             }
@@ -174,87 +214,76 @@ fun NoteDetailScreenNew(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Content area - simplified read/edit mode
-        note?.let { noteObj: com.example.app.data.Note ->
-            val text = if (noteObj.snippet.isNotEmpty()) {
-                try {
-                    val json = JSONObject(noteObj.snippet)
-                    json.optString("text", "")
-                } catch (e: Exception) {
-                    noteObj.snippet
-                }
-            } else {
-                ""
-            }
-            
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .background(Color(0xFF2A2A2A))
-                    .padding(16.dp)
-            ) {
-                if (isEditMode) {
-                    BasicTextField(
-                        value = editableText,
-                        onValueChange = { editableText = it },
-                        textStyle = TextStyle(
-                            color = Color.White,
-                            fontSize = 16.sp
-                        ),
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Text(
-                        text = if (text.isNotEmpty()) text else "No content",
-                        color = if (text.isNotEmpty()) Color.White else Color(0xFFB0B0B0),
-                        fontSize = 16.sp,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            }
-        }
-
-        // Bottom action bar
-        Row(
+        // Scrollable content area
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF1E1E1E))
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
         ) {
-            ActionButton(
-                icon = Icons.Outlined.Share,
-                label = "Share",
-                tint = Color.White
-            ) {
-                // Share action
+            // Image display if available
+            note?.imagePath?.let { imagePath ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .padding(bottom = 16.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF383838))
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(imagePath)
+                            .build(),
+                        contentDescription = "Note image",
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.Fit
+                    )
+                }
             }
-            ActionButton(
-                icon = if (note?.isFavorite == true) Icons.Filled.Star else Icons.Outlined.Star,
-                label = "Star",
-                tint = if (note?.isFavorite == true) Color(0xFFFFC107) else Color.White
-            ) {
-                note?.let { noteObj: com.example.app.data.Note -> viewModel.toggleFavorite(noteObj) }
-            }
-            ActionButton(icon = Icons.Outlined.Delete, label = "Delete", tint = Color(0xFFFF5252)) {
-                note?.let { noteObj: com.example.app.data.Note -> viewModel.deleteNote(noteObj.id); onBack() }
-            }
-        }
-    }
-}
 
-@Composable
-private fun ActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    tint: Color = Color.White,
-    onClick: () -> Unit
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        IconButton(onClick = onClick) {
-            Icon(icon, contentDescription = label, tint = tint)
+            // Content area - simplified read/edit mode
+            note?.let { noteObj: com.example.app.data.Note ->
+                val text = if (noteObj.snippet.isNotEmpty()) {
+                    try {
+                        val json = JSONObject(noteObj.snippet)
+                        json.optString("text", "")
+                    } catch (e: Exception) {
+                        noteObj.snippet
+                    }
+                } else {
+                    ""
+                }
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF2A2A2A))
+                        .padding(16.dp)
+                ) {
+                    if (isEditMode) {
+                        BasicTextField(
+                            value = editableText,
+                            onValueChange = { editableText = it },
+                            textStyle = TextStyle(
+                                color = Color.White,
+                                fontSize = 16.sp
+                            ),
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        Text(
+                            text = if (text.isNotEmpty()) text else "No content",
+                            color = if (text.isNotEmpty()) Color.White else Color(0xFFB0B0B0),
+                            fontSize = 16.sp,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
         }
-        Text(label, color = Color.White, fontSize = 12.sp)
     }
 }

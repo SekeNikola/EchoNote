@@ -13,6 +13,7 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.plugins.cors.routing.CORS
 import io.ktor.http.*
+import io.ktor.http.content.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.Serializable
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
@@ -21,12 +22,20 @@ import java.time.Instant
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import android.util.Log
+import android.util.Base64
+import android.content.Context
+import android.os.Environment
+import java.io.File
+import java.io.FileOutputStream
 
 @Serializable
 data class ServerTask(
     val id: String,
     val title: String,
     val body: String = "",
+    val priority: String? = null,
+    val dueDate: String? = null,
+    val dueTime: String? = null,
     val done: Boolean = false,
     val updatedAt: String
 )
@@ -36,6 +45,7 @@ data class ServerNote(
     val id: String,
     val title: String,
     val body: String,
+    val imagePath: String? = null,
     val updatedAt: String
 )
 
@@ -43,6 +53,9 @@ data class ServerNote(
 data class TaskRequest(
     val title: String,
     val body: String = "",
+    val priority: String? = null,
+    val dueDate: String? = null,
+    val dueTime: String? = null,
     val done: Boolean = false,
     val timestamp: Long? = null
 )
@@ -51,6 +64,7 @@ data class TaskRequest(
 data class NoteRequest(
     val title: String,
     val body: String,
+    val imagePath: String? = null,
     val timestamp: Long? = null
 )
 
@@ -64,8 +78,83 @@ object KtorServer {
     private val tasks = ConcurrentHashMap<String, ServerTask>()
     private val notes = ConcurrentHashMap<String, ServerNote>()
     private val connections = mutableSetOf<DefaultWebSocketSession>()
+    private var appContext: android.content.Context? = null
+    
+    fun setContext(context: android.content.Context) {
+        appContext = context
+    }
     
     private fun getCurrentTimestamp(): String = Instant.now().toString()
+    
+    private fun saveBase64Image(base64Data: String, call: ApplicationCall): String? {
+        try {
+            // Extract MIME type and base64 data
+            val dataStartIndex = base64Data.indexOf(",")
+            if (dataStartIndex == -1) return null
+            
+            val base64ImageData = base64Data.substring(dataStartIndex + 1)
+            val mimeTypePart = base64Data.substring(0, dataStartIndex)
+            
+            // Determine file extension
+            val extension = when {
+                mimeTypePart.contains("jpeg") || mimeTypePart.contains("jpg") -> "jpg"
+                mimeTypePart.contains("png") -> "png"
+                mimeTypePart.contains("gif") -> "gif"
+                mimeTypePart.contains("webp") -> "webp"
+                else -> "jpg" // default
+            }
+            
+            // Create unique filename
+            val fileName = "web_image_${UUID.randomUUID()}.$extension"
+            
+            // Use app-specific directory if context is available, fallback to Pictures/EchoNote
+            val imageFile = if (appContext != null) {
+                val imagesDir = File(appContext!!.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "EchoNote")
+                imagesDir.mkdirs()
+                File(imagesDir, fileName)
+            } else {
+                val fallbackDir = File("/storage/emulated/0/Pictures/EchoNote")
+                fallbackDir.mkdirs()
+                File(fallbackDir, fileName)
+            }
+            
+            // Decode and save
+            val imageBytes = Base64.decode(base64ImageData, Base64.DEFAULT)
+            FileOutputStream(imageFile).use { fos ->
+                fos.write(imageBytes)
+            }
+            
+            Log.d("KtorServer", "Saved base64 image to: ${imageFile.absolutePath}")
+            
+            // Get the host and port from the request
+            val host = call.request.local.serverHost
+            val port = call.request.local.serverPort
+            // Return server URL format for web-uploaded images so Android can access via HTTP
+            return "http://$host:$port/images/$fileName"
+        } catch (e: Exception) {
+            Log.e("KtorServer", "Error saving base64 image", e)
+            return null
+        }
+    }
+    
+    private fun convertImagePathForWeb(originalPath: String?): String? {
+        if (originalPath == null) return null
+        
+        // If it's already a web-accessible path, return as-is
+        if (originalPath.startsWith("http") || originalPath.startsWith("data:")) {
+            return originalPath
+        }
+        
+        // For content URIs and other Android paths, extract filename and make web-accessible
+        val fileName = originalPath.substringAfterLast("/")
+        return if (fileName.isNotEmpty() && fileName.contains(".")) {
+            // Return just the filename - the web client will construct the full HTTP URL
+            fileName
+        } else {
+            // If we can't extract a filename, return null
+            null
+        }
+    }
     
     // Methods for external access and sync
     fun addTask(task: ServerTask) {
@@ -221,6 +310,9 @@ object KtorServer {
                         id = UUID.randomUUID().toString(),
                         title = request.title,
                         body = request.body,
+                        priority = request.priority,
+                        dueDate = request.dueDate,
+                        dueTime = request.dueTime,
                         done = request.done,
                         updatedAt = request.timestamp?.toString() ?: getCurrentTimestamp()
                     )
@@ -246,6 +338,9 @@ object KtorServer {
                         id = id,
                         title = request.title,
                         body = request.body,
+                        priority = request.priority,
+                        dueDate = request.dueDate,
+                        dueTime = request.dueTime,
                         done = request.done,
                         updatedAt = request.timestamp?.toString() ?: getCurrentTimestamp()
                     )
@@ -285,15 +380,77 @@ object KtorServer {
                 }
                 
                 get("/notes") {
-                    call.respond(notes.values.toList())
+                    val webCompatibleNotes = notes.values.map { note ->
+                        note.copy(imagePath = convertImagePathForWeb(note.imagePath))
+                    }
+                    call.respond(webCompatibleNotes)
+                }
+                
+                get("/images/{path...}") {
+                    val imagePath = call.parameters.getAll("path")?.joinToString("/") ?: return@get call.respond(HttpStatusCode.BadRequest)
+                    
+                    // Try multiple possible image locations, including app-specific directories
+                    val possiblePaths = mutableListOf<String>()
+                    
+                    // Add app-specific directory if context is available
+                    if (appContext != null) {
+                        val appSpecificDir = File(appContext!!.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "EchoNote")
+                        possiblePaths.add("${appSpecificDir.absolutePath}/$imagePath")
+                    }
+                    
+                    // Add fallback paths
+                    possiblePaths.addAll(listOf(
+                        "/storage/emulated/0/Pictures/EchoNote/$imagePath",
+                        "/storage/emulated/0/Android/data/com.example.app/files/Pictures/EchoNote/$imagePath",
+                        imagePath // In case it's already an absolute path
+                    ))
+                    
+                    var imageFile: File? = null
+                    for (path in possiblePaths) {
+                        val file = File(path)
+                        if (file.exists() && file.isFile) {
+                            imageFile = file
+                            Log.d("KtorServer", "Found image at: $path")
+                            break
+                        }
+                    }
+                    
+                    if (imageFile != null) {
+                        val contentType = when (imageFile.extension.lowercase()) {
+                            "jpg", "jpeg" -> ContentType.Image.JPEG
+                            "png" -> ContentType.Image.PNG
+                            "gif" -> ContentType.Image.GIF
+                            "webp" -> ContentType("image", "webp")
+                            else -> ContentType.Application.OctetStream
+                        }
+                        call.response.header(HttpHeaders.ContentType, contentType.toString())
+                        call.respondFile(imageFile)
+                    } else {
+                        Log.w("KtorServer", "Image not found: $imagePath, tried paths: $possiblePaths")
+                        call.respond(HttpStatusCode.NotFound)
+                    }
                 }
                 
                 post("/notes") {
                     val request = call.receive<NoteRequest>()
+                    
+                    // Handle image data if provided
+                    var processedImagePath: String? = null
+                    request.imagePath?.let { imageData ->
+                        processedImagePath = if (imageData.startsWith("data:image/")) {
+                            // Base64 image from web client - save it as a file
+                            saveBase64Image(imageData, call)
+                        } else {
+                            // Direct path from Android app
+                            imageData
+                        }
+                    }
+                    
                     val note = ServerNote(
                         id = UUID.randomUUID().toString(),
                         title = request.title,
                         body = request.body,
+                        imagePath = processedImagePath,
                         updatedAt = request.timestamp?.toString() ?: getCurrentTimestamp()
                     )
                     notes[note.id] = note
@@ -314,10 +471,24 @@ object KtorServer {
                 put("/notes/{id}") {
                     val id = call.parameters["id"] ?: return@put call.respondText("Missing note ID", status = HttpStatusCode.BadRequest)
                     val request = call.receive<NoteRequest>()
+                    
+                    // Handle image data if provided
+                    var processedImagePath: String? = null
+                    request.imagePath?.let { imageData ->
+                        processedImagePath = if (imageData.startsWith("data:image/")) {
+                            // Base64 image from web client - save it as a file
+                            saveBase64Image(imageData, call)
+                        } else {
+                            // Direct path from Android app
+                            imageData
+                        }
+                    }
+                    
                     val updatedNote = ServerNote(
                         id = id,
                         title = request.title,
                         body = request.body,
+                        imagePath = processedImagePath,
                         updatedAt = getCurrentTimestamp()
                     )
                     notes[id] = updatedNote
