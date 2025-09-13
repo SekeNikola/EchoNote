@@ -123,7 +123,8 @@ object DataSyncManager {
                     // Update existing note found by serverId
                     val updatedNote = existingNote.copy(
                         title = serverNote.title,
-                        transcript = serverNote.body,
+                        snippet = serverNote.body, // Store in snippet field for display
+                        transcript = serverNote.body, // Also store in transcript for compatibility
                         serverId = serverNote.id
                     )
                     db.noteDao().update(updatedNote)
@@ -138,7 +139,8 @@ object DataSyncManager {
                         // Update existing note and set serverId
                         val updatedNote = existingNote.copy(
                             title = serverNote.title,
-                            transcript = serverNote.body,
+                            snippet = serverNote.body, // Store in snippet field for display
+                            transcript = serverNote.body, // Also store in transcript for compatibility
                             serverId = serverNote.id
                         )
                         db.noteDao().update(updatedNote)
@@ -148,7 +150,8 @@ object DataSyncManager {
                         val dbNote = Note(
                             id = 0, // Let the database generate the ID
                             title = serverNote.title,
-                            transcript = serverNote.body, // Using transcript field to store body content
+                            snippet = serverNote.body, // Store in snippet field for display
+                            transcript = serverNote.body, // Also store in transcript for compatibility
                             createdAt = System.currentTimeMillis(),
                             serverId = serverNote.id
                         )
@@ -185,7 +188,7 @@ object DataSyncManager {
         database?.let { db ->
             try {
                 // Find note by title and delete it
-                val existingNotes = db.noteDao().getAllNotesOnce()
+                val existingNotes = db.noteDao().getAllNotes().first()
                 val noteToDelete = existingNotes.find { it.title == noteTitle }
                 
                 if (noteToDelete != null) {

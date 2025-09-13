@@ -34,6 +34,7 @@ class NoteRepository(
     // Chat message operations
     fun getAllChatMessages(): Flow<List<ChatMessage>> = chatMessageDao.getAllMessages()
     fun getChatMessagesBySession(sessionId: String): Flow<List<ChatMessage>> = chatMessageDao.getMessagesBySession(sessionId)
+    fun getCurrentConversation(): Flow<List<ChatMessage>> = chatMessageDao.getCurrentConversation()
     suspend fun insertChatMessage(message: ChatMessage) = chatMessageDao.insert(message)
     suspend fun clearChatHistory() = chatMessageDao.deleteAll()
     suspend fun deleteChatSession(sessionId: String) = chatMessageDao.deleteSession(sessionId)

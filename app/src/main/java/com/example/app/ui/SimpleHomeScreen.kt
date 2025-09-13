@@ -586,16 +586,117 @@ fun SimpleHomeScreen(
             Spacer(modifier = Modifier.height(12.dp))
             
             // Chat Options
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { navController.navigate("ai_chat") }
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
+            val chatMessages by viewModel.chatMessages.collectAsState()
+            val recentChats = remember(chatMessages) {
+                chatMessages.groupBy { 
+                    SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(it.timestamp))
+                }.toList().sortedByDescending { it.second.maxOf { msg -> msg.timestamp } }.take(2)
+            }
+            
+            if (recentChats.isNotEmpty()) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    recentChats.forEach { (date, messages) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    Color(0xFF1f1f1f),
+                                    RoundedCornerShape(12.dp)
+                                )
+                                .clickable { navController.navigate("ai_chat") }
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Chat,
+                                contentDescription = null,
+                                tint = Color(0xFFFF8C00),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = SimpleDateFormat("MMM dd", Locale.getDefault()).format(
+                                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(date) ?: Date()
+                                    ),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = Color.White
+                                )
+                                
+                                val lastUserMessage = messages.filter { !it.isUser }.lastOrNull()
+                                lastUserMessage?.let { message ->
+                                    Text(
+                                        text = message.content,
+                                        fontSize = 12.sp,
+                                        color = Color(0xFF888888),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+                            
+                            Text(
+                                text = "${messages.size}",
+                                fontSize = 12.sp,
+                                color = Color(0xFFFF8C00),
+                                modifier = Modifier
+                                    .background(
+                                        Color(0xFFFF8C00).copy(alpha = 0.2f),
+                                        CircleShape
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                // Empty state - show prompt to start a chat
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Color(0xFF1f1f1f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .clickable { navController.navigate("ai_chat") }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Chat,
+                        contentDescription = null,
+                        tint = Color(0xFF606070),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "No chats yet",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF606070)
+                        )
+                        Text(
+                            text = "Tap to start a conversation with AI",
+                            fontSize = 12.sp,
+                            color = Color(0xFF606070)
+                        )
+                    }
+                    
+                    Icon(
+                        Icons.Default.ArrowForward,
+                        contentDescription = null,
+                        tint = Color(0xFF606070),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.height(120.dp)) // Extra space for bottom input

@@ -286,6 +286,67 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
     });
   }
 
+  @Override
+  public Flow<List<ChatMessage>> getCurrentConversation() {
+    final String _sql = "SELECT * FROM chat_messages WHERE sessionId IS NULL ORDER BY timestamp ASC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"chat_messages"}, new Callable<List<ChatMessage>>() {
+      @Override
+      @NonNull
+      public List<ChatMessage> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfContent = CursorUtil.getColumnIndexOrThrow(_cursor, "content");
+          final int _cursorIndexOfIsUser = CursorUtil.getColumnIndexOrThrow(_cursor, "isUser");
+          final int _cursorIndexOfTimestamp = CursorUtil.getColumnIndexOrThrow(_cursor, "timestamp");
+          final int _cursorIndexOfSessionId = CursorUtil.getColumnIndexOrThrow(_cursor, "sessionId");
+          final int _cursorIndexOfImageUri = CursorUtil.getColumnIndexOrThrow(_cursor, "imageUri");
+          final List<ChatMessage> _result = new ArrayList<ChatMessage>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final ChatMessage _item;
+            final long _tmpId;
+            _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpContent;
+            if (_cursor.isNull(_cursorIndexOfContent)) {
+              _tmpContent = null;
+            } else {
+              _tmpContent = _cursor.getString(_cursorIndexOfContent);
+            }
+            final boolean _tmpIsUser;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsUser);
+            _tmpIsUser = _tmp != 0;
+            final long _tmpTimestamp;
+            _tmpTimestamp = _cursor.getLong(_cursorIndexOfTimestamp);
+            final String _tmpSessionId;
+            if (_cursor.isNull(_cursorIndexOfSessionId)) {
+              _tmpSessionId = null;
+            } else {
+              _tmpSessionId = _cursor.getString(_cursorIndexOfSessionId);
+            }
+            final String _tmpImageUri;
+            if (_cursor.isNull(_cursorIndexOfImageUri)) {
+              _tmpImageUri = null;
+            } else {
+              _tmpImageUri = _cursor.getString(_cursorIndexOfImageUri);
+            }
+            _item = new ChatMessage(_tmpId,_tmpContent,_tmpIsUser,_tmpTimestamp,_tmpSessionId,_tmpImageUri);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
   @NonNull
   public static List<Class<?>> getRequiredConverters() {
     return Collections.emptyList();

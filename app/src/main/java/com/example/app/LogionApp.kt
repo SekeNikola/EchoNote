@@ -21,6 +21,10 @@ import com.example.app.network.RetrofitInstance
 import com.example.app.ui.ApiKeyDialog
 
 class LogionApp : Application() {
+    
+    // Database instance for the app
+    val database by lazy { AppDatabase.getDatabase(this) }
+    
     override fun onCreate() {
         super.onCreate()
         // App-level init if needed

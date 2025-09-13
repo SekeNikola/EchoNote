@@ -29,6 +29,7 @@ fun TasksScreen(
     viewModel: NoteViewModel
 ) {
     val tasks by viewModel.allTasks.collectAsState()
+    var showAddTaskSheet by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier
@@ -58,7 +59,7 @@ fun TasksScreen(
             },
             actions = {
                 IconButton(
-                    onClick = { navController.navigate("ai_chat") }
+                    onClick = { showAddTaskSheet = true }
                 ) {
                     Icon(
                         Icons.Default.Add,
@@ -118,6 +119,23 @@ fun TasksScreen(
             }
         }
     }
+    
+    // Add Task Bottom Sheet
+    if (showAddTaskSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddTaskSheet = false },
+            containerColor = Color(0xFF282828),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        ) {
+            AddTaskBottomSheet(
+                onCreateTask = { title, description, priority, dueDate ->
+                    viewModel.createTask(title, description, priority, dueDate)
+                    showAddTaskSheet = false
+                },
+                onDismiss = { showAddTaskSheet = false }
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -127,6 +145,7 @@ fun NotesListScreen(
     viewModel: NoteViewModel
 ) {
     val notes by viewModel.notes.observeAsState(emptyList())
+    var showAddNoteSheet by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier
@@ -156,7 +175,7 @@ fun NotesListScreen(
             },
             actions = {
                 IconButton(
-                    onClick = { navController.navigate("ai_chat") }
+                    onClick = { showAddNoteSheet = true }
                 ) {
                     Icon(
                         Icons.Default.Add,
@@ -257,6 +276,23 @@ fun NotesListScreen(
                     }
                 }
             }
+        }
+    }
+    
+    // Add Note Bottom Sheet
+    if (showAddNoteSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showAddNoteSheet = false },
+            containerColor = Color(0xFF282828),
+            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        ) {
+            AddNoteBottomSheet(
+                onCreateNote = { title, content ->
+                    viewModel.createNote(title, content)
+                    showAddNoteSheet = false
+                },
+                onDismiss = { showAddNoteSheet = false }
+            )
         }
     }
 }

@@ -32,7 +32,6 @@ fun NoteDetailScreenNew(
     viewModel: com.example.app.viewmodel.NoteViewModel,
     onBack: () -> Unit
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val notes by viewModel.notes.observeAsState(emptyList())
     val note = remember(notes, noteId) {
         notes.find { it.id.toString() == noteId }
@@ -117,29 +116,12 @@ fun NoteDetailScreenNew(
                 IconButton(
                     onClick = {
                         note?.let { noteObj: com.example.app.data.Note ->
-                            coroutineScope.launch {
-                                // Update title
-                                viewModel.updateNoteTitle(noteObj.id, editableTitle)
-                                
-                                // Update content
-                                val json = JSONObject()
-                                json.put("text", editableText)
-                                viewModel.updateNoteSnippet(noteObj.id, json.toString())
-                                
-                                // Sync to web server
-                                try {
-                                    com.example.app.server.KtorServer.updateNoteWithBroadcast(
-                                        com.example.app.server.ServerNote(
-                                            id = noteObj.id.toString(),
-                                            title = editableTitle,
-                                            body = editableText,
-                                            updatedAt = Date().toInstant().toString()
-                                        )
-                                    )
-                                } catch (e: Exception) {
-                                    android.util.Log.e("NoteDetailScreen", "Failed to sync note to server", e)
-                                }
-                            }
+                            // Update title
+                            viewModel.updateNoteTitle(noteObj.id, editableTitle)
+                            
+                            // Update content - store plain text in snippet for display
+                            viewModel.updateNoteSnippet(noteObj.id, editableText)
+                            
                             isEditMode = false
                         }
                     }

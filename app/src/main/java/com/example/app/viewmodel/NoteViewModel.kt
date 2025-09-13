@@ -11,6 +11,7 @@ import com.example.app.data.Note
 import com.example.app.data.NoteRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withTimeout
 import android.app.Application
@@ -27,9 +28,9 @@ import com.example.app.network.RetrofitInstance
 import com.example.app.worker.ReminderScheduler
 import com.example.app.util.ApiKeyProvider
 import com.example.app.utils.OpenAITTS
-import com.example.app.server.KtorServer
-import com.example.app.server.ServerNote
 import com.example.app.server.ServerTask
+import com.example.app.server.ServerNote
+import com.example.app.server.KtorServer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import java.io.File
@@ -149,11 +150,8 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
         val result = extractSummaryAndTasksWithOpenAI(transcript)
         val summaryOut = result?.first ?: ""
         val tasks = result?.second ?: emptyList<String>()
-        val json = org.json.JSONObject()
-        json.put("summary", summaryOut)
-        if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
-        // Save the new summary and tasks as snippet
-        updateNoteSnippet(noteId, json.toString())
+        // Store just the summary as plain text for display in note cards
+        updateNoteSnippet(noteId, summaryOut)
     }
     fun updateTranscript(noteId: Long, transcript: String) = viewModelScope.launch {
         repository.updateTranscript(noteId, transcript)
@@ -297,6 +295,23 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     
     fun updateNoteSnippet(noteId: Long, snippet: String) = viewModelScope.launch {
         repository.updateNoteSnippet(noteId, snippet)
+        
+        // Get the updated note and broadcast to server for web UI sync
+        try {
+            val updatedNote = repository.getNoteById(noteId).first()
+            updatedNote?.let { note ->
+                val serverNote = ServerNote(
+                    id = noteId.toString(),
+                    title = note.title,
+                    body = note.snippet, // Use snippet content for the body
+                    updatedAt = getCurrentTimestamp()
+                )
+                
+                KtorServer.updateNoteWithBroadcast(serverNote)
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Failed to broadcast note snippet update", e)
+        }
     }
 
     fun updateChecklistState(noteId: Long, checklistState: String) = viewModelScope.launch {
@@ -313,16 +328,13 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                 val result = extractSummaryAndTasksWithOpenAI(transcript)
                 val summaryOut = result?.first ?: ""
                 val tasks = result?.second ?: emptyList<String>()
-                val json = org.json.JSONObject()
-                json.put("summary", summaryOut)
-                if (tasks.isNotEmpty()) json.put("tasks", org.json.JSONArray(tasks))
                 
                 // Use smart title generation
                 val title = generateSmartTitle(transcript)
                 
                 val note = Note(
                     title = title,
-                    snippet = json.toString(),
+                    snippet = summaryOut, // Store just the summary as plain text
                     transcript = transcript
                 )
                 repository.noteDao.insert(note)
@@ -378,7 +390,18 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     }
 
     fun deleteNote(id: Long) = viewModelScope.launch {
-        repository.noteDao.deleteById(id)
+        try {
+            // Get the note before deleting to get its title for server broadcast
+            val note = repository.getNoteById(id).first()
+            repository.noteDao.deleteById(id)
+            
+            // Broadcast deletion to server so web UI gets updated
+            if (note != null) {
+                KtorServer.deleteNoteWithBroadcastByTitle(note.title)
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error deleting note", e)
+        }
     }
     val notes = repository.getAllNotes().asLiveData()
     val searchQuery = MutableLiveData("")
@@ -501,6 +524,23 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
 
     fun updateNoteTitle(id: Long, title: String) = viewModelScope.launch {
         repository.updateNoteTitle(id, title)
+        
+        // Get the updated note and broadcast to server for web UI sync
+        try {
+            val updatedNote = repository.getNoteById(id).first()
+            updatedNote?.let { note ->
+                val serverNote = ServerNote(
+                    id = id.toString(),
+                    title = title,
+                    body = note.snippet, // Use snippet content for the body
+                    updatedAt = getCurrentTimestamp()
+                )
+                
+                KtorServer.updateNoteWithBroadcast(serverNote)
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Failed to broadcast note title update", e)
+        }
     }
 
     fun readAloud(id: Long) {
@@ -850,16 +890,31 @@ Output:
                 Log.d("NoteViewModel", "Final title: '$finalTitle'")
                 Log.d("NoteViewModel", "Final summary: '$finalSummary'")
                 
-                // Create and save the note - exact same as recording
+                // Create and save the note with plain text summary
                 val note = Note(
                     title = finalTitle,
-                    snippet = json.toString(),
+                    snippet = finalSummary, // Store just the summary as plain text
                     transcript = transcript
                 )
                 
                 Log.d("NoteViewModel", "About to insert note...")
-                repository.noteDao.insert(note)
-                Log.d("NoteViewModel", "Note inserted successfully!")
+                val noteId = repository.noteDao.insert(note)
+                Log.d("NoteViewModel", "Note inserted successfully with ID: $noteId")
+                
+                // Broadcast to server for web UI sync
+                try {
+                    val serverNote = ServerNote(
+                        id = noteId.toString(),
+                        title = finalTitle,
+                        body = transcript, // Full conversation for web UI
+                        updatedAt = getCurrentTimestamp()
+                    )
+                    KtorServer.addNoteWithBroadcast(serverNote)
+                    Log.d("NoteViewModel", "Note broadcasted to server successfully!")
+                } catch (e: Exception) {
+                    Log.e("NoteViewModel", "Failed to broadcast note to server", e)
+                }
+                
                 Log.d("NoteViewModel", "=== SAVE CHAT SUCCESS ===")
                 
             } else {
@@ -945,7 +1000,7 @@ Output:
                 
                 val note = Note(
                     title = title,
-                    snippet = result?.second?.toString() ?: """{"summary":"Uploaded audio note"}""",
+                    snippet = result?.first ?: "Uploaded audio note", // Use summary as plain text
                     transcript = audioTranscript
                 )
                 
@@ -1532,7 +1587,7 @@ Output:
         
         val note = Note(
             title = title,
-            snippet = result?.second?.toString() ?: """{"summary":"$contentType content"}""",
+            snippet = result?.first ?: "$contentType content", // Use summary as plain text
             transcript = content
         )
         
@@ -1551,7 +1606,7 @@ Output:
         
         val note = Note(
             title = title,
-            snippet = """{"summary":"$cleanedSummary"}""",
+            snippet = cleanedSummary, // Store plain text summary
             transcript = ocrText.ifBlank { "No text detected in image" }
         )
         
@@ -1569,7 +1624,7 @@ Output:
             Log.d("NoteViewModel", "Saving test chat note")
             val note = Note(
                 title = "Test Chat Note",
-                snippet = """{"summary": "This is a test chat note created to verify the save functionality works."}""",
+                snippet = "This is a test chat note created to verify the save functionality works.", // Plain text
                 transcript = "User: Test message\n\nAssistant: This is a test response."
             )
             repository.noteDao.insert(note)
@@ -1797,6 +1852,21 @@ Output:
             Log.d("NoteViewModel", "Created task from chat: ${task.title}")
             Log.d("NoteViewModel", "Task due date: ${task.dueDate}, current time: ${System.currentTimeMillis()}")
             
+            // Broadcast task to server for web sync
+            try {
+                val serverTask = ServerTask(
+                    id = java.util.UUID.randomUUID().toString(),
+                    title = task.title,
+                    body = task.description,
+                    done = task.isCompleted,
+                    updatedAt = java.time.Instant.ofEpochMilli(task.updatedAt).toString()
+                )
+                KtorServer.addTaskWithBroadcast(serverTask)
+                Log.d("NoteViewModel", "Task broadcasted to server: ${task.title}")
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Failed to broadcast task to server", e)
+            }
+            
             // Refresh tasks list to ensure it shows up immediately
             loadTasks()
             
@@ -1878,6 +1948,20 @@ Output:
             
             repository.insertNote(note)
             Log.d("NoteViewModel", "Saved chat as note: ${note.title}")
+            
+            // Broadcast note to server for web sync
+            try {
+                val serverNote = ServerNote(
+                    id = java.util.UUID.randomUUID().toString(),
+                    title = note.title,
+                    body = note.snippet,
+                    updatedAt = java.time.Instant.ofEpochMilli(note.createdAt).toString()
+                )
+                KtorServer.addNoteWithBroadcast(serverNote)
+                Log.d("NoteViewModel", "Note broadcasted to server: ${note.title}")
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Failed to broadcast note to server", e)
+            }
             
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error saving chat as note", e)
@@ -2152,7 +2236,7 @@ Output:
                 // Create and save note
                 val note = Note(
                     title = finalTitle,
-                    snippet = json.toString(),
+                    snippet = finalSummary, // Store just the summary as plain text
                     transcript = transcript
                 )
                 
@@ -2358,7 +2442,7 @@ Output:
                 val note = Note(
                     title = generatedTitle,
                     transcript = fullTranscript, // Full conversation, not just original text
-                    snippet = json.toString()    // Proper JSON snippet with summary
+                    snippet = summaryOut // Store just the summary as plain text
                 )
                 repository.noteDao.insert(note)
                 Log.d("NoteViewModel", "Voice note created successfully with title: $generatedTitle")
@@ -2369,7 +2453,7 @@ Output:
                 val note = Note(
                     title = generatedTitle,
                     transcript = "User: $originalText\n\nAssistant: $aiResponse",
-                    snippet = """{"summary":"$aiResponse"}"""
+                    snippet = aiResponse // Store AI response as plain text
                 )
                 repository.noteDao.insert(note)
                 Log.d("NoteViewModel", "Voice note created with fallback method")
@@ -2606,6 +2690,21 @@ Output:
             repository.insertTask(task)
             Log.d("NoteViewModel", "Task inserted successfully!")
             
+            // Broadcast task to server for web sync
+            try {
+                val serverTask = ServerTask(
+                    id = java.util.UUID.randomUUID().toString(),
+                    title = task.title,
+                    body = task.description,
+                    done = task.isCompleted,
+                    updatedAt = java.time.Instant.ofEpochMilli(task.updatedAt).toString()
+                )
+                KtorServer.addTaskWithBroadcast(serverTask)
+                Log.d("NoteViewModel", "Task broadcasted to server: ${task.title}")
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Failed to broadcast task to server", e)
+            }
+            
             // Refresh tasks list
             loadTasks()
             Log.d("NoteViewModel", "Tasks list refreshed")
@@ -2774,7 +2873,7 @@ Output:
     
     private fun loadChatMessages() = viewModelScope.launch {
         try {
-            repository.getAllChatMessages().collect { messages ->
+            repository.getCurrentConversation().collect { messages ->
                 _chatMessages.value = messages
             }
         } catch (e: Exception) {
@@ -2813,28 +2912,60 @@ Output:
     }
     
     fun createTask(title: String, description: String, priority: String = "Medium", dueDate: Long = System.currentTimeMillis()) = viewModelScope.launch {
-    try {
-        val newTask = Task(
-            title = title,
-            description = description,
-            priority = priority,
-            dueDate = dueDate
-        )
-        // Use the correct repository method
-        repository.taskDao.insert(newTask)  // or whatever your actual method is
-    } catch (e: Exception) {
-        Log.e("NoteViewModel", "Error creating task", e)
+        try {
+            val newTask = Task(
+                title = title,
+                description = description,
+                priority = priority,
+                dueDate = dueDate,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
+            )
+            
+            repository.insertTask(newTask)
+            
+            // Broadcast task to server for web sync
+            try {
+                val serverTask = ServerTask(
+                    id = java.util.UUID.randomUUID().toString(),
+                    title = newTask.title,
+                    body = newTask.description,
+                    done = newTask.isCompleted,
+                    updatedAt = java.time.Instant.ofEpochMilli(newTask.updatedAt).toString()
+                )
+                KtorServer.addTaskWithBroadcast(serverTask)
+                Log.d("NoteViewModel", "Task broadcasted to server: ${newTask.title}")
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Failed to broadcast task to server", e)
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating task", e)
+        }
     }
-}
 
 fun createNote(title: String = "New Note", content: String = "") = viewModelScope.launch {
     try {
         val newNote = Note(
             title = title,
             transcript = content,
-            snippet = ""
+            snippet = content,
+            createdAt = System.currentTimeMillis()
         )
-        repository.noteDao.insert(newNote)  // Fixed method name
+        repository.insertNote(newNote)
+        
+        // Broadcast note to server for web sync
+        try {
+            val serverNote = ServerNote(
+                id = java.util.UUID.randomUUID().toString(),
+                title = newNote.title,
+                body = newNote.snippet,
+                updatedAt = java.time.Instant.ofEpochMilli(newNote.createdAt).toString()
+            )
+            KtorServer.addNoteWithBroadcast(serverNote)
+            Log.d("NoteViewModel", "Note broadcasted to server: ${newNote.title}")
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Failed to broadcast note to server", e)
+        }
     } catch (e: Exception) {
         Log.e("NoteViewModel", "Error creating note", e)
     }
@@ -2867,6 +2998,25 @@ fun addNoteWithBroadcast(title: String, content: String) = viewModelScope.launch
                 // Update in repository
                 repository.toggleTaskComplete(taskId, newCompletionStatus)
                 
+                // Broadcast task completion status to server for web sync
+                try {
+                    val updatedTask = task.copy(
+                        isCompleted = newCompletionStatus,
+                        updatedAt = System.currentTimeMillis()
+                    )
+                    val serverTask = ServerTask(
+                        id = updatedTask.serverId ?: updatedTask.id.toString(),
+                        title = updatedTask.title,
+                        body = updatedTask.description,
+                        done = updatedTask.isCompleted,
+                        updatedAt = java.time.Instant.ofEpochMilli(updatedTask.updatedAt).toString()
+                    )
+                    KtorServer.updateTaskWithBroadcast(serverTask)
+                    Log.d("NoteViewModel", "Task completion status broadcasted to server: ${updatedTask.title} = ${newCompletionStatus}")
+                } catch (e: Exception) {
+                    Log.e("NoteViewModel", "Failed to broadcast task completion to server", e)
+                }
+                
                 // Update local state
                 _allTasks.update { tasks -> 
                     tasks.map { 
@@ -2883,8 +3033,15 @@ fun addNoteWithBroadcast(title: String, content: String) = viewModelScope.launch
     
     fun deleteTask(taskId: Long) = viewModelScope.launch {
         try {
+            // Get the task from current state before deleting to get its title for server broadcast
+            val task = _allTasks.value.find { it.id == taskId }
             repository.deleteTask(taskId)
             _allTasks.update { tasks -> tasks.filter { it.id != taskId } }
+            
+            // Broadcast deletion to server so web UI gets updated
+            if (task != null) {
+                KtorServer.deleteTaskWithBroadcastByTitle(task.title)
+            }
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error deleting task", e)
         }
@@ -2910,9 +3067,26 @@ fun addNoteWithBroadcast(title: String, content: String) = viewModelScope.launch
                     dueDate = dueDate,
                     isCompleted = currentTask.isCompleted,
                     createdAt = currentTask.createdAt,
-                    updatedAt = System.currentTimeMillis()
+                    updatedAt = System.currentTimeMillis(),
+                    serverId = currentTask.serverId // Preserve serverId
                 )
                 repository.updateTask(updatedTask)
+                
+                // Broadcast task update to server for web sync
+                try {
+                    val serverTask = ServerTask(
+                        id = updatedTask.serverId ?: updatedTask.id.toString(),
+                        title = updatedTask.title,
+                        body = updatedTask.description,
+                        done = updatedTask.isCompleted,
+                        updatedAt = java.time.Instant.ofEpochMilli(updatedTask.updatedAt).toString()
+                    )
+                    KtorServer.updateTaskWithBroadcast(serverTask)
+                    Log.d("NoteViewModel", "Task update broadcasted to server: ${updatedTask.title}")
+                } catch (e: Exception) {
+                    Log.e("NoteViewModel", "Failed to broadcast task update to server", e)
+                }
+                
                 _allTasks.update { tasks ->
                     tasks.map { task ->
                         if (task.id == taskId) updatedTask else task
@@ -2931,5 +3105,12 @@ fun addNoteWithBroadcast(title: String, content: String) = viewModelScope.launch
         
         return today.get(java.util.Calendar.YEAR) == taskDate.get(java.util.Calendar.YEAR) &&
                today.get(java.util.Calendar.DAY_OF_YEAR) == taskDate.get(java.util.Calendar.DAY_OF_YEAR)
+    }
+    
+    // Helper function to get current timestamp in ISO format for server compatibility
+    private fun getCurrentTimestamp(): String {
+        val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+        dateFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        return dateFormat.format(java.util.Date())
     }
 }

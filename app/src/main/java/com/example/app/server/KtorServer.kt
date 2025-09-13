@@ -366,6 +366,26 @@ object KtorServer {
                                     
                                     // Handle incoming sync messages from clients
                                     when (message.type) {
+                                        "task_updated" -> {
+                                            // When web UI updates a task, sync it to mobile app database
+                                            try {
+                                                val task = Json.decodeFromString<ServerTask>(message.data)
+                                                DataSyncManager.syncTaskToDatabase(task)
+                                                Log.d("KtorServer", "Processed task update from client: ${task.title}")
+                                            } catch (e: Exception) {
+                                                Log.e("KtorServer", "Failed to process task update", e)
+                                            }
+                                        }
+                                        "note_updated" -> {
+                                            // When web UI updates a note, sync it to mobile app database
+                                            try {
+                                                val note = Json.decodeFromString<ServerNote>(message.data)
+                                                DataSyncManager.syncNoteToDatabase(note)
+                                                Log.d("KtorServer", "Processed note update from client: ${note.title}")
+                                            } catch (e: Exception) {
+                                                Log.e("KtorServer", "Failed to process note update", e)
+                                            }
+                                        }
                                         "task_deleted" -> {
                                             // When web UI deletes a task, remove it from mobile app too
                                             val taskTitle = message.data

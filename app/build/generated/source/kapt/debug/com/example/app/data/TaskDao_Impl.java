@@ -149,7 +149,7 @@ public final class TaskDao_Impl implements TaskDao {
   }
 
   @Override
-  public Object insert(final Task task, final Continuation<? super Unit> $completion) {
+  public Object insert(final Task task, final Continuation<? super Unit> arg1) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -163,11 +163,11 @@ public final class TaskDao_Impl implements TaskDao {
           __db.endTransaction();
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @Override
-  public Object update(final Task task, final Continuation<? super Unit> $completion) {
+  public Object update(final Task task, final Continuation<? super Unit> arg1) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -181,11 +181,11 @@ public final class TaskDao_Impl implements TaskDao {
           __db.endTransaction();
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @Override
-  public Object deleteById(final long id, final Continuation<? super Unit> $completion) {
+  public Object deleteById(final long id, final Continuation<? super Unit> arg1) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -206,12 +206,12 @@ public final class TaskDao_Impl implements TaskDao {
           __preparedStmtOfDeleteById.release(_stmt);
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @Override
   public Object updateCompleted(final long id, final boolean isCompleted,
-      final Continuation<? super Unit> $completion) {
+      final Continuation<? super Unit> arg2) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -235,7 +235,7 @@ public final class TaskDao_Impl implements TaskDao {
           __preparedStmtOfUpdateCompleted.release(_stmt);
         }
       }
-    }, $completion);
+    }, arg2);
   }
 
   @Override
@@ -320,7 +320,7 @@ public final class TaskDao_Impl implements TaskDao {
   }
 
   @Override
-  public Object getAllTasksOnce(final Continuation<? super List<Task>> $completion) {
+  public Object getAllTasksOnce(final Continuation<? super List<Task>> arg0) {
     final String _sql = "SELECT * FROM tasks ORDER BY dueDate ASC";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
     final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
@@ -394,7 +394,7 @@ public final class TaskDao_Impl implements TaskDao {
           _statement.release();
         }
       }
-    }, $completion);
+    }, arg0);
   }
 
   @Override
@@ -479,7 +479,7 @@ public final class TaskDao_Impl implements TaskDao {
   }
 
   @Override
-  public Object getTaskById(final long id, final Continuation<? super Task> $completion) {
+  public Object getTaskById(final long id, final Continuation<? super Task> arg1) {
     final String _sql = "SELECT * FROM tasks WHERE id = ?";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 1);
     int _argIndex = 1;
@@ -555,7 +555,7 @@ public final class TaskDao_Impl implements TaskDao {
           _statement.release();
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @NonNull

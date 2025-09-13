@@ -13,6 +13,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.app.data.Note
+import org.json.JSONObject
+
+// Utility function to extract display text from snippet
+private fun extractDisplayText(snippet: String): String {
+    return try {
+        val json = JSONObject(snippet)
+        json.optString("text", "").takeIf { it.isNotEmpty() }
+            ?: json.optString("summary", "").takeIf { it.isNotEmpty() }
+            ?: snippet // Fallback to original snippet if no text/summary found
+    } catch (e: Exception) {
+        // If JSON parsing fails, return original snippet (it's probably plain text)
+        snippet
+    }
+}
 
 @Composable
 fun NoteCard(note: Note, onClick: () -> Unit, onFavorite: () -> Unit) {
@@ -35,7 +49,7 @@ fun NoteCard(note: Note, onClick: () -> Unit, onFavorite: () -> Unit) {
                     fontSize = 18.sp
                 )
                 Text(
-                    text = note.snippet,
+                    text = extractDisplayText(note.snippet),
                     color = Color(0xFFB0B0B0),
                     fontSize = 14.sp,
                     maxLines = 1

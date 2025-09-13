@@ -41,6 +41,9 @@ interface ChatMessageDao {
     @Query("SELECT * FROM chat_messages WHERE sessionId = :sessionId ORDER BY timestamp ASC")
     fun getMessagesBySession(sessionId: String): Flow<List<ChatMessage>>
 
+    @Query("SELECT * FROM chat_messages WHERE sessionId IS NULL ORDER BY timestamp ASC")
+    fun getCurrentConversation(): Flow<List<ChatMessage>>
+
     @Query("DELETE FROM chat_messages")
     suspend fun deleteAll()
 
