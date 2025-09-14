@@ -3,7 +3,11 @@ package com.example.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -61,9 +65,11 @@ class MainActivity : ComponentActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 
-		// Start the server service
-		val serverIntent = Intent(this, ServerService::class.java)
-		startService(serverIntent)
+		// Start the server service as foreground service
+		ServerService.startService(this)
+		
+		// Request to ignore battery optimizations for continuous background operation
+		requestBatteryOptimizationExemption()
 
 		// Handle widget intents
 		val widgetAction = intent.getStringExtra("widget_action")
@@ -83,7 +89,7 @@ class MainActivity : ComponentActivity() {
 						val context = applicationContext
 						val db = AppDatabase.getDatabase(context)
 						val repo = NoteRepository(db.noteDao(), db.taskDao(), db.chatMessageDao())
-						val app = requireNotNull(application) as android.app.Application
+						val app = requireNotNull(application)
 						val viewModel: NoteViewModel = viewModel(
 							factory = object : ViewModelProvider.Factory {
 								override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -124,11 +130,6 @@ class MainActivity : ComponentActivity() {
 						}
 						
 						var showApiKeyDialog by remember { mutableStateOf(ApiKeyProvider.getApiKey(context) == null) }
-						
-						// Simple permission checking - recalculate when needed
-						val permissionsToRequest = permissionsToCheck.filter { permission ->
-							ContextCompat.checkSelfPermission(this@MainActivity, permission) != PackageManager.PERMISSION_GRANTED
-						}
 						
 						// Show permission dialog when API key dialog closes and permissions are needed
 						LaunchedEffect(showApiKeyDialog) {
@@ -263,6 +264,34 @@ class MainActivity : ComponentActivity() {
 					}
 				}
 			}
+		}
+	}
+	
+	private fun requestBatteryOptimizationExemption() {
+		try {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+				val powerManager = getSystemService(POWER_SERVICE) as PowerManager
+				val packageName = packageName
+				
+				if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+					// Request user to disable battery optimization for this app
+					val intent = Intent().apply {
+						action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+						data = Uri.parse("package:$packageName")
+					}
+					
+					try {
+						startActivity(intent)
+					} catch (e: Exception) {
+						// If the specific intent fails, open general battery optimization settings
+						val generalIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+						startActivity(generalIntent)
+					}
+				}
+			}
+		} catch (e: Exception) {
+			// Log the error but don't crash the app
+			android.util.Log.e("MainActivity", "Error requesting battery optimization exemption", e)
 		}
 	}
 }

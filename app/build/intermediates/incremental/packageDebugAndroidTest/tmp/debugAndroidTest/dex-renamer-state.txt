@@ -1,0 +1,7 @@
+#Sun Sep 14 14:50:59 CEST 2025
+base.1=E\:\\EchoNote\\app\\build\\intermediates\\dex\\debugAndroidTest\\mergeProjectDexDebugAndroidTest\\0\\classes.dex
+path.1=0/classes.dex
+base.0=E\:\\EchoNote\\app\\build\\intermediates\\dex\\debugAndroidTest\\mergeExtDexDebugAndroidTest\\classes.dex
+renamed.1=classes2.dex
+renamed.0=classes.dex
+path.0=classes.dex
