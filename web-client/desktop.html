@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EchoNote - Desktop</title>
+    <title>Logion - Desktop</title>
     <style>
         * {
             margin: 0;
@@ -29,6 +29,46 @@
             padding: 16px 24px;
             background-color: #2a2a2a;
             border-bottom: 1px solid #444;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .header-controls {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+        
+        .header-controls .btn {
+            padding: 8px;
+            min-width: unset;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease;
+        }
+        
+        .header-controls .btn.connected {
+            background-color: #4caf50;
+            border-color: #4caf50;
+        }
+        
+        .header-controls .btn.connected:hover {
+            background-color: #45a049;
+            border-color: #45a049;
+        }
+        
+        .header-controls .btn.disconnected {
+            background-color: #f44336;
+            border-color: #f44336;
+        }
+        
+        .header-controls .btn.disconnected:hover {
+            background-color: #da190b;
+            border-color: #da190b;
         }
         
        .main-content {
@@ -44,6 +84,7 @@
             border-right: 1px solid #444;
             display: flex;
             flex-direction: column;
+            position: relative;
         }
         
         .notes-section {
@@ -51,6 +92,12 @@
             background-color: #1a1a1a;
             display: flex;
             flex-direction: column;
+            position: relative;
+        }
+        
+        .notes-section.shrunk {
+            width: calc(80% - 400px);
+            margin-left: 400px;
         }
         
         .section-header {
@@ -103,11 +150,135 @@
             border-color: #FF8C00;
         }
         
-        .card-title {
+        /* Note Grid Layout */
+        .notes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            padding: 16px;
+        }
+        
+        .note-card-grid {
+            background-color: #2a2a2a;
+            border-radius: 8px;
+            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #333;
+            position: relative;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .note-card-grid:hover {
+            background-color: #333;
+            border-color: #FF8C00;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        /* Expanded Note View */
+        .note-expanded-view {
+            display: none;
+            padding: 20px;
+            height: 100%;
+            overflow-y: auto;
+        }
+        
+        .note-expanded-view.active {
+            display: block;
+        }
+        
+        .note-expanded-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .note-expanded-title {
+            color: #FF8C00;
+            font-size: 24px;
             font-weight: 600;
-            margin-bottom: 8px;
+            flex: 1;
+        }
+        
+        .note-expanded-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .note-expanded-actions button {
+            background: #333;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .note-expanded-actions button:hover {
+            background: #444;
+        }
+        
+        .note-expanded-actions .edit-btn {
+            background: #FF8C00;
+        }
+        
+        .note-expanded-actions .edit-btn:hover {
+            background: #e07600;
+        }
+        
+        .note-expanded-actions .delete-btn {
+            background: #f44336;
+        }
+        
+        .note-expanded-actions .delete-btn:hover {
+            background: #d32f2f;
+        }
+        
+        .note-expanded-actions .back-btn {
+            background: #666;
+        }
+        
+        .note-expanded-actions .back-btn:hover {
+            background: #777;
+        }
+        
+        .note-expanded-content {
             color: white;
             font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+        }
+        
+        .note-expanded-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        
+        .note-expanded-meta {
+            color: #777;
+            font-size: 14px;
+            margin-top: 20px;
+            padding-top: 12px;
+            border-top: 1px solid #444;
+        }
+        
+        .card-title {
+            font-weight: 600;
+            color: white;
+            font-size: 16px;
+            display: flex;
+            justify-content: space-between;
         }
         
         .card-content {
@@ -129,6 +300,162 @@
         
         .task-card.completed .card-title {
             text-decoration: line-through;
+        }
+        
+        .task-section {
+            margin-bottom: 24px;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #FF8C00;
+            margin: 0 0 12px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .task-detail-view {
+            display: none;
+            position: fixed;
+            top: 64px;
+            left: 20%;
+            width: 400px;
+            height: calc(100vh - 64px);
+            background-color: #222;
+            border-left: 1px solid #444;
+            border-right: 1px solid #444;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 1000;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+        }
+        
+        .task-detail-view.active {
+            display: block;
+            transform: translateX(0);
+        }
+        
+        .task-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        
+        .task-detail-title {
+            color: #FF8C00;
+            font-size: 18px;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .task-detail-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .task-detail-actions button {
+            background: #333;
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .task-detail-actions button:hover {
+            background: #444;
+        }
+        
+        .task-detail-actions .edit-btn {
+            background: #FF8C00;
+        }
+        
+        .task-detail-actions .edit-btn:hover {
+            background: #e07600;
+        }
+        
+        .task-detail-actions .delete-btn {
+            background: #f44336;
+        }
+        
+        .task-detail-actions .delete-btn:hover {
+            background: #d32f2f;
+        }
+        
+        .task-detail-field {
+            margin-bottom: 16px;
+        }
+        
+        .task-detail-field label {
+            display: block;
+            color: #bbb;
+            font-size: 12px;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+        
+        .task-detail-field .field-value {
+            color: white;
+            font-size: 14px;
+            padding: 8px 0;
+            min-height: 20px;
+        }
+        
+        .task-detail-field input,
+        .task-detail-field textarea,
+        .task-detail-field select {
+            width: 100%;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .task-detail-field.editing input,
+        .task-detail-field.editing textarea,
+        .task-detail-field.editing select {
+            display: block;
+        }
+        
+        .task-detail-field.editing .field-value {
+            display: none;
+        }
+        
+        .task-detail-field textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .task-priority-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .task-completion-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .task-completion-status input[type="checkbox"] {
+            width: auto;
+            margin: 0;
         }
         
         .main-view {
@@ -293,6 +620,32 @@
             margin-top: 8px;
         }
         
+        .settings-section {
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #444;
+        }
+        
+        .settings-section:last-of-type {
+            border-bottom: none;
+            margin-bottom: 16px;
+        }
+        
+        .settings-section h3 {
+            margin: 0 0 12px 0;
+            color: #fff;
+            font-size: 16px;
+        }
+        
+        .settings-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .settings-buttons .btn {
+            flex: 1;
+        }
+        
         .modal {
             display: none;
             position: fixed;
@@ -401,24 +754,67 @@
 <body>
     <div class="app-container">
         <!-- Connection Dialog -->
-        <div id="connectionDialog" class="connection-dialog">
+        <div id="connectionDialog" class="connection-dialog hidden">
             <div class="connection-dialog-content">
-                <h2>Connect to EchoNote Server</h2>
-                <p style="color: #bbb; margin-bottom: 16px;">Enter the server address to connect</p>
+                <h2>Connect to Logion Server</h2>
+                <p style="color: #bbb; margin-bottom: 16px;">Enter the server IP address. Port will be auto-detected.</p>
                 <div class="server-input-container">
                     <span class="server-prefix">http://</span>
-                    <input type="text" id="serverAddress" placeholder="192.168.1.84" value="192.168.1.84" />
-                    <span class="server-suffix">:8080</span>
+                    <input type="text" id="serverAddress" placeholder="192.168.1.96" value="192.168.1.96" />
+                    <span class="server-suffix">:auto</span>
                 </div>
+                <p style="color: #888; font-size: 12px; margin-top: 8px;">Now uses AdGuard-friendly ports (8888, 9090, etc.)</p>
                 <button class="btn btn-primary" id="connectButton">Connect</button>
+            </div>
+        </div>
+        
+        <!-- Settings Dialog -->
+        <div id="settingsDialog" class="connection-dialog hidden">
+            <div class="connection-dialog-content">
+                <h2>Settings</h2>
+                <div class="settings-section">
+                    <h3>Connection</h3>
+                    <div style="margin-bottom: 12px;">
+                        <p style="color: #bbb; font-size: 14px; margin: 0 0 4px 0;">Server Address:</p>
+                        <p style="color: #fff; font-size: 14px; margin: 0 0 8px 0;" id="currentServerAddress">Not set</p>
+                        <p style="color: #bbb; font-size: 14px; margin: 0 0 4px 0;">Status:</p>
+                        <p style="font-size: 14px; margin: 0;" id="currentConnectionStatus">Disconnected</p>
+                    </div>
+                    <div class="settings-buttons">
+                        <button class="btn btn-secondary" id="connectionAddressButton">Change Connection Address</button>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>Import/Export</h3>
+                    <div class="settings-buttons">
+                        <button class="btn btn-secondary" id="exportButton">Export Data</button>
+                        <button class="btn btn-secondary" id="importButton">Import Data</button>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <h3>Preferences</h3>
+                    <p style="color: #bbb; font-size: 14px;">More settings coming soon...</p>
+                </div>
+                <button class="btn btn-secondary" id="closeSettingsButton">Close</button>
             </div>
         </div>
         
         <!-- Search Section -->
         <div class="search-section">
             <input type="text" class="search-box" placeholder="Search notes and tasks..." id="searchBox">
-            <div id="connectionStatus" class="connection-status disconnected">
-                Disconnected
+            <div class="header-controls">
+                <button class="btn btn-secondary" id="reconnectButton" title="Reconnect">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                        <path d="M3 3v5h5"/>
+                    </svg>
+                </button>
+                <button class="btn btn-secondary" id="settingsButton" title="Settings">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m11-3a3 3 0 0 0-6 0m6 6a3 3 0 0 0-6 0"/>
+                    </svg>
+                </button>
             </div>
         </div>
         
@@ -430,10 +826,72 @@
                     <div class="section-title">Tasks</div>
                     <button class="btn btn-primary" id="addTaskButton">+ Add Task</button>
                 </div>
-                <div class="section-content" id="tasksContent">
-                    <div class="empty-state">
-                        <p>No tasks yet</p>
+                <div style="display: flex; flex: 1;">
+                    <div class="section-content" id="tasksContent" style="flex: 1;">
+                        <div class="empty-state">
+                            <p>No tasks yet</p>
+                        </div>
                     </div>
+                    
+                    <!-- Task Detail Panel -->
+                    <div class="task-detail-view" id="taskDetailView">
+                    <div class="task-detail-header">
+                        <div class="task-detail-title" id="taskDetailTitle">Task Details</div>
+                        <div class="task-detail-actions">
+                            <button class="edit-btn" id="editTaskBtn">Edit</button>
+                            <button class="delete-btn" id="deleteTaskBtn">Delete</button>
+                            <button class="close-btn" id="closeTaskDetailBtn">×</button>
+                        </div>
+                    </div>
+                    
+                    <div class="task-detail-field">
+                        <label>Status</label>
+                        <div class="task-completion-status">
+                            <input type="checkbox" id="taskDetailCompleted">
+                            <span id="taskDetailCompletedText">Not completed</span>
+                        </div>
+                    </div>
+                    
+                    <div class="task-detail-field">
+                        <label>Title</label>
+                        <div class="field-value" id="taskDetailTitleDisplay"></div>
+                        <input type="text" id="taskDetailTitleInput">
+                    </div>
+                    
+                    <div class="task-detail-field">
+                        <label>Description</label>
+                        <div class="field-value" id="taskDetailDescriptionDisplay"></div>
+                        <textarea id="taskDetailDescriptionInput"></textarea>
+                    </div>
+                    
+                    <div class="task-detail-field">
+                        <label>Priority</label>
+                        <div class="field-value" id="taskDetailPriorityDisplay"></div>
+                        <select id="taskDetailPriorityInput">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                    </div>
+                    
+                    <div class="task-detail-field">
+                        <label>Due Date</label>
+                        <div class="field-value" id="taskDetailDateDisplay"></div>
+                        <input type="date" id="taskDetailDateInput">
+                    </div>
+                    
+                    <div class="task-detail-field">
+                        <label>Due Time</label>
+                        <div class="field-value" id="taskDetailTimeDisplay"></div>
+                        <input type="time" id="taskDetailTimeInput">
+                    </div>
+                    
+                    <div class="task-detail-actions" style="margin-top: 20px; display: none;" id="editActions">
+                        <button class="btn btn-primary" id="saveTaskDetailBtn">Save</button>
+                        <button class="btn btn-secondary" id="cancelTaskDetailBtn">Cancel</button>
+                    </div>
+                </div>
                 </div>
             </div>
             
@@ -446,6 +904,28 @@
                 <div class="section-content" id="notesContent">
                     <div class="empty-state">
                         <p>No notes yet</p>
+                    </div>
+                </div>
+                
+                <!-- Expanded Note View -->
+                <div class="note-expanded-view" id="noteExpandedView">
+                    <div class="note-expanded-header">
+                        <div class="note-expanded-title" id="noteExpandedTitle">Note Title</div>
+                        <div class="note-expanded-actions">
+                            <button class="back-btn" id="backToNotesBtn">← Back</button>
+                            <button class="edit-btn" id="editNoteBtn">Edit</button>
+                            <button class="delete-btn" id="deleteNoteBtn">Delete</button>
+                        </div>
+                    </div>
+                    
+                    <div class="note-expanded-content" id="noteExpandedContent">
+                        Note content will appear here...
+                    </div>
+                    
+                    <img id="noteExpandedImage" class="note-expanded-image" style="display: none;" alt="Note image">
+                    
+                    <div class="note-expanded-meta" id="noteExpandedMeta">
+                        Last updated: Never
                     </div>
                 </div>
             </div>
@@ -510,14 +990,17 @@
     </div>
 
     <script>
-        class EchoNoteDesktop {
+        class LogionDesktop {
             constructor() {
                 this.socket = null;
                 this.notes = [];
                 this.tasks = [];
                 this.selectedNote = null;
                 this.selectedTask = null;
-                this.serverAddress = 'localhost:8080';
+                this.selectedTaskForDetail = null;
+                this.selectedNoteForExpanded = null;
+                this.isTaskDetailEditMode = false;
+                this.serverAddress = localStorage.getItem('LogionServerAddress') || '192.168.1.96:8080';
                 
                 this.init();
             }
@@ -525,15 +1008,122 @@
             init() {
                 this.setupEventListeners();
                 this.updateConnectionStatus(false);
-                this.showConnectionDialog();
+                // Don't automatically show connection dialog on startup
             }
             
             showConnectionDialog() {
+                // Pre-populate with current server address (without port)
+                const serverInput = document.getElementById('serverAddress');
+                const currentAddress = this.serverAddress.replace(/:\d+$/, ''); // Remove any port
+                serverInput.value = currentAddress;
                 document.getElementById('connectionDialog').classList.remove('hidden');
             }
             
             hideConnectionDialog() {
                 document.getElementById('connectionDialog').classList.add('hidden');
+            }
+            
+            showSettingsDialog() {
+                // Update server address display
+                const serverAddressElement = document.getElementById('currentServerAddress');
+                serverAddressElement.textContent = this.serverAddress || 'Not set';
+                
+                // Update connection status display
+                const statusElement = document.getElementById('currentConnectionStatus');
+                const reconnectButton = document.getElementById('reconnectButton');
+                const isConnected = reconnectButton.classList.contains('connected');
+                
+                if (isConnected) {
+                    statusElement.textContent = 'Connected';
+                    statusElement.style.color = '#4caf50';
+                } else {
+                    statusElement.textContent = 'Disconnected';
+                    statusElement.style.color = '#f44336';
+                }
+                
+                document.getElementById('settingsDialog').classList.remove('hidden');
+            }
+            
+            hideSettingsDialog() {
+                document.getElementById('settingsDialog').classList.add('hidden');
+            }
+            
+            async attemptConnection() {
+                // Get the base address (without port)
+                const address = document.getElementById('serverAddress').value.trim() || '192.168.1.96';
+                
+                // Show that we're trying to connect
+                this.updateConnectionStatus(false, 'Discovering server...');
+                
+                // Try to discover the server on different ports
+                const discoveredAddress = await this.discoverServer(address);
+                if (discoveredAddress) {
+                    this.serverAddress = discoveredAddress;
+                    localStorage.setItem('LogionServerAddress', this.serverAddress);
+                    this.connectWebSocket();
+                } else {
+                    // Fallback to standard port 8080
+                    this.serverAddress = `${address}:8080`;
+                    localStorage.setItem('LogionServerAddress', this.serverAddress);
+                    this.updateConnectionStatus(false, 'Server not found. Trying standard port...');
+                    this.connectWebSocket();
+                }
+            }
+            
+            async discoverServer(baseAddress) {
+                // Use only the standard port 8080
+                const ports = [8080];
+                console.log(`Starting server discovery on ${baseAddress} - using port 8080`);
+                
+                for (const port of ports) {
+                    try {
+                        const testAddress = `${baseAddress}:${port}`;
+                        console.log(`Testing server at ${testAddress}`);
+                        
+                        // Test if server is responding with timeout
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 2000);
+                        
+                        const response = await fetch(`http://${testAddress}/`, {
+                            method: 'GET',
+                            signal: controller.signal
+                        });
+                        
+                        clearTimeout(timeoutId);
+                        
+                        if (response.ok) {
+                            const text = await response.text();
+                            if (text.includes('Logion Server')) {
+                                console.log(`✅ Found Logion server at ${testAddress}`);
+                                return testAddress;
+                            } else {
+                                console.log(`❌ Server at ${testAddress} is not Logion (got: ${text.substring(0, 50)}...)`);
+                            }
+                        } else {
+                            console.log(`❌ Server at ${testAddress} returned status ${response.status}`);
+                        }
+                    } catch (error) {
+                        if (error.name === 'AbortError') {
+                            console.log(`⏱️ Timeout connecting to ${baseAddress}:${port}`);
+                        } else {
+                            console.log(`❌ Connection failed to ${baseAddress}:${port}: ${error.message}`);
+                        }
+                    }
+                }
+                
+                console.log(`❌ No Logion server found on ${baseAddress}`);
+                return null;
+            }
+            
+            showConnectionError(message) {
+                const errorMessage = `Connection Error: ${message}\n\nTroubleshooting tips:\n` +
+                    `• Make sure Logion app is running on your Android device\n` +
+                    `• Check that both devices are on the same WiFi network\n` +
+                    `• Try a different IP address if you have multiple devices\n` +
+                    `• Check the Android app settings for the correct server address\n` +
+                    `• Look at browser console (F12) for detailed connection logs`;
+                    
+                alert(errorMessage);
             }
             
             connectWebSocket() {
@@ -555,29 +1145,30 @@
                     this.socket.onclose = () => {
                         console.log('WebSocket connection closed');
                         this.updateConnectionStatus(false);
-                        setTimeout(() => this.showConnectionDialog(), 1000);
                     };
                     
                     this.socket.onerror = (error) => {
                         console.error('WebSocket error:', error);
                         this.updateConnectionStatus(false);
-                        this.showConnectionDialog();
+                        this.showConnectionError('Connection failed. Please check if the server is running and the address is correct.');
                     };
                 } catch (error) {
                     console.error('Failed to connect to WebSocket:', error);
                     this.updateConnectionStatus(false);
-                    this.showConnectionDialog();
+                    this.showConnectionError('Failed to establish connection. Please check the server address.');
                 }
             }
             
-            updateConnectionStatus(connected) {
-                const statusElement = document.getElementById('connectionStatus');
+            updateConnectionStatus(connected, customMessage = null) {
+                const reconnectButton = document.getElementById('reconnectButton');
                 if (connected) {
-                    statusElement.textContent = 'Connected';
-                    statusElement.className = 'connection-status connected';
+                    reconnectButton.classList.remove('disconnected');
+                    reconnectButton.classList.add('connected');
+                    reconnectButton.title = customMessage || 'Connected - Click to reconnect';
                 } else {
-                    statusElement.textContent = 'Disconnected';
-                    statusElement.className = 'connection-status disconnected';
+                    reconnectButton.classList.remove('connected');
+                    reconnectButton.classList.add('disconnected');
+                    reconnectButton.title = customMessage || 'Disconnected - Click to connect';
                 }
             }
             
@@ -695,8 +1286,37 @@
                     const address = document.getElementById('serverAddress').value.trim();
                     if (address) {
                         this.serverAddress = `${address}:8080`;
+                        localStorage.setItem('LogionServerAddress', this.serverAddress);
                         this.connectWebSocket();
                     }
+                });
+                
+                // Reconnect button
+                document.getElementById('reconnectButton').addEventListener('click', () => {
+                    this.attemptConnection();
+                });
+                
+                // Settings button
+                document.getElementById('settingsButton').addEventListener('click', () => {
+                    this.showSettingsDialog();
+                });
+                
+                // Settings dialog buttons
+                document.getElementById('closeSettingsButton').addEventListener('click', () => {
+                    this.hideSettingsDialog();
+                });
+                
+                document.getElementById('connectionAddressButton').addEventListener('click', () => {
+                    this.hideSettingsDialog();
+                    this.showConnectionDialog();
+                });
+                
+                document.getElementById('exportButton').addEventListener('click', () => {
+                    this.exportData();
+                });
+                
+                document.getElementById('importButton').addEventListener('click', () => {
+                    this.importData();
                 });
                 
                 // Add buttons
@@ -813,6 +1433,62 @@
                         // Don't allow closing on backdrop click for connection dialog
                     }
                 });
+                
+                document.getElementById('settingsDialog').addEventListener('click', (e) => {
+                    if (e.target.id === 'settingsDialog') {
+                        this.hideSettingsDialog();
+                    }
+                });
+                
+                // Task detail view event listeners
+                document.getElementById('closeTaskDetailBtn').addEventListener('click', () => {
+                    this.hideTaskDetail();
+                });
+                
+                document.getElementById('editTaskBtn').addEventListener('click', () => {
+                    this.enterTaskEditMode();
+                });
+                
+                document.getElementById('deleteTaskBtn').addEventListener('click', () => {
+                    if (this.selectedTaskForDetail) {
+                        this.deleteTask(this.selectedTaskForDetail.id);
+                        this.hideTaskDetail();
+                    }
+                });
+                
+                document.getElementById('saveTaskDetailBtn').addEventListener('click', () => {
+                    this.saveTaskDetail();
+                });
+                
+                document.getElementById('cancelTaskDetailBtn').addEventListener('click', () => {
+                    this.exitTaskEditMode();
+                });
+                
+                document.getElementById('taskDetailCompleted').addEventListener('change', (e) => {
+                    if (this.selectedTaskForDetail) {
+                        this.toggleTaskComplete(this.selectedTaskForDetail.id, e.target.checked);
+                    }
+                });
+                
+                // Note expanded view event listeners
+                document.getElementById('backToNotesBtn').addEventListener('click', () => {
+                    this.hideNoteExpanded();
+                });
+                
+                document.getElementById('editNoteBtn').addEventListener('click', () => {
+                    if (this.selectedNoteForExpanded) {
+                        this.selectedNote = this.selectedNoteForExpanded;
+                        this.hideNoteExpanded();
+                        this.showNoteModal(true);
+                    }
+                });
+                
+                document.getElementById('deleteNoteBtn').addEventListener('click', () => {
+                    if (this.selectedNoteForExpanded) {
+                        this.deleteNote(this.selectedNoteForExpanded.id);
+                        this.hideNoteExpanded();
+                    }
+                });
             }
             
             renderNotes() {
@@ -830,26 +1506,27 @@
                     return timeB - timeA;
                 });
                 
-                container.innerHTML = sortedNotes.map(note => `
-                    <div class="note-card" data-id="${note.id}">
+                // Create grid layout
+                const gridContainer = document.createElement('div');
+                gridContainer.className = 'notes-grid';
+                
+                gridContainer.innerHTML = sortedNotes.map(note => `
+                    <div class="note-card-grid" data-id="${note.id}">
                         <div class="card-title">${this.escapeHtml(note.title)}</div>
-                        <div class="card-content">${this.escapeHtml(note.body.substring(0, 150))}${note.body.length > 150 ? '...' : ''}</div>
-                        ${note.imagePath ? `<img src="${this.convertImagePath(note.imagePath)}" style="max-width: 100%; max-height: 100px; border-radius: 4px; margin: 8px 0;" alt="Note image" onerror="this.style.display='none'">` : ''}
-                        <div class="card-date">${this.formatDate(note.updatedAt)}</div>
-                        <button onclick="app.deleteNote('${note.id}'); event.stopPropagation();" 
-                                style="position: absolute; top: 8px; right: 8px; 
-                                       background: rgba(255, 255, 255, 0.8); border: none; 
-                                       border-radius: 50%; width: 24px; height: 24px; 
-                                       cursor: pointer; font-size: 16px; line-height: 1;"
-                                title="Delete note">×</button>
+                        <div class="card-content" style="flex: 1;">${this.escapeHtml(note.body.substring(0, 120))}${note.body.length > 120 ? '...' : ''}</div>
+                        ${note.imagePath ? `<img src="${this.convertImagePath(note.imagePath)}" style="max-width: 100%; max-height: 60px; border-radius: 4px; margin: 8px 0; object-fit: cover;" alt="Note image" onerror="this.style.display='none'">` : ''}
+                        <div class="card-date" style="margin-top: auto;">${this.formatDate(note.updatedAt)}</div>
                     </div>
                 `).join('');
                 
+                container.innerHTML = '';
+                container.appendChild(gridContainer);
+                
                 // Add click listeners
-                container.querySelectorAll('.note-card').forEach(item => {
+                container.querySelectorAll('.note-card-grid').forEach(item => {
                     item.addEventListener('click', () => {
                         const noteId = item.dataset.id;
-                        this.selectNote(noteId);
+                        this.showNoteExpanded(noteId);
                     });
                 });
             }
@@ -862,62 +1539,99 @@
                     return;
                 }
                 
-                // Sort tasks by updatedAt in descending order (latest first)
-                const sortedTasks = [...this.tasks].sort((a, b) => {
-                    const timeA = parseInt(a.updatedAt) || parseInt(a.timestamp) || 0;
-                    const timeB = parseInt(b.updatedAt) || parseInt(b.timestamp) || 0;
-                    return timeB - timeA;
+                // Group tasks by date sections
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                
+                const todayTasks = [];
+                const tomorrowTasks = [];
+                const laterTasks = [];
+                
+                this.tasks.forEach(task => {
+                    if (task.dueDate) {
+                        const taskDate = new Date(task.dueDate);
+                        taskDate.setHours(0, 0, 0, 0);
+                        
+                        if (taskDate.getTime() === today.getTime()) {
+                            todayTasks.push(task);
+                        } else if (taskDate.getTime() === tomorrow.getTime()) {
+                            tomorrowTasks.push(task);
+                        } else {
+                            laterTasks.push(task);
+                        }
+                    } else {
+                        laterTasks.push(task);
+                    }
                 });
                 
-                container.innerHTML = sortedTasks.map(task => {
-                    const priorityColors = {
-                        'Low': '#4caf50',
-                        'Medium': '#ff9800', 
-                        'High': '#f44336',
-                        'Urgent': '#9c27b0'
-                    };
+                // Sort each section by priority and time
+                const sortTasksInSection = (tasks) => {
+                    return tasks.sort((a, b) => {
+                        const priorityOrder = { 'Urgent': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
+                        const aPriority = priorityOrder[a.priority] || 2;
+                        const bPriority = priorityOrder[b.priority] || 2;
+                        if (aPriority !== bPriority) return bPriority - aPriority;
+                        
+                        // Then by time if same day
+                        if (a.dueTime && b.dueTime) {
+                            return a.dueTime.localeCompare(b.dueTime);
+                        }
+                        return 0;
+                    });
+                };
+                
+                const renderTaskSection = (tasks, sectionTitle) => {
+                    if (tasks.length === 0) return '';
                     
-                    const priority = task.priority || 'Medium';
-                    const dueDate = task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '';
-                    const dueTime = task.dueTime || '';
-                    const dueDateTimeStr = dueDate ? `Due: ${dueDate}${dueTime ? ' at ' + dueTime : ''}` : '';
-                    
-                    return `
-                        <div class="task-card ${task.done ? 'completed' : ''}" data-id="${task.id}">
-                            <div style="display: flex; align-items: flex-start; justify-content: space-between;">
-                                <div style="display: flex; align-items: center; gap: 8px; flex: 1;">
-                                    <input type="checkbox" ${task.done ? 'checked' : ''} 
-                                           onclick="app.toggleTaskComplete('${task.id}', this.checked); event.stopPropagation();"
-                                           style="margin: 0;">
-                                    <div style="flex: 1;">
-                                        <div class="card-title" style="text-decoration: ${task.done ? 'line-through' : 'none'};">
-                                            ${this.escapeHtml(task.title)}
+                    const sectionHtml = `
+                        <div class="task-section">
+                            <h3 class="section-title">${sectionTitle}</h3>
+                            ${sortTasksInSection(tasks).map(task => {
+                                const priorityColors = {
+                                    'Low': '#4caf50',
+                                    'Medium': '#ff9800', 
+                                    'High': '#f44336',
+                                    'Urgent': '#9c27b0'
+                                };
+                                
+                                const priority = task.priority || 'Medium';
+                                
+                                return `
+                                    <div class="task-card ${task.done ? 'completed' : ''}" data-id="${task.id}">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <input type="checkbox" ${task.done ? 'checked' : ''} 
+                                                   onclick="app.toggleTaskComplete('${task.id}', this.checked); event.stopPropagation();"
+                                                   style="margin: 0;">
+                                            <div style="flex: 1;">
+                                                <div style="display: flex; align-items: center; gap: 8px;">
+                                                    <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${priorityColors[priority]}; flex-shrink: 0;"></div>
+                                                    <div class="card-title" style="text-decoration: ${task.done ? 'line-through' : 'none'}; flex: 1;">
+                                                        ${this.escapeHtml(task.title)}
+                                                        ${task.dueTime ? `<span style="color: #bbb; font-size: 12px; margin-left: 8px;">${task.dueTime}</span>` : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0;">
-                                            <span style="background-color: ${priorityColors[priority]}; color: white; 
-                                                        padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;">
-                                                ${priority.toUpperCase()}
-                                            </span>
-                                            ${dueDateTimeStr ? `<span style="color: #888; font-size: 11px;">${dueDateTimeStr}</span>` : ''}
-                                        </div>
-                                        ${task.body ? `<div class="card-content">${this.escapeHtml(task.body)}</div>` : ''}
-                                        <div class="card-date">${this.formatDate(task.timestamp)}</div>
                                     </div>
-                                </div>
-                                <button onclick="app.deleteTask('${task.id}'); event.stopPropagation();" 
-                                        style="background: #f44336; border: none; color: white; padding: 4px 8px; 
-                                               border-radius: 3px; font-size: 12px; margin-left: 8px; cursor: pointer;"
-                                        title="Delete task">×</button>
-                            </div>
+                                `;
+                            }).join('')}
                         </div>
                     `;
-                }).join('');
+                    return sectionHtml;
+                };
                 
-                // Add click listeners for editing
+                container.innerHTML = 
+                    renderTaskSection(todayTasks, 'Today') +
+                    renderTaskSection(tomorrowTasks, 'Tomorrow') +
+                    renderTaskSection(laterTasks, 'Later');
+                
+                // Add click listeners for viewing task details
                 container.querySelectorAll('.task-card').forEach(item => {
                     item.addEventListener('click', () => {
                         const taskId = item.dataset.id;
-                        this.selectTask(taskId);
+                        this.showTaskDetail(taskId);
                     });
                 });
             }
@@ -927,9 +1641,215 @@
                 this.showNoteModal(true); // true for edit mode
             }
             
+            showNoteExpanded(noteId) {
+                this.selectedNoteForExpanded = this.notes.find(n => n.id === noteId);
+                if (!this.selectedNoteForExpanded) return;
+                
+                // Hide the notes grid and show expanded view
+                document.getElementById('notesContent').style.display = 'none';
+                document.getElementById('noteExpandedView').classList.add('active');
+                
+                // Populate the expanded view
+                this.populateNoteExpanded();
+            }
+            
+            hideNoteExpanded() {
+                // Show the notes grid and hide expanded view
+                document.getElementById('notesContent').style.display = 'block';
+                document.getElementById('noteExpandedView').classList.remove('active');
+                
+                // Clear selection
+                this.selectedNoteForExpanded = null;
+            }
+            
+            populateNoteExpanded() {
+                if (!this.selectedNoteForExpanded) return;
+                
+                const note = this.selectedNoteForExpanded;
+                
+                // Set title
+                document.getElementById('noteExpandedTitle').textContent = note.title;
+                
+                // Set content
+                document.getElementById('noteExpandedContent').textContent = note.body || 'No content';
+                
+                // Set image if exists
+                const imageElement = document.getElementById('noteExpandedImage');
+                if (note.imagePath) {
+                    const imageSrc = this.convertImagePath(note.imagePath);
+                    if (imageSrc) {
+                        imageElement.src = imageSrc;
+                        imageElement.style.display = 'block';
+                        imageElement.onerror = () => {
+                            imageElement.style.display = 'none';
+                        };
+                    } else {
+                        imageElement.style.display = 'none';
+                    }
+                } else {
+                    imageElement.style.display = 'none';
+                }
+                
+                // Set metadata
+                document.getElementById('noteExpandedMeta').textContent = 
+                    `Last updated: ${this.formatDate(note.updatedAt)}`;
+            }
+            
             selectTask(taskId) {
                 this.selectedTask = this.tasks.find(t => t.id === taskId);
                 this.showTaskModal(true); // true for edit mode
+            }
+            
+            showTaskDetail(taskId) {
+                this.selectedTaskForDetail = this.tasks.find(t => t.id === taskId);
+                if (!this.selectedTaskForDetail) return;
+                
+                // Shrink notes section to make room for task detail overlay
+                document.querySelector('.notes-section').classList.add('shrunk');
+                
+                // Show the task detail panel
+                document.getElementById('taskDetailView').classList.add('active');
+                
+                // Populate the detail view
+                this.populateTaskDetail();
+                
+                // Ensure we're not in edit mode when opening
+                this.exitTaskEditMode();
+            }
+            
+            hideTaskDetail() {
+                // Hide the task detail panel
+                document.getElementById('taskDetailView').classList.remove('active');
+                
+                // Restore original layout
+                document.querySelector('.notes-section').classList.remove('shrunk');
+                
+                // Clear selection
+                this.selectedTaskForDetail = null;
+                this.exitTaskEditMode();
+            }
+            
+            populateTaskDetail() {
+                if (!this.selectedTaskForDetail) return;
+                
+                const task = this.selectedTaskForDetail;
+                
+                // Set title
+                document.getElementById('taskDetailTitle').textContent = task.title;
+                
+                // Set completion status
+                const checkbox = document.getElementById('taskDetailCompleted');
+                const statusText = document.getElementById('taskDetailCompletedText');
+                checkbox.checked = task.done || false;
+                statusText.textContent = task.done ? 'Completed' : 'Not completed';
+                
+                // Set field values
+                document.getElementById('taskDetailTitleDisplay').textContent = task.title || '';
+                document.getElementById('taskDetailTitleInput').value = task.title || '';
+                
+                document.getElementById('taskDetailDescriptionDisplay').textContent = task.body || 'No description';
+                document.getElementById('taskDetailDescriptionInput').value = task.body || '';
+                
+                // Priority with badge
+                const priority = task.priority || 'Medium';
+                const priorityColors = {
+                    'Low': '#4caf50',
+                    'Medium': '#ff9800', 
+                    'High': '#f44336',
+                    'Urgent': '#9c27b0'
+                };
+                document.getElementById('taskDetailPriorityDisplay').innerHTML = 
+                    `<span class="task-priority-badge" style="background-color: ${priorityColors[priority]}; color: white;">${priority}</span>`;
+                document.getElementById('taskDetailPriorityInput').value = priority;
+                
+                // Due date
+                const dueDate = task.dueDate || '';
+                document.getElementById('taskDetailDateDisplay').textContent = dueDate ? new Date(dueDate).toLocaleDateString() : 'No due date';
+                document.getElementById('taskDetailDateInput').value = dueDate;
+                
+                // Due time
+                const dueTime = task.dueTime || '';
+                document.getElementById('taskDetailTimeDisplay').textContent = dueTime || 'No due time';
+                document.getElementById('taskDetailTimeInput').value = dueTime;
+            }
+            
+            enterTaskEditMode() {
+                this.isTaskDetailEditMode = true;
+                
+                // Hide field values and show inputs
+                document.querySelectorAll('.task-detail-field').forEach(field => {
+                    field.classList.add('editing');
+                });
+                
+                // Hide main action buttons and show edit actions
+                document.getElementById('editTaskBtn').style.display = 'none';
+                document.getElementById('deleteTaskBtn').style.display = 'none';
+                document.getElementById('editActions').style.display = 'flex';
+            }
+            
+            exitTaskEditMode() {
+                this.isTaskDetailEditMode = false;
+                
+                // Show field values and hide inputs
+                document.querySelectorAll('.task-detail-field').forEach(field => {
+                    field.classList.remove('editing');
+                });
+                
+                // Show main action buttons and hide edit actions
+                document.getElementById('editTaskBtn').style.display = 'inline-block';
+                document.getElementById('deleteTaskBtn').style.display = 'inline-block';
+                document.getElementById('editActions').style.display = 'none';
+                
+                // Repopulate with original values
+                this.populateTaskDetail();
+            }
+            
+            async saveTaskDetail() {
+                if (!this.selectedTaskForDetail) return;
+                
+                try {
+                    const taskData = {
+                        title: document.getElementById('taskDetailTitleInput').value.trim(),
+                        body: document.getElementById('taskDetailDescriptionInput').value.trim(),
+                        priority: document.getElementById('taskDetailPriorityInput').value,
+                        dueDate: document.getElementById('taskDetailDateInput').value || null,
+                        dueTime: document.getElementById('taskDetailTimeInput').value || null,
+                        done: this.selectedTaskForDetail.done,
+                        timestamp: this.selectedTaskForDetail.timestamp
+                    };
+                    
+                    if (!taskData.title) {
+                        alert('Please enter a task title');
+                        return;
+                    }
+                    
+                    const url = `http://${this.serverAddress}/tasks/${this.selectedTaskForDetail.id}`;
+                    const response = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(taskData)
+                    });
+                    
+                    if (response.ok) {
+                        // Update local data
+                        Object.assign(this.selectedTaskForDetail, taskData);
+                        
+                        // Reload tasks and repopulate detail view
+                        this.loadTasksFromAPI();
+                        this.populateTaskDetail();
+                        this.exitTaskEditMode();
+                        
+                        console.log('Task updated successfully');
+                    } else {
+                        console.error('Failed to update task:', response.statusText);
+                        alert('Failed to update task');
+                    }
+                } catch (error) {
+                    console.error('Error updating task:', error);
+                    alert('Error updating task');
+                }
             }
             
             showNoteModal(editMode = false) {
@@ -1186,18 +2106,26 @@
                     return;
                 }
                 
-                container.innerHTML = notes.map(note => `
-                    <div class="note-card" data-id="${note.id}">
+                // Create grid layout
+                const gridContainer = document.createElement('div');
+                gridContainer.className = 'notes-grid';
+                
+                gridContainer.innerHTML = notes.map(note => `
+                    <div class="note-card-grid" data-id="${note.id}">
                         <div class="card-title">${this.escapeHtml(note.title)}</div>
-                        <div class="card-content">${this.escapeHtml(note.body.substring(0, 150))}${note.body.length > 150 ? '...' : ''}</div>
-                        <div class="card-date">${this.formatDate(note.updatedAt)}</div>
+                        <div class="card-content" style="flex: 1;">${this.escapeHtml(note.body.substring(0, 120))}${note.body.length > 120 ? '...' : ''}</div>
+                        ${note.imagePath ? `<img src="${this.convertImagePath(note.imagePath)}" style="max-width: 100%; max-height: 60px; border-radius: 4px; margin: 8px 0; object-fit: cover;" alt="Note image" onerror="this.style.display='none'">` : ''}
+                        <div class="card-date" style="margin-top: auto;">${this.formatDate(note.updatedAt)}</div>
                     </div>
                 `).join('');
                 
-                container.querySelectorAll('.note-card').forEach(item => {
+                container.innerHTML = '';
+                container.appendChild(gridContainer);
+                
+                container.querySelectorAll('.note-card-grid').forEach(item => {
                     item.addEventListener('click', () => {
                         const noteId = item.dataset.id;
-                        this.selectNote(noteId);
+                        this.showNoteExpanded(noteId);
                     });
                 });
             }
@@ -1242,7 +2170,6 @@
                                             ${dueDateTimeStr ? `<span style="color: #888; font-size: 11px;">${dueDateTimeStr}</span>` : ''}
                                         </div>
                                         ${task.body ? `<div class="card-content">${this.escapeHtml(task.body)}</div>` : ''}
-                                        <div class="card-date">${this.formatDate(task.timestamp)}</div>
                                     </div>
                                 </div>
                                 <button onclick="app.deleteTask('${task.id}'); event.stopPropagation();" 
@@ -1257,7 +2184,7 @@
                 container.querySelectorAll('.task-card').forEach(item => {
                     item.addEventListener('click', () => {
                         const taskId = item.dataset.id;
-                        this.selectTask(taskId);
+                        this.showTaskDetail(taskId);
                     });
                 });
             }
@@ -1300,6 +2227,78 @@
                 const div = document.createElement('div');
                 div.textContent = text;
                 return div.innerHTML;
+            }
+            
+            exportData() {
+                try {
+                    const data = {
+                        notes: this.notes,
+                        tasks: this.tasks,
+                        exportDate: new Date().toISOString(),
+                        version: '1.0'
+                    };
+                    
+                    const jsonString = JSON.stringify(data, null, 2);
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `Logion-export-${new Date().toISOString().split('T')[0]}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    console.log('Data exported successfully');
+                } catch (error) {
+                    console.error('Export error:', error);
+                    alert('Failed to export data. Please try again.');
+                }
+            }
+            
+            importData() {
+                try {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.json';
+                    
+                    input.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        
+                        const reader = new FileReader();
+                        reader.onload = (e) => {
+                            try {
+                                const data = JSON.parse(e.target.result);
+                                
+                                // Validate the data structure
+                                if (!data.notes || !data.tasks || !Array.isArray(data.notes) || !Array.isArray(data.tasks)) {
+                                    throw new Error('Invalid file format');
+                                }
+                                
+                                // Confirm import
+                                if (confirm(`Import ${data.notes.length} notes and ${data.tasks.length} tasks? This will replace all current data.`)) {
+                                    this.notes = data.notes;
+                                    this.tasks = data.tasks;
+                                    this.renderNotes();
+                                    this.renderTasks();
+                                    this.hideSettingsDialog();
+                                    console.log('Data imported successfully');
+                                }
+                            } catch (error) {
+                                console.error('Import error:', error);
+                                alert('Failed to import data. Please check the file format.');
+                            }
+                        };
+                        reader.readAsText(file);
+                    };
+                    
+                    input.click();
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert('Failed to import data. Please try again.');
+                }
             }
             
             async toggleTaskComplete(taskId, isCompleted) {
@@ -1438,7 +2437,7 @@
         }
         
         // Initialize the app
-        const app = new EchoNoteDesktop();
+        const app = new LogionDesktop();
     </script>
 </body>
 </html>

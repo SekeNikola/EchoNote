@@ -27,23 +27,29 @@ class ServerService : Service() {
         
         serviceScope?.launch {
             try {
+                Log.d("ServerService", "Step 1: Setting context for image handling")
                 // Set context for image handling
                 KtorServer.setContext(this@ServerService)
                 
+                Log.d("ServerService", "Step 2: Loading data from database")
                 // Load existing data from database into server memory
                 DataSyncManager.syncTasksFromDatabase()
                 DataSyncManager.syncNotesFromDatabase()
                 
+                Log.d("ServerService", "Step 3: Starting Ktor server on port 8080")
                 // Start the Ktor server
                 KtorServer.start()
                 Log.d("ServerService", "Ktor server started successfully")
                 
+                Log.d("ServerService", "Step 4: Starting ngrok tunnel")
                 // Start ngrok tunnel (if needed)
                 NgrokManager.startTunnel()
                 Log.d("ServerService", "Server URLs: {NgrokManager.getServerUrls()}")
                 
             } catch (e: Exception) {
                 Log.e("ServerService", "Failed to start server", e)
+                Log.e("ServerService", "Exception details: ${e.message}")
+                Log.e("ServerService", "Stack trace: ${e.stackTraceToString()}")
             }
         }
         

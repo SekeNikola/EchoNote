@@ -269,35 +269,41 @@ object KtorServer {
     }
     
     suspend fun start() {
-        embeddedServer(Netty, host = "0.0.0.0", port = 8080) {
-            install(CORS) {
-                allowMethod(HttpMethod.Options)
-                allowMethod(HttpMethod.Put)
-                allowMethod(HttpMethod.Delete)
-                allowMethod(HttpMethod.Patch)
-                allowHeader(HttpHeaders.Authorization)
-                allowHeader(HttpHeaders.ContentType)
-                anyHost() // Allow all hosts for development
-            }
-            
-            install(ContentNegotiation) {
-                json(Json {
-                    prettyPrint = true
-                    isLenient = true
-                })
-            }
-            
-            install(WebSockets) {
-                pingPeriod = Duration.ofSeconds(15)
-                timeout = Duration.ofSeconds(15)
-                maxFrameSize = Long.MAX_VALUE
-                masking = false
-            }
-            
-            routing {
+        Log.d("KtorServer", "Attempting to start server on 0.0.0.0:8080")
+        try {
+            embeddedServer(Netty, host = "0.0.0.0", port = 8080) {
+                Log.d("KtorServer", "Installing CORS plugin")
+                install(CORS) {
+                    allowMethod(HttpMethod.Options)
+                    allowMethod(HttpMethod.Put)
+                    allowMethod(HttpMethod.Delete)
+                    allowMethod(HttpMethod.Patch)
+                    allowHeader(HttpHeaders.Authorization)
+                    allowHeader(HttpHeaders.ContentType)
+                    anyHost() // Allow all hosts for development
+                }
+                
+                Log.d("KtorServer", "Installing ContentNegotiation plugin")
+                install(ContentNegotiation) {
+                    json(Json {
+                        prettyPrint = true
+                        isLenient = true
+                    })
+                }
+                
+                Log.d("KtorServer", "Installing WebSockets plugin")
+                install(WebSockets) {
+                    pingPeriod = Duration.ofSeconds(15)
+                    timeout = Duration.ofSeconds(15)
+                    maxFrameSize = Long.MAX_VALUE
+                    masking = false
+                }
+                
+                Log.d("KtorServer", "Setting up routes")
+                routing {
                 
                 get("/") {
-                    call.respondText("EchoNote Server is running!")
+                    call.respondText("Logion Server is running!")
                 }
                 
                 get("/tasks") {
@@ -585,7 +591,14 @@ object KtorServer {
                     }
                 }
             }
-        }.start(wait = true)
+            Log.d("KtorServer", "About to start server with wait=false")
+        }.start(wait = false)
+        Log.d("KtorServer", "Server started successfully in background")
+    } catch (e: Exception) {
+        Log.e("KtorServer", "Failed to start server", e)
+        Log.e("KtorServer", "Exception: ${e.message}")
+        throw e
+    }
     }
     
     private suspend fun broadcastSync(type: String, data: String) {
