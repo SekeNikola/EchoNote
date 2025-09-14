@@ -23,6 +23,7 @@ sealed class Screen(val route: String) {
     object Notes : Screen("notes")
     object Chats : Screen("chats")
     object Settings : Screen("settings")
+    object ExportImport : Screen("export_import")
     data class TaskDetail(val taskId: Long) : Screen("task_detail/{taskId}") {
         fun createRoute(taskId: Long) = "task_detail/$taskId"
     }
@@ -111,6 +112,13 @@ fun LogionNavGraph(
         
         composable(Screen.Chats.route) {
             ChatsScreen(
+                navController = navController,
+                viewModel = viewModel
+            )
+        }
+        
+        composable(Screen.ExportImport.route) {
+            ExportImportScreen(
                 navController = navController,
                 viewModel = viewModel
             )

@@ -324,6 +324,50 @@ fun SettingsScreen(
                     }
                 }
             }
+            
+            // Export/Import Section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF2A2A3E)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Backup & Restore",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Button(
+                        onClick = { 
+                            navController.navigate("export_import")
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFF8C00)
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.ImportExport,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Export / Import Data",
+                            color = Color.White,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            }
         }
     }
     

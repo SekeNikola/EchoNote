@@ -41,6 +41,12 @@ interface NoteDao {
 
     @Query("UPDATE notes SET isArchived = 1 WHERE id = :id")
     suspend fun archiveNote(id: Long)
+    
+    @Query("SELECT * FROM notes ORDER BY createdAt DESC")
+    suspend fun getAllNotesOnce(): List<Note>
+    
+    @Query("DELETE FROM notes")
+    suspend fun deleteAll()
 }
 
 

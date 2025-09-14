@@ -752,7 +752,23 @@
     </style>
 </head>
 <body>
-    <div class="app-container">
+    <!-- Login Section -->
+    <div id="loginSection" class="connection-dialog" style="display: block;">
+        <div class="connection-dialog-content" style="width: 450px;">
+            <h2>Logion Web Client</h2>
+            <p style="color: #bbb; margin-bottom: 24px; font-size: 16px;">Please login to access the application</p>
+            <div style="margin-bottom: 20px;">
+                <input type="text" id="username" placeholder="Username: JohnnyBlue" style="width: 100%; padding: 14px; background-color: #333; border: 1px solid #555; border-radius: 6px; color: white; margin-bottom: 12px; font-size: 15px;" onkeypress="handleLoginKeyPress(event)" />
+                <input type="password" id="password" placeholder="Enter password" style="width: 100%; padding: 14px; background-color: #333; border: 1px solid #555; border-radius: 6px; color: white; font-size: 15px;" onkeypress="handleLoginKeyPress(event)" />
+            </div>
+            <button class="btn btn-primary" onclick="login()" style="width: 100%; padding: 12px; font-size: 16px;">Login</button>
+            <div id="loginStatus" style="margin-top: 12px; color: #ef4444; font-size: 14px;"></div>
+        </div>
+    </div>
+
+    <!-- Main Application (initially hidden) -->
+    <div id="mainApp" class="app-container" style="display: none;">
+        
         <!-- Connection Dialog -->
         <div id="connectionDialog" class="connection-dialog hidden">
             <div class="connection-dialog-content">
@@ -813,6 +829,13 @@
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="3"/>
                         <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m11-3a3 3 0 0 0-6 0m6 6a3 3 0 0 0-6 0"/>
+                    </svg>
+                </button>
+                <button class="btn btn-secondary" onclick="logout()" title="Logout">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                        <polyline points="16,17 21,12 16,7"/>
+                        <line x1="21" y1="12" x2="9" y2="12"/>
                     </svg>
                 </button>
             </div>
@@ -931,6 +954,8 @@
             </div>
         </div>
     </div>
+    
+    </div> <!-- End of mainApp div -->
     
     <button class="add-button" id="addButton" style="display: none;">+</button>
     
@@ -1283,6 +1308,11 @@
             setupEventListeners() {
                 // Connection dialog
                 document.getElementById('connectButton').addEventListener('click', () => {
+                    if (!isLoggedIn) {
+                        alert('Please login first to connect to the server');
+                        return;
+                    }
+                    
                     const address = document.getElementById('serverAddress').value.trim();
                     if (address) {
                         this.serverAddress = `${address}:8080`;
@@ -1293,11 +1323,19 @@
                 
                 // Reconnect button
                 document.getElementById('reconnectButton').addEventListener('click', () => {
+                    if (!isLoggedIn) {
+                        alert('Please login first to connect to the server');
+                        return;
+                    }
                     this.attemptConnection();
                 });
                 
                 // Settings button
                 document.getElementById('settingsButton').addEventListener('click', () => {
+                    if (!isLoggedIn) {
+                        alert('Please login first to access settings');
+                        return;
+                    }
                     this.showSettingsDialog();
                 });
                 
@@ -1312,19 +1350,35 @@
                 });
                 
                 document.getElementById('exportButton').addEventListener('click', () => {
+                    if (!isLoggedIn) {
+                        alert('Please login first to export data');
+                        return;
+                    }
                     this.exportData();
                 });
                 
                 document.getElementById('importButton').addEventListener('click', () => {
+                    if (!isLoggedIn) {
+                        alert('Please login first to import data');
+                        return;
+                    }
                     this.importData();
                 });
                 
                 // Add buttons
                 document.getElementById('addNoteButton').addEventListener('click', () => {
+                    if (!isLoggedIn) {
+                        alert('Please login first to add notes');
+                        return;
+                    }
                     this.showNoteModal();
                 });
                 
                 document.getElementById('addTaskButton').addEventListener('click', () => {
+                    if (!isLoggedIn) {
+                        alert('Please login first to add tasks');
+                        return;
+                    }
                     this.showTaskModal();
                 });
                 
@@ -2435,6 +2489,74 @@
                 return '';
             }
         }
+        
+        // Login functionality
+        let isLoggedIn = false;
+        
+        // Simple login credentials (in production, use proper authentication)
+        const validCredentials = {
+            'JohnnyBlue': 'kototamopeva1983'
+        };
+
+        function login() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value.trim();
+            
+            if (!username || !password) {
+                updateLoginStatus('Please enter both username and password');
+                return;
+            }
+            
+            // Check credentials
+            if (validCredentials[username] && validCredentials[username] === password) {
+                isLoggedIn = true;
+                // Don't store in sessionStorage to require fresh login on each page load
+                showMainApp();
+                updateLoginStatus('');
+            } else {
+                updateLoginStatus('Invalid username or password');
+            }
+        }
+
+        function logout() {
+            isLoggedIn = false;
+            showLoginScreen();
+        }
+
+        function showMainApp() {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+        }
+
+        function showLoginScreen() {
+            document.getElementById('loginSection').style.display = 'block';
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        function updateLoginStatus(message) {
+            document.getElementById('loginStatus').textContent = message;
+        }
+
+        function handleLoginKeyPress(event) {
+            if (event.key === 'Enter') {
+                login();
+            }
+        }
+
+        function checkSession() {
+            // Always clear session on page load to require fresh login
+            sessionStorage.removeItem('loggedIn');
+            sessionStorage.removeItem('username');
+            isLoggedIn = false;
+            showLoginScreen();
+        }
+        
+        // Initialize session check when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSession();
+        });
         
         // Initialize the app
         const app = new LogionDesktop();

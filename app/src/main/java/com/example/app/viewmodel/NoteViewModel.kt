@@ -3216,4 +3216,11 @@ fun addNoteWithBroadcast(title: String, content: String, imageUri: String? = nul
         dateFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
         return dateFormat.format(java.util.Date())
     }
+
+    // Export/Import functionality
+    suspend fun exportAllData() = repository.exportAllData()
+    
+    suspend fun importData(exportData: com.example.app.data.ExportData, replaceExisting: Boolean) {
+        repository.importData(exportData, replaceExisting)
+    }
 }

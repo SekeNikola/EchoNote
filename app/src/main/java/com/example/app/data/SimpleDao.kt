@@ -28,6 +28,9 @@ interface TaskDao {
 
     @Query("UPDATE tasks SET isCompleted = :isCompleted WHERE id = :id")
     suspend fun updateCompleted(id: Long, isCompleted: Boolean)
+    
+    @Query("DELETE FROM tasks")
+    suspend fun deleteAll()
 }
 
 @Dao
@@ -37,6 +40,9 @@ interface ChatMessageDao {
 
     @Query("SELECT * FROM chat_messages ORDER BY timestamp ASC")
     fun getAllMessages(): Flow<List<ChatMessage>>
+    
+    @Query("SELECT * FROM chat_messages ORDER BY timestamp ASC")
+    suspend fun getAllMessagesOnce(): List<ChatMessage>
 
     @Query("SELECT * FROM chat_messages WHERE sessionId = :sessionId ORDER BY timestamp ASC")
     fun getMessagesBySession(sessionId: String): Flow<List<ChatMessage>>

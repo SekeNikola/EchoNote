@@ -38,4 +38,41 @@ class NoteRepository(
     suspend fun insertChatMessage(message: ChatMessage) = chatMessageDao.insert(message)
     suspend fun clearChatHistory() = chatMessageDao.deleteAll()
     suspend fun deleteChatSession(sessionId: String) = chatMessageDao.deleteSession(sessionId)
+    
+    // Export/Import operations
+    suspend fun exportAllData(): ExportData {
+        val notes = noteDao.getAllNotesOnce()
+        val tasks = taskDao.getAllTasksOnce()
+        val chatMessages = chatMessageDao.getAllMessagesOnce()
+        
+        return ExportData(
+            notes = notes,
+            tasks = tasks,
+            chatMessages = chatMessages
+        )
+    }
+    
+    suspend fun importData(exportData: ExportData, replaceExisting: Boolean = false) {
+        if (replaceExisting) {
+            // Clear existing data
+            chatMessageDao.deleteAll()
+            taskDao.deleteAll()
+            noteDao.deleteAll()
+        }
+        
+        // Import notes (create new IDs to avoid conflicts)
+        exportData.notes.forEach { note ->
+            noteDao.insert(note.copy(id = 0)) // Let Room auto-generate new ID
+        }
+        
+        // Import tasks (create new IDs to avoid conflicts)
+        exportData.tasks.forEach { task ->
+            taskDao.insert(task.copy(id = 0)) // Let Room auto-generate new ID
+        }
+        
+        // Import chat messages (create new IDs to avoid conflicts)
+        exportData.chatMessages.forEach { message ->
+            chatMessageDao.insert(message.copy(id = 0)) // Let Room auto-generate new ID
+        }
+    }
 }
