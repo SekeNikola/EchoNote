@@ -1,6 +1,7 @@
 package com.example.app.data;
 
 import android.database.Cursor;
+import android.os.CancellationSignal;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.collection.LongSparseArray;
@@ -56,6 +57,8 @@ public final class NoteDao_Impl implements NoteDao {
   private final SharedSQLiteStatement __preparedStmtOfUpdateTitle;
 
   private final SharedSQLiteStatement __preparedStmtOfArchiveNote;
+
+  private final SharedSQLiteStatement __preparedStmtOfDeleteAll;
 
   public NoteDao_Impl(@NonNull final RoomDatabase __db) {
     this.__db = __db;
@@ -247,6 +250,14 @@ public final class NoteDao_Impl implements NoteDao {
       @NonNull
       public String createQuery() {
         final String _query = "UPDATE notes SET isArchived = 1 WHERE id = ?";
+        return _query;
+      }
+    };
+    this.__preparedStmtOfDeleteAll = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM notes";
         return _query;
       }
     };
@@ -480,6 +491,29 @@ public final class NoteDao_Impl implements NoteDao {
           }
         } finally {
           __preparedStmtOfArchiveNote.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object deleteAll(final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteAll.acquire();
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfDeleteAll.release(_stmt);
         }
       }
     }, $completion);
@@ -962,6 +996,113 @@ public final class NoteDao_Impl implements NoteDao {
         _statement.release();
       }
     });
+  }
+
+  @Override
+  public Object getAllNotesOnce(final Continuation<? super List<Note>> $completion) {
+    final String _sql = "SELECT * FROM notes ORDER BY createdAt DESC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
+    return CoroutinesRoom.execute(__db, false, _cancellationSignal, new Callable<List<Note>>() {
+      @Override
+      @NonNull
+      public List<Note> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
+          final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
+          final int _cursorIndexOfSnippet = CursorUtil.getColumnIndexOrThrow(_cursor, "snippet");
+          final int _cursorIndexOfTranscript = CursorUtil.getColumnIndexOrThrow(_cursor, "transcript");
+          final int _cursorIndexOfAudioPath = CursorUtil.getColumnIndexOrThrow(_cursor, "audioPath");
+          final int _cursorIndexOfImagePath = CursorUtil.getColumnIndexOrThrow(_cursor, "imagePath");
+          final int _cursorIndexOfHighlights = CursorUtil.getColumnIndexOrThrow(_cursor, "highlights");
+          final int _cursorIndexOfIsFavorite = CursorUtil.getColumnIndexOrThrow(_cursor, "isFavorite");
+          final int _cursorIndexOfIsArchived = CursorUtil.getColumnIndexOrThrow(_cursor, "isArchived");
+          final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
+          final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfChecklistState = CursorUtil.getColumnIndexOrThrow(_cursor, "checklistState");
+          final List<Note> _result = new ArrayList<Note>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final Note _item;
+            final long _tmpId;
+            _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
+            final String _tmpTitle;
+            if (_cursor.isNull(_cursorIndexOfTitle)) {
+              _tmpTitle = null;
+            } else {
+              _tmpTitle = _cursor.getString(_cursorIndexOfTitle);
+            }
+            final String _tmpSnippet;
+            if (_cursor.isNull(_cursorIndexOfSnippet)) {
+              _tmpSnippet = null;
+            } else {
+              _tmpSnippet = _cursor.getString(_cursorIndexOfSnippet);
+            }
+            final String _tmpTranscript;
+            if (_cursor.isNull(_cursorIndexOfTranscript)) {
+              _tmpTranscript = null;
+            } else {
+              _tmpTranscript = _cursor.getString(_cursorIndexOfTranscript);
+            }
+            final String _tmpAudioPath;
+            if (_cursor.isNull(_cursorIndexOfAudioPath)) {
+              _tmpAudioPath = null;
+            } else {
+              _tmpAudioPath = _cursor.getString(_cursorIndexOfAudioPath);
+            }
+            final String _tmpImagePath;
+            if (_cursor.isNull(_cursorIndexOfImagePath)) {
+              _tmpImagePath = null;
+            } else {
+              _tmpImagePath = _cursor.getString(_cursorIndexOfImagePath);
+            }
+            final List<String> _tmpHighlights;
+            final String _tmp;
+            if (_cursor.isNull(_cursorIndexOfHighlights)) {
+              _tmp = null;
+            } else {
+              _tmp = _cursor.getString(_cursorIndexOfHighlights);
+            }
+            _tmpHighlights = __converters.fromString(_tmp);
+            final boolean _tmpIsFavorite;
+            final int _tmp_1;
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsFavorite);
+            _tmpIsFavorite = _tmp_1 != 0;
+            final boolean _tmpIsArchived;
+            final int _tmp_2;
+            _tmp_2 = _cursor.getInt(_cursorIndexOfIsArchived);
+            _tmpIsArchived = _tmp_2 != 0;
+            final long _tmpCreatedAt;
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
+            final Long _tmpReminderTime;
+            if (_cursor.isNull(_cursorIndexOfReminderTime)) {
+              _tmpReminderTime = null;
+            } else {
+              _tmpReminderTime = _cursor.getLong(_cursorIndexOfReminderTime);
+            }
+            final String _tmpChecklistState;
+            if (_cursor.isNull(_cursorIndexOfChecklistState)) {
+              _tmpChecklistState = null;
+            } else {
+              _tmpChecklistState = _cursor.getString(_cursorIndexOfChecklistState);
+            }
+            _item = new Note(_tmpId,_tmpServerId,_tmpTitle,_tmpSnippet,_tmpTranscript,_tmpAudioPath,_tmpImagePath,_tmpHighlights,_tmpIsFavorite,_tmpIsArchived,_tmpCreatedAt,_tmpReminderTime,_tmpChecklistState);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+          _statement.release();
+        }
+      }
+    }, $completion);
   }
 
   @NonNull

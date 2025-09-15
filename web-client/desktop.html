@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logion - Desktop</title>
+    <script src="https://unpkg.com/phosphor-icons"></script>
     <style>
         * {
             margin: 0;
@@ -359,35 +360,64 @@
             gap: 8px;
         }
         
-        .task-detail-actions button {
-            background: #333;
+        .task-detail-actions button,
+        .note-expanded-actions button {
+            background: none;
             border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
+            color: #ccc;
             cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.2s;
+            padding: 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
         }
         
-        .task-detail-actions button:hover {
-            background: #444;
+        .task-detail-actions button:hover,
+        .note-expanded-actions button:hover {
+            color: white;
         }
         
-        .task-detail-actions .edit-btn {
-            background: #FF8C00;
+        .task-detail-actions .edit-btn:hover,
+        .note-expanded-actions .edit-btn:hover {
+            color: #4caf50;
         }
         
-        .task-detail-actions .edit-btn:hover {
-            background: #e07600;
+        .task-detail-actions .delete-btn:hover,
+        .note-expanded-actions .delete-btn:hover {
+            color: #f44336;
         }
         
-        .task-detail-actions .delete-btn {
-            background: #f44336;
+        .task-detail-actions .close-btn:hover {
+            color: #ff9800;
         }
         
-        .task-detail-actions .delete-btn:hover {
-            background: #d32f2f;
+        .back-btn {
+            background: none !important;
+            border: none;
+            color: #ccc;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+        }
+        
+        .back-btn:hover {
+            color: #4caf50;
+        }
+        
+        .task-detail-actions button i,
+        .note-expanded-actions button i,
+        .back-btn i {
+            font-size: 16px;
         }
         
         .task-detail-field {
@@ -710,6 +740,115 @@
             margin: 12px 0;
         }
         
+        /* Rich Text Editor Styles */
+        .rich-text-toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 8px;
+            background-color: #333;
+            border-radius: 8px 8px 0 0;
+            border-bottom: 1px solid #555;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .toolbar-btn {
+            padding: 6px 10px;
+            background-color: #555;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+        
+        .toolbar-btn:hover {
+            background-color: #666;
+        }
+        
+        .toolbar-btn.active {
+            background-color: #FF8C00;
+        }
+        
+        .toolbar-separator {
+            width: 1px;
+            height: 24px;
+            background-color: #555;
+            margin: 0 4px;
+        }
+        
+        .rich-text-editor {
+            min-height: 200px;
+            padding: 16px;
+            background-color: #2a2a2a;
+            border: none;
+            border-radius: 0 0 8px 8px;
+            color: white;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.5;
+            outline: none;
+            resize: vertical;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+            padding: 8px;
+            background-color: #333;
+            border-radius: 4px;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .checkbox-item input[type="text"] {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            outline: none;
+        }
+        
+        .checkbox-item.completed input[type="text"] {
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+        
+        .checkbox-remove {
+            background: #ff4444;
+            border: none;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .checkbox-list {
+            margin: 16px 0;
+        }
+        
+        .add-checkbox-btn {
+            background: #555;
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 8px 0;
+        }
+        
+        .add-checkbox-btn:hover {
+            background: #666;
+        }
+        
         .add-button {
             position: fixed;
             bottom: 24px;
@@ -749,16 +888,19 @@
         .search-box::placeholder {
             color: #777;
         }
+        .loginsection {
+            display:flex;
+        }
     </style>
 </head>
 <body>
     <!-- Login Section -->
-    <div id="loginSection" class="connection-dialog" style="display: block;">
+    <div id="loginSection" class="connection-dialog">
         <div class="connection-dialog-content" style="width: 450px;">
             <h2>Logion Web Client</h2>
             <p style="color: #bbb; margin-bottom: 24px; font-size: 16px;">Please login to access the application</p>
             <div style="margin-bottom: 20px;">
-                <input type="text" id="username" placeholder="Username: JohnnyBlue" style="width: 100%; padding: 14px; background-color: #333; border: 1px solid #555; border-radius: 6px; color: white; margin-bottom: 12px; font-size: 15px;" onkeypress="handleLoginKeyPress(event)" />
+                <input type="text" id="username" placeholder="Enter username" style="width: 100%; padding: 14px; background-color: #333; border: 1px solid #555; border-radius: 6px; color: white; margin-bottom: 12px; font-size: 15px;" onkeypress="handleLoginKeyPress(event)" autofocus />
                 <input type="password" id="password" placeholder="Enter password" style="width: 100%; padding: 14px; background-color: #333; border: 1px solid #555; border-radius: 6px; color: white; font-size: 15px;" onkeypress="handleLoginKeyPress(event)" />
             </div>
             <button class="btn btn-primary" onclick="login()" style="width: 100%; padding: 12px; font-size: 16px;">Login</button>
@@ -820,23 +962,13 @@
             <input type="text" class="search-box" placeholder="Search notes and tasks..." id="searchBox">
             <div class="header-controls">
                 <button class="btn btn-secondary" id="reconnectButton" title="Reconnect">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                        <path d="M3 3v5h5"/>
-                    </svg>
+                    <i class="ph ph-arrow-clockwise"></i>
                 </button>
                 <button class="btn btn-secondary" id="settingsButton" title="Settings">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1m11-3a3 3 0 0 0-6 0m6 6a3 3 0 0 0-6 0"/>
-                    </svg>
+                    <i class="ph ph-gear"></i>
                 </button>
                 <button class="btn btn-secondary" onclick="logout()" title="Logout">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                        <polyline points="16,17 21,12 16,7"/>
-                        <line x1="21" y1="12" x2="9" y2="12"/>
-                    </svg>
+                    <i class="ph ph-sign-out"></i>
                 </button>
             </div>
         </div>
@@ -861,9 +993,15 @@
                     <div class="task-detail-header">
                         <div class="task-detail-title" id="taskDetailTitle">Task Details</div>
                         <div class="task-detail-actions">
-                            <button class="edit-btn" id="editTaskBtn">Edit</button>
-                            <button class="delete-btn" id="deleteTaskBtn">Delete</button>
-                            <button class="close-btn" id="closeTaskDetailBtn">×</button>
+                            <button class="edit-btn" id="editTaskBtn" title="Edit Task">
+                                <i class="ph ph-pencil"></i>
+                            </button>
+                            <button class="delete-btn" id="deleteTaskBtn" title="Delete Task">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                            <button class="close-btn" id="closeTaskDetailBtn" title="Close">
+                                <i class="ph ph-sidebar-simple"></i>
+                            </button>
                         </div>
                     </div>
                     
@@ -933,11 +1071,19 @@
                 <!-- Expanded Note View -->
                 <div class="note-expanded-view" id="noteExpandedView">
                     <div class="note-expanded-header">
-                        <div class="note-expanded-title" id="noteExpandedTitle">Note Title</div>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button class="back-btn" id="backToNotesBtn" title="Back to Notes">
+                                <i class="ph ph-arrow-left"></i>
+                            </button>
+                            <div class="note-expanded-title" id="noteExpandedTitle">Note Title</div>
+                        </div>
                         <div class="note-expanded-actions">
-                            <button class="back-btn" id="backToNotesBtn">← Back</button>
-                            <button class="edit-btn" id="editNoteBtn">Edit</button>
-                            <button class="delete-btn" id="deleteNoteBtn">Delete</button>
+                            <button class="edit-btn" id="editNoteBtn" title="Edit Note">
+                                <i class="ph ph-pencil"></i>
+                            </button>
+                            <button class="delete-btn" id="deleteNoteBtn" title="Delete Note">
+                                <i class="ph ph-trash"></i>
+                            </button>
                         </div>
                     </div>
                     
@@ -964,7 +1110,33 @@
         <div class="modal-content">
             <h3>Create Note</h3>
             <input type="text" id="noteTitle" placeholder="Note title">
-            <textarea id="noteContent" placeholder="Write your note..."></textarea>
+            
+            <!-- Rich Text Editor -->
+            <div class="rich-text-toolbar">
+                <button class="toolbar-btn" onclick="formatText('bold')" title="Bold"><b>B</b></button>
+                <button class="toolbar-btn" onclick="formatText('italic')" title="Italic"><i>I</i></button>
+                <button class="toolbar-btn" onclick="formatText('underline')" title="Underline"><u>U</u></button>
+                <button class="toolbar-btn" onclick="formatText('strikeThrough')" title="Strikethrough"><s>S</s></button>
+                <div class="toolbar-separator"></div>
+                <button class="toolbar-btn" onclick="addCheckboxItem()" title="Add Checkbox">☑</button>
+                <button class="toolbar-btn" onclick="formatText('insertUnorderedList')" title="Bullet List">• List</button>
+                <div class="toolbar-separator"></div>
+                <select class="toolbar-btn" onchange="changeFontSize(this.value)">
+                    <option value="3">Size</option>
+                    <option value="1">Small</option>
+                    <option value="2">Normal</option>
+                    <option value="4">Large</option>
+                    <option value="5">X-Large</option>
+                </select>
+            </div>
+            
+            <div contenteditable="true" id="noteContent" class="rich-text-editor" placeholder="Write your note..."></div>
+            
+            <!-- Checkbox List -->
+            <div class="checkbox-list" id="checkboxList">
+                <h4 style="margin-bottom: 8px; color: #ccc;">Task Checkboxes:</h4>
+            </div>
+            <button class="add-checkbox-btn" onclick="addCheckboxItem()">+ Add Checkbox</button>
             
             <div class="image-upload" id="imageUpload">
                 <p>Click to add image or drag and drop</p>
@@ -984,7 +1156,17 @@
         <div class="modal-content">
             <h3 id="taskModalTitle">Create Task</h3>
             <input type="text" id="taskTitle" placeholder="Task title">
-            <textarea id="taskDescription" placeholder="Task description..."></textarea>
+            
+            <!-- Rich Text Toolbar for Task -->
+            <div class="rich-text-toolbar" style="margin-bottom: 8px;">
+                <button type="button" onclick="formatTaskText('bold')" style="font-weight: bold;">B</button>
+                <button type="button" onclick="formatTaskText('italic')" style="font-style: italic;">I</button>
+                <button type="button" onclick="formatTaskText('underline')" style="text-decoration: underline;">U</button>
+                <button type="button" onclick="formatTaskText('strikethrough')" style="text-decoration: line-through;">S</button>
+                <button type="button" onclick="addTaskCheckboxItem()">☑ Task</button>
+            </div>
+            
+            <div id="taskDescription" contenteditable="true" class="rich-text-editor" style="min-height: 120px; padding: 12px; border: 1px solid #555; border-radius: 4px; background-color: #333; color: white; margin-bottom: 12px;" placeholder="Task description..."></div>
             
             <div style="display: flex; gap: 12px; margin: 12px 0;">
                 <div style="flex: 1;">
@@ -1015,6 +1197,10 @@
     </div>
 
     <script>
+        // Global variables
+        let isLoggedIn = false;
+        let logionApp = null;
+        
         class LogionDesktop {
             constructor() {
                 this.socket = null;
@@ -1568,7 +1754,7 @@
                     <div class="note-card-grid" data-id="${note.id}">
                         <div class="card-title">${this.escapeHtml(note.title)}</div>
                         <div class="card-content" style="flex: 1;">${this.escapeHtml(note.body.substring(0, 120))}${note.body.length > 120 ? '...' : ''}</div>
-                        ${note.imagePath ? `<img src="${this.convertImagePath(note.imagePath)}" style="max-width: 100%; max-height: 60px; border-radius: 4px; margin: 8px 0; object-fit: cover;" alt="Note image" onerror="this.style.display='none'">` : ''}
+                        ${note.imagePath ? '<img src="' + this.convertImagePath(note.imagePath) + '" style="max-width: 100%; max-height: 60px; border-radius: 4px; margin: 8px 0; object-fit: cover;" alt="Note image" onerror="this.style.display=\'none\';">' : ''}
                         <div class="card-date" style="margin-top: auto;">${this.formatDate(note.updatedAt)}</div>
                     </div>
                 `).join('');
@@ -1663,7 +1849,7 @@
                                                     <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${priorityColors[priority]}; flex-shrink: 0;"></div>
                                                     <div class="card-title" style="text-decoration: ${task.done ? 'line-through' : 'none'}; flex: 1;">
                                                         ${this.escapeHtml(task.title)}
-                                                        ${task.dueTime ? `<span style="color: #bbb; font-size: 12px; margin-left: 8px;">${task.dueTime}</span>` : ''}
+                                                        ${task.dueTime ? '<span style="color: #bbb; font-size: 12px; margin-left: 8px;">' + task.dueTime + '</span>' : ''}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1755,6 +1941,12 @@
             }
             
             showTaskDetail(taskId) {
+                // If clicking the same task that's already open, close the detail view
+                if (this.selectedTaskForDetail && this.selectedTaskForDetail.id === taskId) {
+                    this.hideTaskDetail();
+                    return;
+                }
+                
                 this.selectedTaskForDetail = this.tasks.find(t => t.id === taskId);
                 if (!this.selectedTaskForDetail) return;
                 
@@ -1952,14 +2144,14 @@
                 
                 if (editMode && this.selectedTask) {
                     titleInput.value = this.selectedTask.title;
-                    descriptionInput.value = this.selectedTask.body || '';
+                    descriptionInput.innerHTML = this.selectedTask.body || '';
                     dateInput.value = this.selectedTask.dueDate || '';
                     timeInput.value = this.selectedTask.dueTime || '';
                     priorityInput.value = this.selectedTask.priority || 'Medium';
                     modalTitle.textContent = 'Edit Task';
                 } else {
                     titleInput.value = '';
-                    descriptionInput.value = '';
+                    descriptionInput.innerHTML = '';
                     dateInput.value = '';
                     timeInput.value = '';
                     priorityInput.value = 'Medium';
@@ -1972,6 +2164,11 @@
             hideNoteModal() {
                 document.getElementById('noteModal').classList.remove('active');
                 this.selectedNote = null;
+                
+                // Clear rich text editor
+                document.getElementById('noteTitle').value = '';
+                document.getElementById('noteContent').innerHTML = '';
+                clearCheckboxes();
                 
                 // Reset image upload area
                 const imagePreview = document.getElementById('imagePreview');
@@ -1987,17 +2184,24 @@
             hideTaskModal() {
                 document.getElementById('taskModal').classList.remove('active');
                 this.selectedTask = null;
+                
+                // Clear rich text editor
+                document.getElementById('taskTitle').value = '';
+                document.getElementById('taskDescription').innerHTML = '';
             }
             
             saveNote() {
                 const title = document.getElementById('noteTitle').value.trim();
-                const content = document.getElementById('noteContent').value.trim();
+                const content = document.getElementById('noteContent').innerHTML.trim();
                 const imageInput = document.getElementById('imageInput');
                 
                 if (!title) {
                     alert('Please enter a note title');
                     return;
                 }
+                
+                // Get checked items for task creation
+                const checkedItems = getCheckedItems();
                 
                 const noteData = {
                     id: this.selectedNote ? this.selectedNote.id : Date.now().toString(),
@@ -2012,21 +2216,44 @@
                     reader.onload = (e) => {
                         noteData.imagePath = e.target.result;
                         this.sendNote(noteData);
+                        this.createTasksFromCheckboxes(checkedItems);
                     };
                     reader.readAsDataURL(imageInput.files[0]);
                 } else if (this.selectedNote && this.selectedNote.imagePath) {
                     noteData.imagePath = this.selectedNote.imagePath;
                     this.sendNote(noteData);
+                    this.createTasksFromCheckboxes(checkedItems);
                 } else {
                     this.sendNote(noteData);
+                    this.createTasksFromCheckboxes(checkedItems);
                 }
                 
                 this.hideNoteModal();
             }
             
+            createTasksFromCheckboxes(checkedItems) {
+                checkedItems.forEach(item => {
+                    const taskData = {
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        title: item.text,
+                        description: 'Created from note checkbox',
+                        priority: 'Medium',
+                        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
+                        isCompleted: false,
+                        updatedAt: new Date().toISOString()
+                    };
+                    this.sendTask(taskData);
+                });
+                
+                if (checkedItems.length > 0) {
+                    alert(`${checkedItems.length} tasks created from checkboxes!`);
+                    clearCheckboxes();
+                }
+            }
+            
             async saveTask() {
                 const title = document.getElementById('taskTitle').value.trim();
-                const description = document.getElementById('taskDescription').value.trim();
+                const description = document.getElementById('taskDescription').innerHTML.trim();
                 const dueDate = document.getElementById('taskDate').value;
                 const dueTime = document.getElementById('taskTime').value;
                 const priority = document.getElementById('taskPriority').value;
@@ -2037,7 +2264,7 @@
                 }
                 
                 try {
-                    const url = `http://${this.serverAddress}/tasks${this.selectedTask ? `/${this.selectedTask.id}` : ''}`;
+                    const url = `http://${this.serverAddress}/tasks` + (this.selectedTask ? `/${this.selectedTask.id}` : '');
                     const method = this.selectedTask ? 'PUT' : 'POST';
                     
                     const taskData = {
@@ -2076,7 +2303,7 @@
             
             async sendNote(noteData) {
                 try {
-                    const url = `http://${this.serverAddress}/notes${this.selectedNote ? `/${this.selectedNote.id}` : ''}`;
+                    const url = `http://${this.serverAddress}/notes` + (this.selectedNote ? `/${this.selectedNote.id}` : '');
                     const method = this.selectedNote ? 'PUT' : 'POST';
                     
                     const response = await fetch(url, {
@@ -2168,7 +2395,7 @@
                     <div class="note-card-grid" data-id="${note.id}">
                         <div class="card-title">${this.escapeHtml(note.title)}</div>
                         <div class="card-content" style="flex: 1;">${this.escapeHtml(note.body.substring(0, 120))}${note.body.length > 120 ? '...' : ''}</div>
-                        ${note.imagePath ? `<img src="${this.convertImagePath(note.imagePath)}" style="max-width: 100%; max-height: 60px; border-radius: 4px; margin: 8px 0; object-fit: cover;" alt="Note image" onerror="this.style.display='none'">` : ''}
+                        ${note.imagePath ? '<img src="' + this.convertImagePath(note.imagePath) + '" style="max-width: 100%; max-height: 60px; border-radius: 4px; margin: 8px 0; object-fit: cover;" alt="Note image" onerror="this.style.display=\'none\';">' : ''}
                         <div class="card-date" style="margin-top: auto;">${this.formatDate(note.updatedAt)}</div>
                     </div>
                 `).join('');
@@ -2221,9 +2448,9 @@
                                                         padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;">
                                                 ${priority.toUpperCase()}
                                             </span>
-                                            ${dueDateTimeStr ? `<span style="color: #888; font-size: 11px;">${dueDateTimeStr}</span>` : ''}
+                                            ${dueDateTimeStr ? '<span style="color: #888; font-size: 11px;">' + dueDateTimeStr + '</span>' : ''}
                                         </div>
-                                        ${task.body ? `<div class="card-content">${this.escapeHtml(task.body)}</div>` : ''}
+                                        ${task.body ? '<div class="card-content">' + this.escapeHtml(task.body) + '</div>' : ''}
                                     </div>
                                 </div>
                                 <button onclick="app.deleteTask('${task.id}'); event.stopPropagation();" 
@@ -2490,8 +2717,133 @@
             }
         }
         
+        // Rich Text Editor Functions (moved outside class)
+        let checkboxCounter = 0;
+        let checkboxItems = [];
+        
+        function formatText(command) {
+            document.execCommand(command, false, null);
+            updateToolbarState();
+        }
+        
+        function changeFontSize(size) {
+            document.execCommand('fontSize', false, size);
+        }
+        
+        function updateToolbarState() {
+            const buttons = document.querySelectorAll('.toolbar-btn');
+            buttons.forEach(btn => {
+                const command = btn.getAttribute('onclick');
+                if (command && command.includes('formatText')) {
+                    const cmd = command.match(/'([^']+)'/)[1];
+                    if (document.queryCommandState(cmd)) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                }
+            });
+        }
+        
+        function addCheckboxItem() {
+            checkboxCounter++;
+            const checkboxList = document.getElementById('checkboxList');
+            
+            const checkboxItem = document.createElement('div');
+            checkboxItem.className = 'checkbox-item';
+            checkboxItem.innerHTML = `
+                <input type="checkbox" onchange="toggleCheckbox(${checkboxCounter})">
+                <input type="text" placeholder="Enter task..." onchange="updateCheckboxText(${checkboxCounter}, this.value)">
+                <button class="checkbox-remove" onclick="removeCheckbox(${checkboxCounter})">×</button>
+            `;
+            
+            checkboxList.appendChild(checkboxItem);
+            
+            checkboxItems[checkboxCounter] = {
+                id: checkboxCounter,
+                text: '',
+                checked: false
+            };
+        }
+        
+        function toggleCheckbox(id) {
+            const checkboxItem = checkboxItems[id];
+            if (checkboxItem) {
+                checkboxItem.checked = !checkboxItem.checked;
+                const container = event.target.parentElement;
+                if (checkboxItem.checked) {
+                    container.classList.add('completed');
+                } else {
+                    container.classList.remove('completed');
+                }
+            }
+        }
+        
+        function updateCheckboxText(id, text) {
+            const checkboxItem = checkboxItems[id];
+            if (checkboxItem) {
+                checkboxItem.text = text;
+            }
+        }
+        
+        function removeCheckbox(id) {
+            const container = event.target.parentElement;
+            container.remove();
+            delete checkboxItems[id];
+        }
+        
+        function getCheckedItems() {
+            return Object.values(checkboxItems).filter(item => item.checked && item.text.trim());
+        }
+        
+        function clearCheckboxes() {
+            const checkboxList = document.getElementById('checkboxList');
+            const items = checkboxList.querySelectorAll('.checkbox-item');
+            items.forEach(item => item.remove());
+            checkboxItems = [];
+            checkboxCounter = 0;
+        }
+        
+        // Task-specific rich text functions
+        function formatTaskText(command) {
+            const taskEditor = document.getElementById('taskDescription');
+            taskEditor.focus();
+            document.execCommand(command, false, null);
+        }
+        
+        function addTaskCheckboxItem() {
+            const taskEditor = document.getElementById('taskDescription');
+            taskEditor.focus();
+            
+            const checkboxHtml = '<div class="checkbox-item" style="margin: 4px 0; display: flex; align-items: center;"><input type="checkbox" style="margin-right: 8px;"><span contenteditable="true" style="flex: 1;">New task item</span></div>';
+            
+            document.execCommand('insertHTML', false, checkboxHtml);
+        }
+        
+        // Initialize rich text editor
+        document.addEventListener('DOMContentLoaded', function() {
+            const editor = document.getElementById('noteContent');
+            if (editor) {
+                editor.addEventListener('input', updateToolbarState);
+                editor.addEventListener('selectionchange', updateToolbarState);
+                
+                // Set placeholder behavior
+                editor.addEventListener('focus', function() {
+                    if (this.innerHTML === '') {
+                        this.innerHTML = '';
+                    }
+                });
+                
+                editor.addEventListener('blur', function() {
+                    if (this.innerHTML === '') {
+                        this.innerHTML = '';
+                    }
+                });
+            }
+        });
+        
         // Login functionality
-        let isLoggedIn = false;
+        // isLoggedIn is already declared at the top
         
         // Simple login credentials (in production, use proper authentication)
         const validCredentials = {
@@ -2526,10 +2878,21 @@
         function showMainApp() {
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
+            
+            // Auto-connect to server after successful login
+            if (logionApp.serverAddress) {
+                setTimeout(() => {
+                    logionApp.attemptConnection();
+                }, 500); // Small delay to let UI settle
+            } else {
+                // Show connection dialog if no server address is saved
+                setTimeout(() => {
+                    logionApp.showConnectionDialog();
+                }, 500);
+            }
         }
 
         function showLoginScreen() {
-            document.getElementById('loginSection').style.display = 'block';
             document.getElementById('mainApp').style.display = 'none';
             document.getElementById('username').value = '';
             document.getElementById('password').value = '';
@@ -2559,7 +2922,7 @@
         });
         
         // Initialize the app
-        const app = new LogionDesktop();
+        logionApp = new LogionDesktop();
     </script>
 </body>
 </html>

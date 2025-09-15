@@ -68,6 +68,10 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import android.os.Bundle
 import java.util.concurrent.TimeUnit
+import androidx.work.WorkManager
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.workDataOf
+import com.example.app.worker.ReminderWorker
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
@@ -2660,6 +2664,19 @@ Output:
         return userWantsNote || aiConfirmsNote
     }
     
+    // Smart reminder detection
+    private fun detectReminderIntent(text: String): Boolean {
+        val lowerText = text.lowercase().trim()
+        
+        return lowerText.contains("remind me") ||
+               lowerText.contains("set reminder") ||
+               lowerText.contains("reminder in") ||
+               lowerText.contains("remind me in") ||
+               lowerText.contains("set a reminder") ||
+               (lowerText.contains("minute") && (lowerText.contains("remind") || lowerText.contains("reminder"))) ||
+               (lowerText.contains("hour") && (lowerText.contains("remind") || lowerText.contains("reminder")))
+    }
+    
     // Extract task content with conversation context awareness
     private fun extractTaskFromConversation(currentText: String, recentHistory: List<ChatMessage>): String {
         Log.d("NoteViewModel", "Extracting task from: '$currentText'")
@@ -2822,6 +2839,95 @@ Output:
         }
     }
     
+    private fun extractReminderTime(text: String): Long {
+        val lowerText = text.lowercase()
+        
+        return when {
+            lowerText.contains("1 minute") || lowerText.contains("one minute") -> 1L
+            lowerText.contains("2 minutes") || lowerText.contains("two minutes") -> 2L
+            lowerText.contains("5 minutes") || lowerText.contains("five minutes") -> 5L
+            lowerText.contains("10 minutes") || lowerText.contains("ten minutes") -> 10L
+            lowerText.contains("15 minutes") || lowerText.contains("fifteen minutes") -> 15L
+            lowerText.contains("30 minutes") || lowerText.contains("thirty minutes") -> 30L
+            lowerText.contains("1 hour") || lowerText.contains("one hour") -> 60L
+            lowerText.contains("2 hours") || lowerText.contains("two hours") -> 120L
+            else -> 60L // Default to 1 hour
+        }
+    }
+    
+    private fun extractReminderContent(text: String): String {
+        val lowerText = text.lowercase()
+        
+        // Remove reminder command patterns to get the content
+        var content = text.replace(Regex("(remind me|set reminder|set a reminder)\\s*(to|about|in)?\\s*", RegexOption.IGNORE_CASE), "")
+        content = content.replace(Regex("\\s*in\\s+\\d+\\s*(minute|minutes|hour|hours).*", RegexOption.IGNORE_CASE), "")
+        content = content.trim()
+        
+        return if (content.isNotEmpty()) content else "Reminder"
+    }
+    
+    private fun createReminderTask(text: String) = viewModelScope.launch {
+        try {
+            val reminderMinutes = extractReminderTime(text)
+            val reminderContent = extractReminderContent(text)
+            
+            Log.d("NoteViewModel", "Creating reminder: '$reminderContent' in $reminderMinutes minutes")
+            
+            val task = Task(
+                title = "Reminder: $reminderContent",
+                description = "Voice reminder set for ${reminderMinutes} minute${if (reminderMinutes != 1L) "s" else ""}",
+                priority = "High",
+                dueDate = System.currentTimeMillis() + (reminderMinutes * 60 * 1000),
+                duration = "",
+                isCompleted = false,
+                createdAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
+            )
+            
+            repository.insertTask(task)
+            Log.d("NoteViewModel", "Reminder task created: ${task.title}")
+            
+            // Schedule notification reminder
+            try {
+                val workRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
+                    .setInitialDelay(reminderMinutes, TimeUnit.MINUTES)
+                    .setInputData(workDataOf(
+                        "taskTitle" to task.title,
+                        "taskId" to task.id
+                    ))
+                    .build()
+                
+                WorkManager.getInstance(getApplication()).enqueue(workRequest)
+                Log.d("NoteViewModel", "Reminder notification scheduled for ${reminderMinutes} minutes")
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Failed to schedule reminder notification", e)
+            }
+            
+            // Broadcast to server for web sync
+            try {
+                val serverTask = ServerTask(
+                    id = java.util.UUID.randomUUID().toString(),
+                    title = task.title,
+                    body = task.description,
+                    done = task.isCompleted,
+                    updatedAt = java.time.Instant.ofEpochMilli(task.updatedAt).toString()
+                )
+                KtorServer.addTaskWithBroadcast(serverTask)
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Failed to broadcast reminder task to server", e)
+            }
+            
+            loadTasks()
+            
+            val timeText = if (reminderMinutes == 1L) "1 minute" else "$reminderMinutes minutes"
+            speakText("Got it! I'll remind you about '$reminderContent' in $timeText.")
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating reminder task", e)
+            speakText("Sorry, I couldn't set that reminder.")
+        }
+    }
+    
     fun processVoiceCommand(text: String) = viewModelScope.launch {
         _isProcessing.value = true
         
@@ -2882,14 +2988,19 @@ Output:
             val aiMessage = ChatMessage(content = aiResponse, isUser = false)
             _voiceSessionHistory.update { it + userMessage + aiMessage }
             
-            // Smart task/note detection with context awareness
+            // Smart task/note/reminder detection with context awareness
             val shouldCreateTask = detectTaskIntent(text, aiResponse, recentHistory)
             val shouldCreateNote = detectNoteIntent(text, aiResponse)
+            val shouldCreateReminder = detectReminderIntent(text)
             
             Log.d("NoteViewModel", "Voice processing: text='$text', aiResponse='$aiResponse'")
-            Log.d("NoteViewModel", "Should create task: $shouldCreateTask, Should create note: $shouldCreateNote")
+            Log.d("NoteViewModel", "Should create task: $shouldCreateTask, Should create note: $shouldCreateNote, Should create reminder: $shouldCreateReminder")
             
             when {
+                shouldCreateReminder -> {
+                    Log.d("NoteViewModel", "Creating reminder...")
+                    createReminderTask(text)
+                }
                 shouldCreateTask -> {
                     Log.d("NoteViewModel", "Creating task...")
                     // Use voice session history for context, not chat history
@@ -2904,7 +3015,7 @@ Output:
                     speakText(aiResponse)
                 }
                 else -> {
-                    Log.d("NoteViewModel", "Just chatting - no task/note creation")
+                    Log.d("NoteViewModel", "Just chatting - no task/note/reminder creation")
                     // Just chat - speak the AI response
                     speakText(aiResponse)
                 }

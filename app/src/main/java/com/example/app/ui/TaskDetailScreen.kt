@@ -284,20 +284,27 @@ fun TaskDetailScreen(
             
             // Task description (editable if in edit mode)
             if (isEditMode) {
-                OutlinedTextField(
-                    value = editDescription,
-                    onValueChange = { editDescription = it },
-                    label = { Text("Description", color = Color(0xFFB0B0B0)) },
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedBorderColor = Color(0xFFFF8C00),
-                        unfocusedBorderColor = Color(0xFF404056),
-                        cursorColor = Color(0xFFFF8C00)
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF2A2A3E)
                     ),
-                    minLines = 3
-                )
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    RichTextEditor(
+                        initialText = editDescription,
+                        onTextChange = { text, checkboxItems ->
+                            editDescription = text
+                        },
+                        onTaskCreated = { taskTitle ->
+                            // Could create subtasks here if needed
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 150.dp)
+                            .padding(8.dp)
+                    )
+                }
             } else {
                 Card(
                     modifier = Modifier.fillMaxWidth(),

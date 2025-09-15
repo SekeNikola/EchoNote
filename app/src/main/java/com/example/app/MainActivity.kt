@@ -68,16 +68,30 @@ class MainActivity : ComponentActivity() {
 		// Start the server service as foreground service
 		ServerService.startService(this)
 		
+		// Request notification permission for Android 13+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+			if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) 
+				!= PackageManager.PERMISSION_GRANTED) {
+				requestPermissionLauncher.launch(arrayOf(Manifest.permission.POST_NOTIFICATIONS))
+			}
+		}
+		
 		// Request to ignore battery optimizations for continuous background operation
 		requestBatteryOptimizationExemption()
 
 		// Handle widget intents
 		val widgetAction = intent.getStringExtra("widget_action")
+		
+		// Handle voice assistant activation
+		val startVoiceAssistant = intent.getBooleanExtra("start_voice_assistant", false)
 
 		setContent {
 					LogionTheme {
 						val snackbarHostState = remember { SnackbarHostState() }
 						val coroutineScope = rememberCoroutineScope()
+						
+						// Voice assistant state
+						var shouldStartVoiceAssistant by remember { mutableStateOf(startVoiceAssistant) }
 						
 						// Move state variables to Box level for access across components
 						var showPermissionDialog by remember { mutableStateOf(false) }
@@ -292,6 +306,20 @@ class MainActivity : ComponentActivity() {
 		} catch (e: Exception) {
 			// Log the error but don't crash the app
 			android.util.Log.e("MainActivity", "Error requesting battery optimization exemption", e)
+		}
+	}
+	
+	override fun onNewIntent(intent: Intent?) {
+		super.onNewIntent(intent)
+		
+		// Handle voice assistant activation when app is already running
+		if (intent?.getBooleanExtra("start_voice_assistant", false) == true ||
+			intent?.action == "android.intent.action.VOICE_ASSISTANT") {
+			
+			// Trigger voice assistant - you can use a shared preference or broadcast
+			// to communicate with your Compose UI
+			val sharedPref = getSharedPreferences("voice_prefs", MODE_PRIVATE)
+			sharedPref.edit().putBoolean("trigger_voice", true).apply()
 		}
 	}
 }

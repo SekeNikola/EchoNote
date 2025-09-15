@@ -385,10 +385,10 @@ fun SimpleHomeScreen(
                 )
                 if (searchQuery.isEmpty()) {
                     TextButton(
-                        onClick = { navController.navigate("tasks") }
+                        onClick = { navController.navigate("all_tasks") }
                     ) {
                         Text(
-                            "See All",
+                            "Enhanced Tasks",
                             color = Color(0xFFFF8C00),
                             fontSize = 15.sp
                         )
@@ -477,14 +477,25 @@ fun SimpleHomeScreen(
                     color = Color.White
                 )
                 if (searchQuery.isEmpty()) {
-                    TextButton(
-                        onClick = { navController.navigate("notes") }
-                    ) {
-                        Text(
-                            "See All",
-                            color = Color(0xFFFF8C00),
-                            fontSize = 15.sp
-                        )
+                    Row {
+                        TextButton(
+                            onClick = { navController.navigate("notes") }
+                        ) {
+                            Text(
+                                "See All",
+                                color = Color(0xFFFF8C00),
+                                fontSize = 15.sp
+                            )
+                        }
+                        TextButton(
+                            onClick = { navController.navigate("enhanced_note_creation") }
+                        ) {
+                            Text(
+                                "Rich Editor",
+                                color = Color(0xFF00FF00),
+                                fontSize = 15.sp
+                            )
+                        }
                     }
                 }
             }
@@ -733,6 +744,15 @@ fun SimpleHomeScreen(
                 onCreateNote = { title, content, imageUri ->
                     viewModel.addNoteWithBroadcast(title, content, imageUri)
                     showAddNoteSheet = false
+                },
+                onCreateTask = { taskTitle ->
+                    // Create task with medium priority and today's date
+                    viewModel.createTask(
+                        title = taskTitle,
+                        description = "Created from rich text note",
+                        priority = "Medium",
+                        dueDate = System.currentTimeMillis()
+                    )
                 },
                 onDismiss = { showAddNoteSheet = false },
                 key = noteSheetCounter
@@ -990,22 +1010,64 @@ fun AddTaskBottomSheet(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Description input
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            placeholder = { Text("Write here Description", color = Color(0xFFB0B0B0)) },
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFFFF8C00),
-                unfocusedBorderColor = Color(0xFF4A4A5E),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                cursorColor = Color(0xFFFF8C00)
+        // Description input - Rich Text Editor
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF2E2E2E)
             ),
-            minLines = 3,
-            maxLines = 3
-        )
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp)
+            ) {
+                // Rich text formatting toolbar
+                RichTextFormattingToolbar(
+                    onFormatChange = { format ->
+                        // Apply formatting to description
+                        when (format) {
+                            "bold" -> {
+                                description = if (description.isEmpty()) "**bold text**" 
+                                             else "$description\n**bold text**"
+                            }
+                            "italic" -> {
+                                description = if (description.isEmpty()) "*italic text*"
+                                             else "$description\n*italic text*"
+                            }
+                            "checkbox" -> {
+                                description = if (description.isEmpty()) "☐ New task"
+                                             else "$description\n☐ New task"
+                            }
+                        }
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Text input with rich text support
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    placeholder = { Text("Task description with rich text support...", color = Color(0xFFB0B0B0)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFFF8C00),
+                        unfocusedBorderColor = Color(0xFF4A4A5E),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        cursorColor = Color(0xFFFF8C00)
+                    ),
+                    maxLines = 8,
+                    singleLine = false
+                )
+            }
+        }
         
         Spacer(modifier = Modifier.height(24.dp))
         
@@ -1221,6 +1283,7 @@ fun AddTaskBottomSheet(
 @Composable
 fun AddNoteBottomSheet(
     onCreateNote: (String, String, String?) -> Unit,
+    onCreateTask: (String) -> Unit = {},
     onDismiss: () -> Unit,
     key: Int = 0
 ) {
@@ -1335,25 +1398,65 @@ fun AddNoteBottomSheet(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Content input
-        OutlinedTextField(
-            value = content,
-            onValueChange = { content = it },
-            placeholder = { Text("Note content...", color = Color(0xFFB0B0B0)) },
+        // Content input - Rich Text Editor
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFFFF8C00),
-                unfocusedBorderColor = Color(0xFF555555),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                cursorColor = Color(0xFFFF8C00)
+                .height(200.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFF2E2E2E)
             ),
-            shape = RoundedCornerShape(8.dp),
-            maxLines = 5,
-            singleLine = false
-        )
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(12.dp)
+            ) {
+                // Rich text formatting toolbar
+                RichTextFormattingToolbar(
+                    onFormatChange = { format ->
+                        // Apply formatting to content
+                        when (format) {
+                            "bold" -> {
+                                // Simple bold formatting - wrap selection or add at cursor
+                                content = if (content.isEmpty()) "**bold text**" 
+                                         else "$content\n**bold text**"
+                            }
+                            "italic" -> {
+                                content = if (content.isEmpty()) "*italic text*"
+                                         else "$content\n*italic text*"
+                            }
+                            "checkbox" -> {
+                                content = if (content.isEmpty()) "☐ New task"
+                                         else "$content\n☐ New task"
+                            }
+                        }
+                    }
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Text input with rich text support
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    placeholder = { Text("Note content with rich text support...", color = Color(0xFFB0B0B0)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFFFF8C00),
+                        unfocusedBorderColor = Color(0xFF555555),
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        cursorColor = Color(0xFFFF8C00)
+                    ),
+                    maxLines = 8,
+                    singleLine = false
+                )
+            }
+        }
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -1459,7 +1562,16 @@ fun AddNoteBottomSheet(
         Button(
             onClick = {
                 if (title.isNotBlank()) {
+                    // Extract checked checkboxes and create tasks
+                    val checkedTasks = extractCheckedTasks(content)
+                    
+                    // Create the note
                     onCreateNote(title, content, selectedImageUri)
+                    
+                    // Create tasks from checked checkboxes
+                    checkedTasks.forEach { taskTitle ->
+                        onCreateTask(taskTitle)
+                    }
                 }
             },
             modifier = Modifier.fillMaxWidth(),
@@ -1477,6 +1589,76 @@ fun AddNoteBottomSheet(
             )
         }
     }
+}
+
+@Composable
+private fun RichTextFormattingToolbar(
+    onFormatChange: (String) -> Unit
+) {
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 4.dp)
+    ) {
+        item {
+            IconButton(
+                onClick = { onFormatChange("bold") },
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF404040))
+            ) {
+                Icon(
+                    Icons.Default.FormatBold,
+                    contentDescription = "Bold",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+        
+        item {
+            IconButton(
+                onClick = { onFormatChange("italic") },
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF404040))
+            ) {
+                Icon(
+                    Icons.Default.FormatItalic,
+                    contentDescription = "Italic",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+        
+        item {
+            IconButton(
+                onClick = { onFormatChange("checkbox") },
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF404040))
+            ) {
+                Icon(
+                    Icons.Default.CheckBox,
+                    contentDescription = "Add Checkbox",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+    }
+}
+
+// Helper function to extract checked tasks from rich text content
+private fun extractCheckedTasks(content: String): List<String> {
+    val checkedPattern = Regex("""☑\s*(.+?)(?=\n|$)""")
+    return checkedPattern.findAll(content)
+        .map { it.groupValues[1].trim() }
+        .filter { it.isNotBlank() }
+        .toList()
 }
 
 // Compact version of the Lottie voice orb for home screen input field

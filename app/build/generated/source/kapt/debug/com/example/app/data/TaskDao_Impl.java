@@ -15,6 +15,7 @@ import androidx.room.util.DBUtil;
 import androidx.sqlite.db.SupportSQLiteStatement;
 import java.lang.Class;
 import java.lang.Exception;
+import java.lang.Long;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
@@ -40,6 +41,8 @@ public final class TaskDao_Impl implements TaskDao {
   private final SharedSQLiteStatement __preparedStmtOfDeleteById;
 
   private final SharedSQLiteStatement __preparedStmtOfUpdateCompleted;
+
+  private final SharedSQLiteStatement __preparedStmtOfDeleteAll;
 
   public TaskDao_Impl(@NonNull final RoomDatabase __db) {
     this.__db = __db;
@@ -146,19 +149,27 @@ public final class TaskDao_Impl implements TaskDao {
         return _query;
       }
     };
+    this.__preparedStmtOfDeleteAll = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM tasks";
+        return _query;
+      }
+    };
   }
 
   @Override
-  public Object insert(final Task task, final Continuation<? super Unit> $completion) {
-    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+  public Object insert(final Task task, final Continuation<? super Long> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Long>() {
       @Override
       @NonNull
-      public Unit call() throws Exception {
+      public Long call() throws Exception {
         __db.beginTransaction();
         try {
-          __insertionAdapterOfTask.insert(task);
+          final Long _result = __insertionAdapterOfTask.insertAndReturnId(task);
           __db.setTransactionSuccessful();
-          return Unit.INSTANCE;
+          return _result;
         } finally {
           __db.endTransaction();
         }
@@ -233,6 +244,29 @@ public final class TaskDao_Impl implements TaskDao {
           }
         } finally {
           __preparedStmtOfUpdateCompleted.release(_stmt);
+        }
+      }
+    }, $completion);
+  }
+
+  @Override
+  public Object deleteAll(final Continuation<? super Unit> $completion) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteAll.acquire();
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfDeleteAll.release(_stmt);
         }
       }
     }, $completion);
