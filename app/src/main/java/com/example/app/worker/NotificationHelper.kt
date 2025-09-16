@@ -46,19 +46,6 @@ object NotificationHelper {
         WorkManager.getInstance(context).enqueue(workRequest)
     }
     
-    fun scheduleFocusNotification(context: Context) {
-        val data = Data.Builder()
-            .putString("notificationType", "focus_notification")
-            .build()
-        
-        val workRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
-            .setInputData(data)
-            .setInitialDelay(getTimeUntil9AM(), TimeUnit.MILLISECONDS)
-            .build()
-        
-        WorkManager.getInstance(context).enqueue(workRequest)
-    }
-    
     fun showSyncNotification(context: Context, message: String) {
         val data = Data.Builder()
             .putString("notificationType", "sync_notification")
@@ -103,23 +90,6 @@ object NotificationHelper {
             set(java.util.Calendar.MILLISECOND, 0)
             
             // If 8 AM has passed today, schedule for tomorrow
-            if (timeInMillis <= now) {
-                add(java.util.Calendar.DAY_OF_MONTH, 1)
-            }
-        }
-        return calendar.timeInMillis - now
-    }
-    
-    private fun getTimeUntil9AM(): Long {
-        val now = System.currentTimeMillis()
-        val calendar = java.util.Calendar.getInstance().apply {
-            timeInMillis = now
-            set(java.util.Calendar.HOUR_OF_DAY, 9)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-            
-            // If 9 AM has passed today, schedule for tomorrow
             if (timeInMillis <= now) {
                 add(java.util.Calendar.DAY_OF_MONTH, 1)
             }

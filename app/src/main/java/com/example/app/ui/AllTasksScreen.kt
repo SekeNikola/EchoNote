@@ -34,9 +34,10 @@ fun AllTasksScreen(
     taskViewModel: TaskViewModel = viewModel()
 ) {
     val allTasks by taskViewModel.allTasks.observeAsState(emptyList())
+    val completedTasks by taskViewModel.completedTasks.observeAsState(emptyList())
     val showCreateDialog by taskViewModel.showCreateTaskDialog.collectAsState()
     
-    // Group tasks by date sections
+    // Group tasks by date sections (only active tasks)
     val taskGroups = remember(allTasks) {
         groupTasksByDate(allTasks.filter { !it.isCompleted })
     }
@@ -108,8 +109,29 @@ fun AllTasksScreen(
                 }
             }
             
+            // Completed Tasks Section
+            if (completedTasks.isNotEmpty()) {
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    TaskSectionHeader(
+                        title = "Completed",
+                        taskCount = completedTasks.size,
+                        isOverdue = false
+                    )
+                }
+                
+                items(completedTasks, key = { it.id }) { task ->
+                    TaskCard(
+                        task = task,
+                        onClick = { onTaskClick(task) },
+                        onToggleComplete = { taskViewModel.toggleTaskComplete(task.id) },
+                        modifier = Modifier.animateItemPlacement()
+                    )
+                }
+            }
+            
             // Empty state
-            if (taskGroups.values.all { it.isEmpty() }) {
+            if (taskGroups.values.all { it.isEmpty() } && completedTasks.isEmpty()) {
                 item {
                     EmptyTasksState(
                         onCreateTask = { taskViewModel.showCreateTaskDialog() }

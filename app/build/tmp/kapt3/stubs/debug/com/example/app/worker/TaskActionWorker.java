@@ -1,6 +1,7 @@
 package com.example.app.worker;
 
 import android.content.Context;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.work.CoroutineWorker;
 import androidx.work.WorkerParameters;
 import com.example.app.data.AppDatabase;

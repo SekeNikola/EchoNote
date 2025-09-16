@@ -20,12 +20,12 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.livedata.observeAsState
 import kotlinx.coroutines.launch
 import org.json.JSONObject
-import org.json.JSONArray
 import java.text.SimpleDateFormat
 import java.util.*
 import coil.compose.AsyncImage
@@ -50,12 +50,14 @@ fun NoteDetailScreen(
     var editableTitle by remember(note?.title) { mutableStateOf(note?.title ?: "") }
     var editableText by remember(note?.snippet) {
         mutableStateOf(
-            try {
-                val json = JSONObject(note?.snippet ?: "")
-                json.optString("text", "")
-            } catch (e: Exception) {
-                note?.snippet ?: ""
-            }
+            TextFieldValue(
+                text = try {
+                    val json = JSONObject(note?.snippet ?: "")
+                    json.optString("text", "")
+                } catch (e: Exception) {
+                    note?.snippet ?: ""
+                }
+            )
         )
     }
 
@@ -65,12 +67,14 @@ fun NoteDetailScreen(
     }
 
     LaunchedEffect(note?.snippet) {
-        editableText = try {
-            val json = JSONObject(note?.snippet ?: "")
-            json.optString("text", "")
-        } catch (e: Exception) {
-            note?.snippet ?: ""
-        }
+        editableText = TextFieldValue(
+            text = try {
+                val json = JSONObject(note?.snippet ?: "")
+                json.optString("text", "")
+            } catch (e: Exception) {
+                note?.snippet ?: ""
+            }
+        )
     }
 
     Column(
@@ -127,7 +131,7 @@ fun NoteDetailScreen(
                             viewModel.updateNoteTitle(noteObj.id, editableTitle)
                             
                             // Update content - store plain text in snippet for display
-                            viewModel.updateNoteSnippet(noteObj.id, editableText)
+                            viewModel.updateNoteSnippet(noteObj.id, editableText.text)
                             
                             isEditMode = false
                         }
@@ -246,7 +250,7 @@ fun NoteDetailScreen(
                 }
             }
 
-            // Content area with checkbox support
+            // Content area - simplified read/edit mode
             note?.let { noteObj: com.example.app.data.Note ->
                 val text = if (noteObj.snippet.isNotEmpty()) {
                     try {
@@ -259,126 +263,35 @@ fun NoteDetailScreen(
                     ""
                 }
                 
-                val tasks = try {
-                    val json = JSONObject(noteObj.snippet ?: "")
-                    if (json.has("tasks")) {
-                        val arr = json.getJSONArray("tasks")
-                        List(arr.length()) { arr.getString(it) }
-                    } else emptyList()
-                } catch (e: Exception) { emptyList() }
-                
-                val initialChecked = remember(noteObj.checklistState, tasks) {
-                    try {
-                        noteObj.checklistState?.let { stateStr ->
-                            val arr = org.json.JSONArray(stateStr)
-                            MutableList(tasks.size) { idx ->
-                                if (idx < arr.length()) arr.getBoolean(idx) else false
-                            }
-                        } ?: MutableList(tasks.size) { false }
-                    } catch (e: Exception) { MutableList(tasks.size) { false } }
-                }
-                
-                val checkedStates = remember(noteObj.snippet) { 
-                    mutableStateListOf<Boolean>().apply { addAll(initialChecked) } 
-                }
-                
-                val coroutineScope = rememberCoroutineScope()
-                
-                Column(
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxSize() // Use fillMaxSize instead of height constraints
                         .background(Color(0xFF2A2A2A))
                         .padding(16.dp)
                 ) {
-                    // Show text content if available
-                    if (text.isNotEmpty()) {
-                        if (isEditMode) {
-                            // Use RichTextEditor for editing notes with full formatting
-                            RichTextEditor(
-                                initialText = editableText,
-                                onTextChange = { newText, checkboxItems ->
-                                    editableText = newText
-                                },
-                                onTaskCreated = { taskTitle ->
-                                    // Create task from note text
-                                    viewModel.createTask(
-                                        title = taskTitle,
-                                        description = "Created from note: ${noteObj.title}",
-                                        priority = "Medium",
-                                        dueDate = System.currentTimeMillis() + (24 * 60 * 60 * 1000)
-                                    )
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = 200.dp)
-                            )
-                        } else {
-                            Text(
-                                text = text,
+                    if (isEditMode) {
+                        // Simple text editing with BasicTextField
+                        BasicTextField(
+                            value = editableText,
+                            onValueChange = { newTextFieldValue ->
+                                editableText = newTextFieldValue
+                            },
+                            textStyle = TextStyle(
                                 color = Color.White,
-                                fontSize = 16.sp,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                        
-                        if (tasks.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-                    }
-                    
-                    // Show checkboxes if available
-                    if (tasks.isNotEmpty()) {
-                        tasks.forEachIndexed { index, task ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = checkedStates.getOrElse(index) { false },
-                                    onCheckedChange = { checked ->
-                                        if (index < checkedStates.size) {
-                                            checkedStates[index] = checked
-                                        } else {
-                                            // Extend list if needed
-                                            while (checkedStates.size <= index) {
-                                                checkedStates.add(false)
-                                            }
-                                            checkedStates[index] = checked
-                                        }
-                                        
-                                        // Save checkbox state
-                                        coroutineScope.launch {
-                                            val checkedJson = org.json.JSONArray(checkedStates)
-                                            viewModel.updateChecklistState(noteObj.id, checkedJson.toString())
-                                        }
-                                    },
-                                    colors = CheckboxDefaults.colors(
-                                        checkedColor = Color(0xFF4CAF50),
-                                        uncheckedColor = Color(0xFF666666),
-                                        checkmarkColor = Color.White
-                                    )
-                                )
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                Text(
-                                    text = task,
-                                    color = Color.White,
-                                    fontSize = 16.sp,
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                    
-                    // Show placeholder if no content
-                    if (text.isEmpty() && tasks.isEmpty()) {
+                                fontSize = 16.sp
+                            ),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFF2A2A2A))
+                                .padding(16.dp)
+                        )
+                    } else {
                         Text(
-                            text = "No content",
-                            color = Color(0xFFB0B0B0),
-                            fontSize = 16.sp
+                            text = if (text.isNotEmpty()) text else "No content",
+                            color = if (text.isNotEmpty()) Color.White else Color(0xFFB0B0B0),
+                            fontSize = 16.sp,
+                            lineHeight = 24.sp, // Add line height for better readability
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

@@ -3,6 +3,7 @@ package com.example.app.data;
 import android.database.Cursor;
 import androidx.annotation.NonNull;
 import androidx.room.CoroutinesRoom;
+import androidx.room.EntityDeletionOrUpdateAdapter;
 import androidx.room.EntityInsertionAdapter;
 import androidx.room.RoomDatabase;
 import androidx.room.RoomSQLiteQuery;
@@ -12,6 +13,7 @@ import androidx.room.util.DBUtil;
 import androidx.sqlite.db.SupportSQLiteStatement;
 import java.lang.Class;
 import java.lang.Exception;
+import java.lang.Long;
 import java.lang.Object;
 import java.lang.Override;
 import java.lang.String;
@@ -32,9 +34,15 @@ public final class ReminderDao_Impl implements ReminderDao {
 
   private final EntityInsertionAdapter<Reminder> __insertionAdapterOfReminder;
 
-  private final SharedSQLiteStatement __preparedStmtOfMarkDone;
+  private final EntityDeletionOrUpdateAdapter<Reminder> __deletionAdapterOfReminder;
+
+  private final EntityDeletionOrUpdateAdapter<Reminder> __updateAdapterOfReminder;
+
+  private final SharedSQLiteStatement __preparedStmtOfMarkCompleted;
 
   private final SharedSQLiteStatement __preparedStmtOfReschedule;
+
+  private final SharedSQLiteStatement __preparedStmtOfDeleteById;
 
   public ReminderDao_Impl(@NonNull final RoomDatabase __db) {
     this.__db = __db;
@@ -42,24 +50,85 @@ public final class ReminderDao_Impl implements ReminderDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR ABORT INTO `reminders` (`id`,`noteId`,`time`,`isDone`) VALUES (nullif(?, 0),?,?,?)";
+        return "INSERT OR ABORT INTO `reminders` (`id`,`title`,`description`,`reminderTime`,`isCompleted`,`createdAt`,`noteId`) VALUES (nullif(?, 0),?,?,?,?,?,?)";
       }
 
       @Override
       protected void bind(@NonNull final SupportSQLiteStatement statement,
           @NonNull final Reminder entity) {
         statement.bindLong(1, entity.getId());
-        statement.bindLong(2, entity.getNoteId());
-        statement.bindLong(3, entity.getTime());
-        final int _tmp = entity.isDone() ? 1 : 0;
-        statement.bindLong(4, _tmp);
+        if (entity.getTitle() == null) {
+          statement.bindNull(2);
+        } else {
+          statement.bindString(2, entity.getTitle());
+        }
+        if (entity.getDescription() == null) {
+          statement.bindNull(3);
+        } else {
+          statement.bindString(3, entity.getDescription());
+        }
+        statement.bindLong(4, entity.getReminderTime());
+        final int _tmp = entity.isCompleted() ? 1 : 0;
+        statement.bindLong(5, _tmp);
+        statement.bindLong(6, entity.getCreatedAt());
+        if (entity.getNoteId() == null) {
+          statement.bindNull(7);
+        } else {
+          statement.bindLong(7, entity.getNoteId());
+        }
       }
     };
-    this.__preparedStmtOfMarkDone = new SharedSQLiteStatement(__db) {
+    this.__deletionAdapterOfReminder = new EntityDeletionOrUpdateAdapter<Reminder>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "DELETE FROM `reminders` WHERE `id` = ?";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final Reminder entity) {
+        statement.bindLong(1, entity.getId());
+      }
+    };
+    this.__updateAdapterOfReminder = new EntityDeletionOrUpdateAdapter<Reminder>(__db) {
+      @Override
+      @NonNull
+      protected String createQuery() {
+        return "UPDATE OR ABORT `reminders` SET `id` = ?,`title` = ?,`description` = ?,`reminderTime` = ?,`isCompleted` = ?,`createdAt` = ?,`noteId` = ? WHERE `id` = ?";
+      }
+
+      @Override
+      protected void bind(@NonNull final SupportSQLiteStatement statement,
+          @NonNull final Reminder entity) {
+        statement.bindLong(1, entity.getId());
+        if (entity.getTitle() == null) {
+          statement.bindNull(2);
+        } else {
+          statement.bindString(2, entity.getTitle());
+        }
+        if (entity.getDescription() == null) {
+          statement.bindNull(3);
+        } else {
+          statement.bindString(3, entity.getDescription());
+        }
+        statement.bindLong(4, entity.getReminderTime());
+        final int _tmp = entity.isCompleted() ? 1 : 0;
+        statement.bindLong(5, _tmp);
+        statement.bindLong(6, entity.getCreatedAt());
+        if (entity.getNoteId() == null) {
+          statement.bindNull(7);
+        } else {
+          statement.bindLong(7, entity.getNoteId());
+        }
+        statement.bindLong(8, entity.getId());
+      }
+    };
+    this.__preparedStmtOfMarkCompleted = new SharedSQLiteStatement(__db) {
       @Override
       @NonNull
       public String createQuery() {
-        final String _query = "UPDATE reminders SET isDone = 1 WHERE id = ?";
+        final String _query = "UPDATE reminders SET isCompleted = 1 WHERE id = ?";
         return _query;
       }
     };
@@ -67,14 +136,22 @@ public final class ReminderDao_Impl implements ReminderDao {
       @Override
       @NonNull
       public String createQuery() {
-        final String _query = "UPDATE reminders SET time = ? WHERE id = ?";
+        final String _query = "UPDATE reminders SET reminderTime = ? WHERE id = ?";
+        return _query;
+      }
+    };
+    this.__preparedStmtOfDeleteById = new SharedSQLiteStatement(__db) {
+      @Override
+      @NonNull
+      public String createQuery() {
+        final String _query = "DELETE FROM reminders WHERE id = ?";
         return _query;
       }
     };
   }
 
   @Override
-  public Object insert(final Reminder reminder, final Continuation<? super Unit> $completion) {
+  public Object insert(final Reminder reminder, final Continuation<? super Unit> arg1) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -88,16 +165,52 @@ public final class ReminderDao_Impl implements ReminderDao {
           __db.endTransaction();
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @Override
-  public Object markDone(final long id, final Continuation<? super Unit> $completion) {
+  public Object delete(final Reminder reminder, final Continuation<? super Unit> arg1) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
       public Unit call() throws Exception {
-        final SupportSQLiteStatement _stmt = __preparedStmtOfMarkDone.acquire();
+        __db.beginTransaction();
+        try {
+          __deletionAdapterOfReminder.handle(reminder);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, arg1);
+  }
+
+  @Override
+  public Object update(final Reminder reminder, final Continuation<? super Unit> arg1) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        __db.beginTransaction();
+        try {
+          __updateAdapterOfReminder.handle(reminder);
+          __db.setTransactionSuccessful();
+          return Unit.INSTANCE;
+        } finally {
+          __db.endTransaction();
+        }
+      }
+    }, arg1);
+  }
+
+  @Override
+  public Object markCompleted(final long id, final Continuation<? super Unit> arg1) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfMarkCompleted.acquire();
         int _argIndex = 1;
         _stmt.bindLong(_argIndex, id);
         try {
@@ -110,15 +223,14 @@ public final class ReminderDao_Impl implements ReminderDao {
             __db.endTransaction();
           }
         } finally {
-          __preparedStmtOfMarkDone.release(_stmt);
+          __preparedStmtOfMarkCompleted.release(_stmt);
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @Override
-  public Object reschedule(final long id, final long time,
-      final Continuation<? super Unit> $completion) {
+  public Object reschedule(final long id, final long time, final Continuation<? super Unit> arg2) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -141,12 +253,37 @@ public final class ReminderDao_Impl implements ReminderDao {
           __preparedStmtOfReschedule.release(_stmt);
         }
       }
-    }, $completion);
+    }, arg2);
+  }
+
+  @Override
+  public Object deleteById(final long id, final Continuation<? super Unit> arg1) {
+    return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
+      @Override
+      @NonNull
+      public Unit call() throws Exception {
+        final SupportSQLiteStatement _stmt = __preparedStmtOfDeleteById.acquire();
+        int _argIndex = 1;
+        _stmt.bindLong(_argIndex, id);
+        try {
+          __db.beginTransaction();
+          try {
+            _stmt.executeUpdateDelete();
+            __db.setTransactionSuccessful();
+            return Unit.INSTANCE;
+          } finally {
+            __db.endTransaction();
+          }
+        } finally {
+          __preparedStmtOfDeleteById.release(_stmt);
+        }
+      }
+    }, arg1);
   }
 
   @Override
   public Flow<List<Reminder>> getActiveReminders() {
-    final String _sql = "SELECT * FROM reminders WHERE isDone = 0 ORDER BY time ASC";
+    final String _sql = "SELECT * FROM reminders WHERE isCompleted = 0 ORDER BY reminderTime ASC";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
     return CoroutinesRoom.createFlow(__db, false, new String[] {"reminders"}, new Callable<List<Reminder>>() {
       @Override
@@ -155,23 +292,108 @@ public final class ReminderDao_Impl implements ReminderDao {
         final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
         try {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
+          final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
+          final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
+          final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfNoteId = CursorUtil.getColumnIndexOrThrow(_cursor, "noteId");
-          final int _cursorIndexOfTime = CursorUtil.getColumnIndexOrThrow(_cursor, "time");
-          final int _cursorIndexOfIsDone = CursorUtil.getColumnIndexOrThrow(_cursor, "isDone");
           final List<Reminder> _result = new ArrayList<Reminder>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Reminder _item;
             final long _tmpId;
             _tmpId = _cursor.getLong(_cursorIndexOfId);
-            final long _tmpNoteId;
-            _tmpNoteId = _cursor.getLong(_cursorIndexOfNoteId);
-            final long _tmpTime;
-            _tmpTime = _cursor.getLong(_cursorIndexOfTime);
-            final boolean _tmpIsDone;
+            final String _tmpTitle;
+            if (_cursor.isNull(_cursorIndexOfTitle)) {
+              _tmpTitle = null;
+            } else {
+              _tmpTitle = _cursor.getString(_cursorIndexOfTitle);
+            }
+            final String _tmpDescription;
+            if (_cursor.isNull(_cursorIndexOfDescription)) {
+              _tmpDescription = null;
+            } else {
+              _tmpDescription = _cursor.getString(_cursorIndexOfDescription);
+            }
+            final long _tmpReminderTime;
+            _tmpReminderTime = _cursor.getLong(_cursorIndexOfReminderTime);
+            final boolean _tmpIsCompleted;
             final int _tmp;
-            _tmp = _cursor.getInt(_cursorIndexOfIsDone);
-            _tmpIsDone = _tmp != 0;
-            _item = new Reminder(_tmpId,_tmpNoteId,_tmpTime,_tmpIsDone);
+            _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
+            _tmpIsCompleted = _tmp != 0;
+            final long _tmpCreatedAt;
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
+            final Long _tmpNoteId;
+            if (_cursor.isNull(_cursorIndexOfNoteId)) {
+              _tmpNoteId = null;
+            } else {
+              _tmpNoteId = _cursor.getLong(_cursorIndexOfNoteId);
+            }
+            _item = new Reminder(_tmpId,_tmpTitle,_tmpDescription,_tmpReminderTime,_tmpIsCompleted,_tmpCreatedAt,_tmpNoteId);
+            _result.add(_item);
+          }
+          return _result;
+        } finally {
+          _cursor.close();
+        }
+      }
+
+      @Override
+      protected void finalize() {
+        _statement.release();
+      }
+    });
+  }
+
+  @Override
+  public Flow<List<Reminder>> getAllReminders() {
+    final String _sql = "SELECT * FROM reminders ORDER BY reminderTime ASC";
+    final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
+    return CoroutinesRoom.createFlow(__db, false, new String[] {"reminders"}, new Callable<List<Reminder>>() {
+      @Override
+      @NonNull
+      public List<Reminder> call() throws Exception {
+        final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
+        try {
+          final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
+          final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
+          final int _cursorIndexOfReminderTime = CursorUtil.getColumnIndexOrThrow(_cursor, "reminderTime");
+          final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
+          final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
+          final int _cursorIndexOfNoteId = CursorUtil.getColumnIndexOrThrow(_cursor, "noteId");
+          final List<Reminder> _result = new ArrayList<Reminder>(_cursor.getCount());
+          while (_cursor.moveToNext()) {
+            final Reminder _item;
+            final long _tmpId;
+            _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpTitle;
+            if (_cursor.isNull(_cursorIndexOfTitle)) {
+              _tmpTitle = null;
+            } else {
+              _tmpTitle = _cursor.getString(_cursorIndexOfTitle);
+            }
+            final String _tmpDescription;
+            if (_cursor.isNull(_cursorIndexOfDescription)) {
+              _tmpDescription = null;
+            } else {
+              _tmpDescription = _cursor.getString(_cursorIndexOfDescription);
+            }
+            final long _tmpReminderTime;
+            _tmpReminderTime = _cursor.getLong(_cursorIndexOfReminderTime);
+            final boolean _tmpIsCompleted;
+            final int _tmp;
+            _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
+            _tmpIsCompleted = _tmp != 0;
+            final long _tmpCreatedAt;
+            _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
+            final Long _tmpNoteId;
+            if (_cursor.isNull(_cursorIndexOfNoteId)) {
+              _tmpNoteId = null;
+            } else {
+              _tmpNoteId = _cursor.getLong(_cursorIndexOfNoteId);
+            }
+            _item = new Reminder(_tmpId,_tmpTitle,_tmpDescription,_tmpReminderTime,_tmpIsCompleted,_tmpCreatedAt,_tmpNoteId);
             _result.add(_item);
           }
           return _result;

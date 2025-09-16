@@ -25,7 +25,8 @@ import java.util.*
 fun EnhancedNoteCreationScreen(
     initialNoteText: String = "",
     onNavigateBack: () -> Unit,
-    taskViewModel: TaskViewModel = viewModel()
+    taskViewModel: TaskViewModel = viewModel(),
+    noteViewModel: com.example.app.viewmodel.NoteViewModel = viewModel()
 ) {
     var noteText by remember { mutableStateOf(initialNoteText) }
     var checkboxItems by remember { mutableStateOf<List<CheckboxItem>>(emptyList()) }
@@ -73,16 +74,6 @@ fun EnhancedNoteCreationScreen(
                 onTextChange = { text, checkboxes ->
                     noteText = text
                     checkboxItems = checkboxes
-                },
-                onTaskCreated = { taskTitle ->
-                    scope.launch {
-                        taskViewModel.createTask(
-                            title = taskTitle,
-                            description = "Created from note",
-                            priority = "Medium",
-                            dueDate = System.currentTimeMillis() + (24 * 60 * 60 * 1000) // Tomorrow
-                        )
-                    }
                 },
                 modifier = Modifier.fillMaxSize()
             )
@@ -132,12 +123,12 @@ fun EnhancedNoteCreationScreen(
                                     
                                     android.util.Log.d("VoiceReminder", "Parsed reminder minutes: $reminderMinutes for text: '$reminderText'")
                                     
-                                    taskViewModel.createTaskWithReminder(
-                                        title = "Reminder: ${command.content}",
+                                    // Create a reminder (not a task) for voice commands
+                                    val reminderTime = System.currentTimeMillis() + (reminderMinutes * 60 * 1000)
+                                    noteViewModel.createReminder(
+                                        title = command.content,
                                         description = "Voice reminder",
-                                        priority = "High",
-                                        dueDate = System.currentTimeMillis() + (reminderMinutes * 60 * 1000),
-                                        reminderMinutes = reminderMinutes
+                                        reminderTime = reminderTime
                                     )
                                 }
                             }

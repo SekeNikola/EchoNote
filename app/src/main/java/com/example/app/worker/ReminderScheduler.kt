@@ -44,10 +44,7 @@ object ReminderScheduler {
     }
     
     fun scheduleRecurringNotifications(context: Context) {
-        // Schedule daily summary at 8 AM
+        // Only schedule daily summary at 8 AM - removed task reminders and focus notification
         NotificationHelper.scheduleDailySummaryNotification(context)
-        
-        // Schedule focus notification at 9 AM
-        NotificationHelper.scheduleFocusNotification(context)
     }
 }

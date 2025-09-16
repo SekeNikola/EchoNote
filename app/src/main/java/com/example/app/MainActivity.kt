@@ -11,23 +11,48 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -43,6 +68,7 @@ import com.example.app.util.ApiKeyProvider
 import com.example.app.util.ApiKeyValidator
 import com.example.app.network.RetrofitInstance
 import com.example.app.server.ServerService
+import com.example.app.worker.ReminderScheduler
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -62,11 +88,26 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    private val overlayPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            // Check if overlay permission was granted
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (Settings.canDrawOverlays(this)) {
+                    // Permission granted - could show success message
+                } else {
+                    // Permission denied - could show explanation
+                }
+            }
+        }
+
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 
 		// Start the server service as foreground service
 		ServerService.startService(this)
+		
+		// Schedule recurring notifications (8AM daily reminders, etc.)
+		ReminderScheduler.scheduleRecurringNotifications(this)
 		
 		// Request notification permission for Android 13+
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -79,8 +120,14 @@ class MainActivity : ComponentActivity() {
 		// Request to ignore battery optimizations for continuous background operation
 		requestBatteryOptimizationExemption()
 
+		// Request overlay permission for voice assistant orb
+		requestOverlayPermission()
+
 		// Handle widget intents
 		val widgetAction = intent.getStringExtra("widget_action")
+		
+		// Handle navigation intents (from VoiceAssistantTriggerActivity)
+		val navigateTo = intent.getStringExtra("navigate_to")
 		
 		// Handle voice assistant activation
 		val startVoiceAssistant = intent.getBooleanExtra("start_voice_assistant", false)
@@ -97,12 +144,26 @@ class MainActivity : ComponentActivity() {
 						var showPermissionDialog by remember { mutableStateOf(false) }
 						var pendingPermissions by remember { mutableStateOf<Array<String>>(emptyArray()) }
 						
+						// Monitor shared preferences for voice assistant triggers
+						LaunchedEffect(Unit) {
+							val sharedPref = getSharedPreferences("voice_prefs", MODE_PRIVATE)
+							while (true) {
+								kotlinx.coroutines.delay(500) // Check every 500ms
+								val triggerVoice = sharedPref.getBoolean("trigger_voice", false)
+								
+								if (triggerVoice) {
+									shouldStartVoiceAssistant = true
+									sharedPref.edit().putBoolean("trigger_voice", false).apply()
+								}
+							}
+						}
+						
 						androidx.compose.foundation.layout.Box {
 							Surface {
 								val navController = rememberNavController()
 						val context = applicationContext
 						val db = AppDatabase.getDatabase(context)
-						val repo = NoteRepository(db.noteDao(), db.taskDao(), db.chatMessageDao())
+						val repo = NoteRepository(db.noteDao(), db.taskDao(), db.chatMessageDao(), db.reminderDao())
 						val app = requireNotNull(application)
 						val viewModel: NoteViewModel = viewModel(
 							factory = object : ViewModelProvider.Factory {
@@ -227,17 +288,18 @@ class MainActivity : ComponentActivity() {
 								}
 							}
 							
-							// Determine starting destination based on widget action
-							val startDestination = when (widgetAction) {
-								"record_audio" -> "recording"
-								"upload_audio" -> "uploadAudio"
-								"take_picture" -> "imageCapture"
-								"upload_image" -> "uploadImage"
-								"type_text" -> "typeText"
-								"videos" -> "videoUrl"
-								"web_page" -> "webPage"
-								"upload_files" -> "documentUpload"
-								"assistant" -> "voiceCommand"
+							// Determine starting destination based on widget action or navigation intent
+							val startDestination = when {
+								navigateTo == "ai_voice" -> "ai_voice"
+								widgetAction == "record_audio" -> "recording"
+								widgetAction == "upload_audio" -> "uploadAudio"
+								widgetAction == "take_picture" -> "imageCapture"
+								widgetAction == "upload_image" -> "uploadImage"
+								widgetAction == "type_text" -> "typeText"
+								widgetAction == "videos" -> "videoUrl"
+								widgetAction == "web_page" -> "webPage"
+								widgetAction == "upload_files" -> "documentUpload"
+								widgetAction == "assistant" -> "voiceCommand"
 								else -> "home"
 							}
 							
@@ -309,6 +371,22 @@ class MainActivity : ComponentActivity() {
 		}
 	}
 	
+	private fun requestOverlayPermission() {
+		try {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+				if (!Settings.canDrawOverlays(this)) {
+					val intent = Intent(
+						Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+						Uri.parse("package:$packageName")
+					)
+					overlayPermissionLauncher.launch(intent)
+				}
+			}
+		} catch (e: Exception) {
+			android.util.Log.e("MainActivity", "Error requesting overlay permission", e)
+		}
+	}
+	
 	override fun onNewIntent(intent: Intent?) {
 		super.onNewIntent(intent)
 		
@@ -320,6 +398,13 @@ class MainActivity : ComponentActivity() {
 			// to communicate with your Compose UI
 			val sharedPref = getSharedPreferences("voice_prefs", MODE_PRIVATE)
 			sharedPref.edit().putBoolean("trigger_voice", true).apply()
+			sharedPref.edit().putBoolean("show_voice_orb", true).apply()
+		}
+		
+		// Handle voice orb display request
+		if (intent?.getBooleanExtra("show_voice_orb", false) == true) {
+			val sharedPref = getSharedPreferences("voice_prefs", MODE_PRIVATE)
+			sharedPref.edit().putBoolean("show_voice_orb", true).apply()
 		}
 	}
 }

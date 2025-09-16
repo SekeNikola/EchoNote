@@ -11,6 +11,7 @@ import com.example.app.data.AppDatabase
 import com.example.app.data.Task
 import com.example.app.data.TaskRepository
 import com.example.app.worker.ReminderWorker
+import com.example.app.worker.ReminderScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -23,6 +24,7 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
     // LiveData for observing tasks
     val allTasks = taskRepository.getAllTasks().asLiveData()
     val activeTasks = taskRepository.getActiveTasks().asLiveData()
+    val completedTasks = taskRepository.getCompletedTasks(20).asLiveData()
     val topPriorityTasks = taskRepository.getTopPriorityTasks().asLiveData()
     
     // UI State
@@ -50,7 +52,20 @@ class TaskViewModel(app: Application) : AndroidViewModel(app) {
             createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis()
         )
-        taskRepository.insertTask(task)
+        val taskId = taskRepository.insertTask(task)
+        
+        // Auto-schedule reminder if due date is in the future
+        val currentTime = System.currentTimeMillis()
+        if (dueDate > currentTime) {
+            val delayMillis = dueDate - currentTime
+            ReminderScheduler.scheduleTaskReminder(
+                getApplication<android.app.Application>(),
+                taskId,
+                title,
+                delayMillis
+            )
+        }
+        
         hideCreateTaskDialog()
     }
     

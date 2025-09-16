@@ -20,6 +20,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.livedata.observeAsState
@@ -49,12 +50,14 @@ fun NoteDetailScreenNew(
     var editableTitle by remember(note?.title) { mutableStateOf(note?.title ?: "") }
     var editableText by remember(note?.snippet) {
         mutableStateOf(
-            try {
-                val json = JSONObject(note?.snippet ?: "")
-                json.optString("text", "")
-            } catch (e: Exception) {
-                note?.snippet ?: ""
-            }
+            TextFieldValue(
+                text = try {
+                    val json = JSONObject(note?.snippet ?: "")
+                    json.optString("text", "")
+                } catch (e: Exception) {
+                    note?.snippet ?: ""
+                }
+            )
         )
     }
 
@@ -64,12 +67,14 @@ fun NoteDetailScreenNew(
     }
 
     LaunchedEffect(note?.snippet) {
-        editableText = try {
-            val json = JSONObject(note?.snippet ?: "")
-            json.optString("text", "")
-        } catch (e: Exception) {
-            note?.snippet ?: ""
-        }
+        editableText = TextFieldValue(
+            text = try {
+                val json = JSONObject(note?.snippet ?: "")
+                json.optString("text", "")
+            } catch (e: Exception) {
+                note?.snippet ?: ""
+            }
+        )
     }
 
     Column(
@@ -126,7 +131,7 @@ fun NoteDetailScreenNew(
                             viewModel.updateNoteTitle(noteObj.id, editableTitle)
                             
                             // Update content - store plain text in snippet for display
-                            viewModel.updateNoteSnippet(noteObj.id, editableText)
+                            viewModel.updateNoteSnippet(noteObj.id, editableText.text)
                             
                             isEditMode = false
                         }
@@ -214,74 +219,65 @@ fun NoteDetailScreenNew(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Scrollable content area
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-        ) {
-            // Image display if available
-            note?.imagePath?.let { imagePath ->
-                Card(
+        // Image display if available (outside of main content area)
+        note?.imagePath?.let { imagePath ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF383838))
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(imagePath)
+                        .build(),
+                    contentDescription = "Note image",
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(200.dp)
-                        .padding(bottom = 16.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF383838))
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalContext.current)
-                            .data(imagePath)
-                            .build(),
-                        contentDescription = "Note image",
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Fit
-                    )
-                }
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Fit
+                )
             }
+        }
 
-            // Content area - simplified read/edit mode
-            note?.let { noteObj: com.example.app.data.Note ->
-                val text = if (noteObj.snippet.isNotEmpty()) {
-                    try {
-                        val json = JSONObject(noteObj.snippet)
-                        json.optString("text", "")
-                    } catch (e: Exception) {
-                        noteObj.snippet
-                    }
-                } else {
-                    ""
+        // Content area - fill remaining space
+        note?.let { noteObj: com.example.app.data.Note ->
+            val text = if (noteObj.snippet.isNotEmpty()) {
+                try {
+                    val json = JSONObject(noteObj.snippet)
+                    json.optString("text", "")
+                } catch (e: Exception) {
+                    noteObj.snippet
                 }
-                
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFF2A2A2A))
-                        .padding(16.dp)
-                ) {
-                    if (isEditMode) {
-                        BasicTextField(
-                            value = editableText,
-                            onValueChange = { editableText = it },
-                            textStyle = TextStyle(
-                                color = Color.White,
-                                fontSize = 16.sp
-                            ),
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Text(
-                            text = if (text.isNotEmpty()) text else "No content",
-                            color = if (text.isNotEmpty()) Color.White else Color(0xFFB0B0B0),
-                            fontSize = 16.sp,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+            } else {
+                ""
+            }
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(Color(0xFF2A2A2A))
+                    .padding(16.dp)
+            ) {
+                if (isEditMode) {
+                    RichTextEditor(
+                        initialText = editableText.text,
+                        onTextChange = { text, _ ->
+                            editableText = editableText.copy(text = text)
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    Text(
+                        text = if (text.isNotEmpty()) text else "No content",
+                        color = if (text.isNotEmpty()) Color.White else Color(0xFFB0B0B0),
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp, // Add line height for better readability
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
         }

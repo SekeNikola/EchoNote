@@ -89,7 +89,7 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
   }
 
   @Override
-  public Object insert(final ChatMessage message, final Continuation<? super Unit> $completion) {
+  public Object insert(final ChatMessage message, final Continuation<? super Unit> arg1) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -103,11 +103,11 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           __db.endTransaction();
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @Override
-  public Object deleteAll(final Continuation<? super Unit> $completion) {
+  public Object deleteAll(final Continuation<? super Unit> arg0) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -126,12 +126,11 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           __preparedStmtOfDeleteAll.release(_stmt);
         }
       }
-    }, $completion);
+    }, arg0);
   }
 
   @Override
-  public Object deleteSession(final String sessionId,
-      final Continuation<? super Unit> $completion) {
+  public Object deleteSession(final String sessionId, final Continuation<? super Unit> arg1) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -156,7 +155,7 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           __preparedStmtOfDeleteSession.release(_stmt);
         }
       }
-    }, $completion);
+    }, arg1);
   }
 
   @Override
@@ -221,7 +220,7 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
   }
 
   @Override
-  public Object getAllMessagesOnce(final Continuation<? super List<ChatMessage>> $completion) {
+  public Object getAllMessagesOnce(final Continuation<? super List<ChatMessage>> arg0) {
     final String _sql = "SELECT * FROM chat_messages ORDER BY timestamp ASC";
     final RoomSQLiteQuery _statement = RoomSQLiteQuery.acquire(_sql, 0);
     final CancellationSignal _cancellationSignal = DBUtil.createCancellationSignal();
@@ -275,7 +274,7 @@ public final class ChatMessageDao_Impl implements ChatMessageDao {
           _statement.release();
         }
       }
-    }, $completion);
+    }, arg0);
   }
 
   @Override

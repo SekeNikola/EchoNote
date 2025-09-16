@@ -56,7 +56,6 @@ data class CheckboxItem(
 fun RichTextEditor(
     initialText: String = "",
     onTextChange: (String, List<CheckboxItem>) -> Unit,
-    onTaskCreated: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var richTextState by remember { 
@@ -67,7 +66,6 @@ fun RichTextEditor(
             )
         )
     }
-    val scope = rememberCoroutineScope()
 
     Column(
         modifier = modifier
@@ -109,43 +107,12 @@ fun RichTextEditor(
                 RenderRichText(
                     state = richTextState,
                     onStateChange = { richTextState = it },
-                    onTextChange = onTextChange,
-                    onTaskCreated = onTaskCreated
+                    onTextChange = onTextChange
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
 
-        // Action buttons
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = {
-                    scope.launch {
-                        onTextChange(richTextState.text.text, richTextState.checkboxes)
-                    }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Save")
-            }
-
-            OutlinedButton(
-                onClick = {
-                    // Create tasks from checked items
-                    richTextState.checkboxes.filter { it.isChecked && it.text.isNotBlank() }
-                        .forEach { checkbox ->
-                            onTaskCreated(checkbox.text)
-                        }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Create Tasks")
-            }
-        }
     }
 }
 
@@ -287,8 +254,7 @@ private fun FormatButton(
 private fun RenderRichText(
     state: RichTextState,
     onStateChange: (RichTextState) -> Unit,
-    onTextChange: (String, List<CheckboxItem>) -> Unit,
-    onTaskCreated: (String) -> Unit
+    onTextChange: (String, List<CheckboxItem>) -> Unit
 ) {
     Column {
         // Render checkboxes

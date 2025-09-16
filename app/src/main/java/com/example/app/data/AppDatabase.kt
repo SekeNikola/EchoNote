@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 
-@Database(entities = [Note::class, Reminder::class, NoteCrossRef::class, Task::class, ChatMessage::class], version = 6)
+@Database(entities = [Note::class, Reminder::class, NoteCrossRef::class, Task::class, ChatMessage::class], version = 7)
 @TypeConverters(Converters::class, ReminderConverters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
@@ -24,7 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "logion_db"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                 .fallbackToDestructiveMigration()
                 .build().also { INSTANCE = it }
             }
@@ -83,6 +83,24 @@ abstract class AppDatabase : RoomDatabase() {
                 // Add serverId and imagePath columns to notes table
                 database.execSQL("ALTER TABLE notes ADD COLUMN serverId TEXT")
                 database.execSQL("ALTER TABLE notes ADD COLUMN imagePath TEXT")
+            }
+        }
+        
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Recreate reminders table with new structure
+                database.execSQL("DROP TABLE IF EXISTS reminders")
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS reminders (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        title TEXT NOT NULL,
+                        description TEXT NOT NULL DEFAULT '',
+                        reminderTime INTEGER NOT NULL,
+                        isCompleted INTEGER NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL,
+                        noteId INTEGER
+                    )
+                """.trimIndent())
             }
         }
     }

@@ -89,7 +89,20 @@ fun TaskDetailScreen(
                 }
             },
             actions = {
-                // 3-dot menu with edit and delete options
+                // Edit button (always visible when not in edit mode)
+                if (!isEditMode) {
+                    IconButton(
+                        onClick = { isEditMode = true }
+                    ) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit task",
+                            tint = Color.White
+                        )
+                    }
+                }
+                
+                // 3-dot menu with additional options
                 var showMenu by remember { mutableStateOf(false) }
                 
                 Box {
@@ -106,22 +119,42 @@ fun TaskDetailScreen(
                         onDismissRequest = { showMenu = false },
                         modifier = Modifier.background(Color(0xFF2A2A3E))
                     ) {
+                        if (!isEditMode) {
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Edit Task", color = Color.White)
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    isEditMode = true
+                                }
+                            )
+                        }
                         DropdownMenuItem(
                             text = {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        Icons.Default.Edit,
+                                        Icons.Default.Share,
                                         contentDescription = null,
                                         tint = Color.White,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Edit Task", color = Color.White)
+                                    Text("Share Task", color = Color.White)
                                 }
                             },
                             onClick = {
                                 showMenu = false
-                                isEditMode = true
+                                // Share functionality can be implemented here
                             }
                         )
                         DropdownMenuItem(
@@ -284,27 +317,20 @@ fun TaskDetailScreen(
             
             // Task description (editable if in edit mode)
             if (isEditMode) {
-                Card(
+                OutlinedTextField(
+                    value = editDescription,
+                    onValueChange = { editDescription = it },
+                    label = { Text("Description", color = Color(0xFFB0B0B0)) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color(0xFF2A2A3E)
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFFFF8C00),
+                        unfocusedBorderColor = Color(0xFF404056),
+                        cursorColor = Color(0xFFFF8C00)
                     ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    RichTextEditor(
-                        initialText = editDescription,
-                        onTextChange = { text, checkboxItems ->
-                            editDescription = text
-                        },
-                        onTaskCreated = { taskTitle ->
-                            // Could create subtasks here if needed
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 150.dp)
-                            .padding(8.dp)
-                    )
-                }
+                    minLines = 3
+                )
             } else {
                 Card(
                     modifier = Modifier.fillMaxWidth(),

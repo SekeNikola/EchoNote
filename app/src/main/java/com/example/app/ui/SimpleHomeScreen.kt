@@ -43,6 +43,8 @@ import coil.request.ImageRequest
 import com.example.app.data.Note
 import com.example.app.data.Task
 import com.example.app.viewmodel.NoteViewModel
+import com.example.app.viewmodel.TaskViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import android.app.TimePickerDialog
@@ -65,7 +67,8 @@ import com.example.app.R
 fun SimpleHomeScreen(
     navController: NavController,
     viewModel: NoteViewModel,
-    onAddNote: () -> Unit = {}
+    onAddNote: () -> Unit = {},
+    taskViewModel: TaskViewModel = viewModel()
 ) {
     val notes by viewModel.notes.observeAsState(emptyList())
     val tasks by viewModel.allTasks.collectAsState()
@@ -357,6 +360,20 @@ fun SimpleHomeScreen(
                 
                 Spacer(modifier = Modifier.width(12.dp))
                 
+                // Reminders bell icon
+                IconButton(
+                    onClick = { navController.navigate("reminders") }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Notifications,
+                        contentDescription = "Reminders",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.width(8.dp))
+                
                 IconButton(
                     onClick = { navController.navigate("settings") }
                 ) {
@@ -388,7 +405,7 @@ fun SimpleHomeScreen(
                         onClick = { navController.navigate("all_tasks") }
                     ) {
                         Text(
-                            "Enhanced Tasks",
+                            "See All",
                             color = Color(0xFFFF8C00),
                             fontSize = 15.sp
                         )
@@ -477,25 +494,14 @@ fun SimpleHomeScreen(
                     color = Color.White
                 )
                 if (searchQuery.isEmpty()) {
-                    Row {
-                        TextButton(
-                            onClick = { navController.navigate("notes") }
-                        ) {
-                            Text(
-                                "See All",
-                                color = Color(0xFFFF8C00),
-                                fontSize = 15.sp
-                            )
-                        }
-                        TextButton(
-                            onClick = { navController.navigate("enhanced_note_creation") }
-                        ) {
-                            Text(
-                                "Rich Editor",
-                                color = Color(0xFF00FF00),
-                                fontSize = 15.sp
-                            )
-                        }
+                    TextButton(
+                        onClick = { navController.navigate("notes") }
+                    ) {
+                        Text(
+                            "See All",
+                            color = Color(0xFFFF8C00),
+                            fontSize = 15.sp
+                        )
                     }
                 }
             }
@@ -725,7 +731,7 @@ fun SimpleHomeScreen(
         ) {
             AddTaskBottomSheet(
                 onCreateTask = { title, description, priority, dueDate ->
-                    viewModel.createTask(title, description, priority, dueDate)
+                    taskViewModel.createTask(title, description, priority, dueDate)
                     showAddTaskSheet = false
                 },
                 onDismiss = { showAddTaskSheet = false }
@@ -948,16 +954,8 @@ fun AddTaskBottomSheet(
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var priority by remember { mutableStateOf("Medium") }
-    // Set default date to start of today to ensure it shows up in "Today's Tasks"
-    val todayStart = remember {
-        Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
-    }
-    var selectedDate by remember { mutableStateOf<Long>(todayStart) }
+    // Set default date to current time (not start of day) for more intuitive date selection
+    var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     
@@ -1010,64 +1008,23 @@ fun AddTaskBottomSheet(
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Description input - Rich Text Editor
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF2E2E2E)
+        // Description input
+        OutlinedTextField(
+            value = description,
+            onValueChange = { description = it },
+            placeholder = { Text("Task description...", color = Color(0xFFB0B0B0)) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Color(0xFFFF8C00),
+                unfocusedBorderColor = Color(0xFF4A4A5E),
+                focusedTextColor = Color.White,
+                unfocusedTextColor = Color.White,
+                cursorColor = Color(0xFFFF8C00)
             ),
-            shape = RoundedCornerShape(8.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(12.dp)
-            ) {
-                // Rich text formatting toolbar
-                RichTextFormattingToolbar(
-                    onFormatChange = { format ->
-                        // Apply formatting to description
-                        when (format) {
-                            "bold" -> {
-                                description = if (description.isEmpty()) "**bold text**" 
-                                             else "$description\n**bold text**"
-                            }
-                            "italic" -> {
-                                description = if (description.isEmpty()) "*italic text*"
-                                             else "$description\n*italic text*"
-                            }
-                            "checkbox" -> {
-                                description = if (description.isEmpty()) "☐ New task"
-                                             else "$description\n☐ New task"
-                            }
-                        }
-                    }
-                )
-                
-                Spacer(modifier = Modifier.height(8.dp))
-                
-                // Text input with rich text support
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    placeholder = { Text("Task description with rich text support...", color = Color(0xFFB0B0B0)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .fillMaxHeight(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFFFF8C00),
-                        unfocusedBorderColor = Color(0xFF4A4A5E),
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = Color(0xFFFF8C00)
-                    ),
-                    maxLines = 8,
-                    singleLine = false
-                )
-            }
-        }
+            minLines = 3,
+            maxLines = 5,
+            singleLine = false
+        )
         
         Spacer(modifier = Modifier.height(24.dp))
         
@@ -1234,7 +1191,18 @@ fun AddTaskBottomSheet(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        datePickerState.selectedDateMillis?.let { selectedDate = it }
+                        datePickerState.selectedDateMillis?.let { newDateMillis ->
+                            // Preserve the time from the current selectedDate when changing the date
+                            val currentCalendar = Calendar.getInstance().apply { timeInMillis = selectedDate }
+                            val newCalendar = Calendar.getInstance().apply { 
+                                timeInMillis = newDateMillis
+                                set(Calendar.HOUR_OF_DAY, currentCalendar.get(Calendar.HOUR_OF_DAY))
+                                set(Calendar.MINUTE, currentCalendar.get(Calendar.MINUTE))
+                                set(Calendar.SECOND, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            selectedDate = newCalendar.timeInMillis
+                        }
                         showDatePicker = false
                     }
                 ) {
@@ -1402,7 +1370,7 @@ fun AddNoteBottomSheet(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp),
+                .weight(1f),
             colors = CardDefaults.cardColors(
                 containerColor = Color(0xFF2E2E2E)
             ),
@@ -1452,7 +1420,6 @@ fun AddNoteBottomSheet(
                         unfocusedTextColor = Color.White,
                         cursorColor = Color(0xFFFF8C00)
                     ),
-                    maxLines = 8,
                     singleLine = false
                 )
             }

@@ -1,6 +1,7 @@
 package com.example.app.worker
 
 import android.content.Context
+import androidx.core.app.NotificationManagerCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.app.data.AppDatabase
@@ -27,6 +28,9 @@ class TaskActionWorker(
                     // Update task as completed
                     taskRepository.markTaskCompleted(taskId, true)
                     
+                    // Cancel the notification for this task
+                    NotificationManagerCompat.from(applicationContext).cancel(taskId.toInt())
+                    
                     // Show success notification
                     NotificationHelper.showSuccessNotification(
                         applicationContext,
@@ -38,6 +42,9 @@ class TaskActionWorker(
                 "snooze" -> {
                     val snoozeMinutes = inputData.getLong("snoozeMinutes", 15L)
                     val newDueTime = System.currentTimeMillis() + (snoozeMinutes * 60 * 1000)
+                    
+                    // Cancel the current notification for this task
+                    NotificationManagerCompat.from(applicationContext).cancel(taskId.toInt())
                     
                     // Reschedule the task
                     taskRepository.updateTaskDueDate(taskId, newDueTime)

@@ -46,6 +46,51 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 WorkManager.getInstance(context).enqueue(workRequest)
             }
             
+            "SNOOZE_5" -> {
+                // Schedule work to snooze task for 5 minutes
+                val data = Data.Builder()
+                    .putLong("taskId", taskId)
+                    .putString("action", "snooze")
+                    .putLong("snoozeMinutes", 5)
+                    .build()
+                
+                val workRequest = OneTimeWorkRequestBuilder<TaskActionWorker>()
+                    .setInputData(data)
+                    .build()
+                
+                WorkManager.getInstance(context).enqueue(workRequest)
+            }
+            
+            "SNOOZE_15" -> {
+                // Schedule work to snooze task for 15 minutes
+                val data = Data.Builder()
+                    .putLong("taskId", taskId)
+                    .putString("action", "snooze")
+                    .putLong("snoozeMinutes", 15)
+                    .build()
+                
+                val workRequest = OneTimeWorkRequestBuilder<TaskActionWorker>()
+                    .setInputData(data)
+                    .build()
+                
+                WorkManager.getInstance(context).enqueue(workRequest)
+            }
+            
+            "SNOOZE_60" -> {
+                // Schedule work to snooze task for 1 hour
+                val data = Data.Builder()
+                    .putLong("taskId", taskId)
+                    .putString("action", "snooze")
+                    .putLong("snoozeMinutes", 60)
+                    .build()
+                
+                val workRequest = OneTimeWorkRequestBuilder<TaskActionWorker>()
+                    .setInputData(data)
+                    .build()
+                
+                WorkManager.getInstance(context).enqueue(workRequest)
+            }
+            
             "EDIT" -> {
                 // Open the app to edit the task
                 val appIntent = Intent(context, com.example.app.MainActivity::class.java).apply {

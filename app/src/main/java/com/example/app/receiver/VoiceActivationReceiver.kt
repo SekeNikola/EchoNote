@@ -16,23 +16,25 @@ class VoiceActivationReceiver : BroadcastReceiver() {
         Log.d(TAG, "Voice activation broadcast received: ${intent.action}")
         
         when (intent.action) {
-            ACTION_VOICE_ASSISTANT_TRIGGER -> {
-                // Start the main activity with voice assistant flag
-                val mainIntent = Intent(context, com.example.app.MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    putExtra("start_voice_assistant", true)
-                    action = "android.intent.action.VOICE_ASSISTANT"
+            ACTION_VOICE_ASSISTANT_TRIGGER,
+            "com.example.app.KEYMAP_VOICE_TRIGGER" -> {
+                // Start VoiceAssistantTriggerActivity to navigate directly to AI voice screen
+                val triggerIntent = Intent(context, com.example.app.activity.VoiceAssistantTriggerActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
-                context.startActivity(mainIntent)
+                
+                Log.d(TAG, "Starting VoiceAssistantTriggerActivity for direct AI voice navigation")
+                context.startActivity(triggerIntent)
             }
             
             Intent.ACTION_VOICE_COMMAND -> {
-                // Handle system voice command
-                val mainIntent = Intent(context, com.example.app.MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
-                    putExtra("start_voice_assistant", true)
+                // Handle system voice command - also navigate directly to AI voice
+                val triggerIntent = Intent(context, com.example.app.activity.VoiceAssistantTriggerActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 }
-                context.startActivity(mainIntent)
+                
+                Log.d(TAG, "Starting VoiceAssistantTriggerActivity for system voice command")
+                context.startActivity(triggerIntent)
             }
         }
     }

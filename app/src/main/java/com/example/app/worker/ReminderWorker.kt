@@ -32,7 +32,6 @@ class ReminderWorker(
             "daily_summary" -> showDailySummaryNotification()
             "sync_notification" -> showSyncNotification(noteTitle)
             "error_notification" -> showErrorNotification(noteTitle)
-            "focus_notification" -> showFocusNotification()
             else -> showNotification(noteTitle, noteId)
         }
         
@@ -43,6 +42,11 @@ class ReminderWorker(
         val channelId = "task_reminders"
         createNotificationChannel(channelId, "Task Reminders", NotificationManager.IMPORTANCE_HIGH)
 
+        // Check if this is a voice reminder and format accordingly
+        val isVoiceReminder = title.startsWith("Reminder: ")
+        val notificationTitle = if (isVoiceReminder) "Reminder" else "Task Reminder"
+        val notificationContent = if (isVoiceReminder) title.removePrefix("Reminder: ") else title
+
         // Create actionable intents
         val markDoneIntent = createActionIntent("MARK_DONE", taskId)
         val snoozeIntent = createActionIntent("SNOOZE", taskId)
@@ -50,8 +54,8 @@ class ReminderWorker(
 
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Task Reminder")
-            .setContentText(title)
+            .setContentTitle(notificationTitle)
+            .setContentText(notificationContent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .addAction(R.drawable.ic_check, "Mark Done", markDoneIntent)
@@ -77,23 +81,6 @@ class ReminderWorker(
             .build()
 
         NotificationManagerCompat.from(applicationContext).notify(DAILY_SUMMARY_ID, notification)
-    }
-
-    private fun showFocusNotification() {
-        val channelId = "focus_tasks"
-        createNotificationChannel(channelId, "Today's Focus", NotificationManager.IMPORTANCE_HIGH)
-
-        val notification = NotificationCompat.Builder(applicationContext, channelId)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("Today's Focus")
-            .setContentText("3 priority tasks selected for you")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(createOpenAppIntent())
-            .setStyle(NotificationCompat.BigTextStyle().bigText("Focus on these top priority tasks today"))
-            .build()
-
-        NotificationManagerCompat.from(applicationContext).notify(FOCUS_NOTIFICATION_ID, notification)
     }
 
     private fun showSyncNotification(message: String) {
@@ -134,8 +121,8 @@ class ReminderWorker(
         
         val notification = NotificationCompat.Builder(applicationContext, channelId)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(title)
-            .setContentText("Tap to view or mark as done.")
+            .setContentTitle("Reminder")
+            .setContentText(title)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .setContentIntent(createOpenAppIntent())
@@ -177,7 +164,6 @@ class ReminderWorker(
 
     companion object {
         const val DAILY_SUMMARY_ID = 1001
-        const val FOCUS_NOTIFICATION_ID = 1002
         const val SYNC_NOTIFICATION_ID = 1003
         const val ERROR_NOTIFICATION_ID = 1004
     }

@@ -701,6 +701,8 @@
             max-width: 500px;
             max-height: 80vh;
             overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
         
         .modal input, .modal textarea {
@@ -779,7 +781,9 @@
         }
         
         .rich-text-editor {
-            min-height: 200px;
+            min-height: 300px;
+            max-height: 50vh;
+            flex: 1;
             padding: 16px;
             background-color: #2a2a2a;
             border: none;
@@ -790,6 +794,7 @@
             line-height: 1.5;
             outline: none;
             resize: vertical;
+            overflow-y: auto;
         }
         
         .checkbox-item {
@@ -921,7 +926,6 @@
                     <input type="text" id="serverAddress" placeholder="192.168.1.96" value="192.168.1.96" />
                     <span class="server-suffix">:auto</span>
                 </div>
-                <p style="color: #888; font-size: 12px; margin-top: 8px;">Now uses AdGuard-friendly ports (8888, 9090, etc.)</p>
                 <button class="btn btn-primary" id="connectButton">Connect</button>
             </div>
         </div>

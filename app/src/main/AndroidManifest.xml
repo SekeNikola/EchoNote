@@ -67,6 +67,20 @@
             </intent-filter>
         </activity>
 
+        <!-- Voice Assistant Trigger Activity for KeyMapper -->
+        <activity
+            android:name=".activity.VoiceAssistantTriggerActivity"
+            android:enabled="true"
+            android:exported="true"
+            android:theme="@android:style/Theme.NoDisplay"
+            android:excludeFromRecents="true"
+            android:noHistory="true">
+            <intent-filter>
+                <action android:name="com.example.app.VOICE_ASSISTANT_TRIGGER_ACTIVITY" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- Ktor Server Service -->
         <service
             android:name=".server.ServerService"
@@ -109,6 +123,23 @@
             </intent-filter>
         </receiver>
 
+        <!-- Voice activation service for KeyMapper -->
+        <service
+            android:name=".service.VoiceAssistantService"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.app.TRIGGER_VOICE_ASSISTANT" />
+            </intent-filter>
+        </service>
+
+        <!-- Voice orb overlay service -->
+        <service
+            android:name=".service.VoiceOrbOverlayService"
+            android:enabled="true"
+            android:exported="false">
+        </service>
+
         <!-- Voice activation receiver -->
         <receiver
             android:name=".receiver.VoiceActivationReceiver"
@@ -118,6 +149,7 @@
                 <action android:name="com.example.app.VOICE_ASSISTANT_TRIGGER" />
                 <action android:name="android.intent.action.VOICE_COMMAND" />
                 <action android:name="android.intent.action.VOICE_ASSISTANT" />
+                <action android:name="com.example.app.KEYMAP_VOICE_TRIGGER" />
             </intent-filter>
         </receiver>
 

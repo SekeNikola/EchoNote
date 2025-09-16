@@ -29,6 +29,9 @@ interface TaskDao {
     @Query("UPDATE tasks SET isCompleted = :isCompleted WHERE id = :id")
     suspend fun updateCompleted(id: Long, isCompleted: Boolean)
     
+    @Query("SELECT * FROM tasks WHERE isCompleted = 1 ORDER BY updatedAt DESC LIMIT :limit")
+    fun getCompletedTasks(limit: Int): Flow<List<Task>>
+    
     @Query("DELETE FROM tasks")
     suspend fun deleteAll()
 }

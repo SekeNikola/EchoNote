@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import com.example.app.data.Note
+import com.example.app.data.Reminder
 import com.example.app.data.NoteRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
@@ -68,15 +69,15 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import android.os.Bundle
 import java.util.concurrent.TimeUnit
-import androidx.work.WorkManager
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.workDataOf
-import com.example.app.worker.ReminderWorker
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import org.json.JSONArray
 import android.util.Base64
+import androidx.work.WorkManager
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.workDataOf
+import com.example.app.worker.ReminderWorker
 
 class NoteViewModel(private val repository: NoteRepository, app: Application) : AndroidViewModel(app), TextToSpeech.OnInitListener {
     /**
@@ -496,6 +497,10 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
     // Tasks functionality
     private val _allTasks = MutableStateFlow<List<Task>>(emptyList())
     val allTasks: StateFlow<List<Task>> = _allTasks.asStateFlow()
+    
+    // Reminders functionality
+    private val _allReminders = MutableStateFlow<List<Reminder>>(emptyList())
+    val allReminders: StateFlow<List<Reminder>> = _allReminders.asStateFlow()
 
     // Speech Recognition
     private var speechRecognizer: SpeechRecognizer? = null
@@ -1921,6 +1926,12 @@ Output:
     // Create task from regular chat
     private suspend fun createTaskFromChat(userMessage: String, aiResponse: String) {
         try {
+            // Check if this is a reminder request instead of a task
+            if (isReminderRequest(userMessage)) {
+                createReminderFromChat(userMessage, aiResponse)
+                return
+            }
+            
             // Extract task content from user message
             val taskContent = extractTaskFromMessage(userMessage)
             
@@ -1960,6 +1971,139 @@ Output:
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error creating task from chat", e)
         }
+    }
+    
+    // Check if the user message is asking for a reminder instead of a task
+    private fun isReminderRequest(message: String): Boolean {
+        val reminderKeywords = listOf(
+            "remind me", "reminder", "don't forget", "remember to", "remind", "notification",
+            "alert me", "notify me", "ping me", "buzz me"
+        )
+        
+        val lowerMessage = message.lowercase()
+        return reminderKeywords.any { keyword ->
+            lowerMessage.contains(keyword)
+        }
+    }
+    
+    // Create reminder from chat conversation
+    private suspend fun createReminderFromChat(userMessage: String, aiResponse: String) {
+        try {
+            val reminderContent = extractReminderFromMessage(userMessage)
+            val reminderTime = parseTimeFromMessage(userMessage)
+            
+            val reminder = Reminder(
+                title = reminderContent.take(100), // Limit title length
+                description = "From AI chat: ${userMessage.take(200)}", // Add context
+                reminderTime = reminderTime,
+                isCompleted = false,
+                createdAt = System.currentTimeMillis()
+            )
+            
+            repository.insertReminder(reminder)
+            Log.d("NoteViewModel", "Created reminder from chat: ${reminder.title} at ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(reminderTime))}")
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating reminder from chat", e)
+        }
+    }
+    
+    // Parse time from user message 
+    private fun parseTimeFromMessage(message: String): Long {
+        val now = System.currentTimeMillis()
+        val lowerMessage = message.lowercase()
+        
+        // Time patterns
+        when {
+            // "in 5 minutes", "in 10 mins", "in 1 hour", "in 2 hours"
+            lowerMessage.contains(Regex("in\\s+(\\d+)\\s+(minute|min|minutes|mins)")) -> {
+                val match = Regex("in\\s+(\\d+)\\s+(minute|min|minutes|mins)").find(lowerMessage)
+                val minutes = match?.groupValues?.get(1)?.toIntOrNull() ?: 60
+                return now + (minutes * 60 * 1000)
+            }
+            lowerMessage.contains(Regex("in\\s+(\\d+)\\s+(hour|hours|hr|hrs)")) -> {
+                val match = Regex("in\\s+(\\d+)\\s+(hour|hours|hr|hrs)").find(lowerMessage)
+                val hours = match?.groupValues?.get(1)?.toIntOrNull() ?: 1
+                return now + (hours * 60 * 60 * 1000)
+            }
+            // "at 3pm", "at 15:30", "at 9am"
+            lowerMessage.contains(Regex("at\\s+(\\d{1,2})(pm|am)")) -> {
+                val match = Regex("at\\s+(\\d{1,2})(pm|am)").find(lowerMessage)
+                val hour = match?.groupValues?.get(1)?.toIntOrNull() ?: 12
+                val isPM = match?.groupValues?.get(2) == "pm"
+                val targetHour = if (isPM && hour < 12) hour + 12 else if (!isPM && hour == 12) 0 else hour
+                
+                val calendar = java.util.Calendar.getInstance()
+                calendar.set(java.util.Calendar.HOUR_OF_DAY, targetHour)
+                calendar.set(java.util.Calendar.MINUTE, 0)
+                calendar.set(java.util.Calendar.SECOND, 0)
+                
+                // If time has passed today, set for tomorrow
+                if (calendar.timeInMillis <= now) {
+                    calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
+                }
+                return calendar.timeInMillis
+            }
+            lowerMessage.contains(Regex("at\\s+(\\d{1,2}):(\\d{2})")) -> {
+                val match = Regex("at\\s+(\\d{1,2}):(\\d{2})").find(lowerMessage)
+                val hour = match?.groupValues?.get(1)?.toIntOrNull() ?: 12
+                val minute = match?.groupValues?.get(2)?.toIntOrNull() ?: 0
+                
+                val calendar = java.util.Calendar.getInstance()
+                calendar.set(java.util.Calendar.HOUR_OF_DAY, hour)
+                calendar.set(java.util.Calendar.MINUTE, minute)
+                calendar.set(java.util.Calendar.SECOND, 0)
+                
+                // If time has passed today, set for tomorrow
+                if (calendar.timeInMillis <= now) {
+                    calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
+                }
+                return calendar.timeInMillis
+            }
+            // "tomorrow", "tomorrow morning"
+            lowerMessage.contains("tomorrow") -> {
+                val calendar = java.util.Calendar.getInstance()
+                calendar.add(java.util.Calendar.DAY_OF_MONTH, 1)
+                calendar.set(java.util.Calendar.HOUR_OF_DAY, 9) // Default to 9 AM
+                calendar.set(java.util.Calendar.MINUTE, 0)
+                calendar.set(java.util.Calendar.SECOND, 0)
+                return calendar.timeInMillis
+            }
+            // "later", "later today"
+            lowerMessage.contains("later") -> {
+                return now + (2 * 60 * 60 * 1000) // 2 hours from now
+            }
+            else -> {
+                // Default to 1 hour from now
+                return now + (60 * 60 * 1000)
+            }
+        }
+    }
+    
+    // Extract reminder content from message
+    private fun extractReminderFromMessage(message: String): String {
+        val reminderPatterns = listOf(
+            // "remind me to buy milk" -> "buy milk"
+            Regex("remind\\s+me\\s+to\\s+(.+)", RegexOption.IGNORE_CASE),
+            // "reminder to buy milk" -> "buy milk"
+            Regex("reminder\\s+to\\s+(.+)", RegexOption.IGNORE_CASE),
+            // "don't forget to buy milk" -> "buy milk"
+            Regex("don't\\s+forget\\s+to\\s+(.+)", RegexOption.IGNORE_CASE),
+            // "remember to buy milk" -> "buy milk"
+            Regex("remember\\s+to\\s+(.+)", RegexOption.IGNORE_CASE),
+            // "alert me about the meeting" -> "the meeting"
+            Regex("(?:alert|notify|ping|buzz)\\s+me\\s+(?:about|for|to)\\s+(.+)", RegexOption.IGNORE_CASE)
+        )
+        
+        for (pattern in reminderPatterns) {
+            val match = pattern.find(message)
+            if (match != null) {
+                return match.groupValues[1].trim()
+            }
+        }
+        
+        // If no pattern matches, return the original message
+        return message.trim()
     }
     
     // Extract the actual task content from a message containing task creation request
@@ -2664,19 +2808,6 @@ Output:
         return userWantsNote || aiConfirmsNote
     }
     
-    // Smart reminder detection
-    private fun detectReminderIntent(text: String): Boolean {
-        val lowerText = text.lowercase().trim()
-        
-        return lowerText.contains("remind me") ||
-               lowerText.contains("set reminder") ||
-               lowerText.contains("reminder in") ||
-               lowerText.contains("remind me in") ||
-               lowerText.contains("set a reminder") ||
-               (lowerText.contains("minute") && (lowerText.contains("remind") || lowerText.contains("reminder"))) ||
-               (lowerText.contains("hour") && (lowerText.contains("remind") || lowerText.contains("reminder")))
-    }
-    
     // Extract task content with conversation context awareness
     private fun extractTaskFromConversation(currentText: String, recentHistory: List<ChatMessage>): String {
         Log.d("NoteViewModel", "Extracting task from: '$currentText'")
@@ -2839,61 +2970,100 @@ Output:
         }
     }
     
+    // ======================= VOICE REMINDER FUNCTIONALITY =======================
+    
+    // Smart reminder detection
+    private fun detectReminderIntent(text: String): Boolean {
+        val lowerText = text.lowercase().trim()
+        
+        return lowerText.contains("remind me") ||
+               lowerText.contains("set reminder") ||
+               lowerText.contains("reminder in") ||
+               lowerText.contains("remind me in") ||
+               lowerText.contains("set a reminder") ||
+               (lowerText.contains("minute") && (lowerText.contains("remind") || lowerText.contains("reminder"))) ||
+               (lowerText.contains("hour") && (lowerText.contains("remind") || lowerText.contains("reminder")))
+    }
+    
+    // Extract reminder time in minutes from user text
     private fun extractReminderTime(text: String): Long {
         val lowerText = text.lowercase()
         
-        return when {
-            lowerText.contains("1 minute") || lowerText.contains("one minute") -> 1L
-            lowerText.contains("2 minutes") || lowerText.contains("two minutes") -> 2L
-            lowerText.contains("5 minutes") || lowerText.contains("five minutes") -> 5L
-            lowerText.contains("10 minutes") || lowerText.contains("ten minutes") -> 10L
-            lowerText.contains("15 minutes") || lowerText.contains("fifteen minutes") -> 15L
-            lowerText.contains("30 minutes") || lowerText.contains("thirty minutes") -> 30L
-            lowerText.contains("1 hour") || lowerText.contains("one hour") -> 60L
-            lowerText.contains("2 hours") || lowerText.contains("two hours") -> 120L
-            else -> 60L // Default to 1 hour
+        // Pattern: "in X minutes" or "in X mins"
+        val minutePattern = Regex("in\\s+(\\d+)\\s+(?:minute|minutes|min|mins)")
+        val minuteMatch = minutePattern.find(lowerText)
+        if (minuteMatch != null) {
+            return minuteMatch.groupValues[1].toLongOrNull() ?: 5L
         }
+        
+        // Pattern: "in X hours" or "in X hour"
+        val hourPattern = Regex("in\\s+(\\d+)\\s+(?:hour|hours|hr|hrs)")
+        val hourMatch = hourPattern.find(lowerText)
+        if (hourMatch != null) {
+            val hours = hourMatch.groupValues[1].toLongOrNull() ?: 1L
+            return hours * 60 // Convert to minutes
+        }
+        
+        // Default to 5 minutes if no time specified
+        return 5L
     }
     
+    // Extract reminder content from user text
     private fun extractReminderContent(text: String): String {
         val lowerText = text.lowercase()
         
-        // Remove reminder command patterns to get the content
-        var content = text.replace(Regex("(remind me|set reminder|set a reminder)\\s*(to|about|in)?\\s*", RegexOption.IGNORE_CASE), "")
-        content = content.replace(Regex("\\s*in\\s+\\d+\\s*(minute|minutes|hour|hours).*", RegexOption.IGNORE_CASE), "")
-        content = content.trim()
+        // Pattern: "remind me to [content]"
+        val remindPattern = Regex("remind\\s+me\\s+to\\s+(.+?)(?:\\s+in\\s+\\d+|$)", RegexOption.IGNORE_CASE)
+        val remindMatch = remindPattern.find(text)
+        if (remindMatch != null) {
+            return remindMatch.groupValues[1].trim()
+        }
         
-        return if (content.isNotEmpty()) content else "Reminder"
+        // Pattern: "set reminder [content] in X"
+        val reminderPattern = Regex("set\\s+(?:a\\s+)?reminder\\s+(.+?)\\s+in\\s+\\d+", RegexOption.IGNORE_CASE)
+        val reminderMatch = reminderPattern.find(text)
+        if (reminderMatch != null) {
+            return reminderMatch.groupValues[1].trim()
+        }
+        
+        // Fallback: extract everything after "remind" keywords
+        val fallbackPattern = Regex("(?:remind|reminder)\\s+(?:me\\s+)?(?:to\\s+)?(.+?)(?:\\s+in\\s+|$)", RegexOption.IGNORE_CASE)
+        val fallbackMatch = fallbackPattern.find(text)
+        if (fallbackMatch != null) {
+            val content = fallbackMatch.groupValues[1].trim()
+            return if (content.isNotBlank()) content else "Something important"
+        }
+        
+        return "Something important"
     }
     
-    private fun createReminderTask(text: String) = viewModelScope.launch {
+    private fun createVoiceReminder(text: String) = viewModelScope.launch {
         try {
             val reminderMinutes = extractReminderTime(text)
             val reminderContent = extractReminderContent(text)
             
             Log.d("NoteViewModel", "Creating reminder: '$reminderContent' in $reminderMinutes minutes")
             
-            val task = Task(
-                title = "Reminder: $reminderContent",
-                description = "Voice reminder set for ${reminderMinutes} minute${if (reminderMinutes != 1L) "s" else ""}",
-                priority = "High",
-                dueDate = System.currentTimeMillis() + (reminderMinutes * 60 * 1000),
-                duration = "",
+            // Create actual Reminder entity, not Task
+            val reminder = Reminder(
+                title = reminderContent,
+                description = "Voice reminder set for ${reminderMinutes} minute${if (reminderMinutes != 1L) "s" else ""} from now",
+                reminderTime = System.currentTimeMillis() + (reminderMinutes * 60 * 1000),
                 isCompleted = false,
-                createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis()
             )
             
-            repository.insertTask(task)
-            Log.d("NoteViewModel", "Reminder task created: ${task.title}")
+            repository.insertReminder(reminder)
+            Log.d("NoteViewModel", "Reminder created: ${reminder.title}")
             
-            // Schedule notification reminder
+            // Schedule notification reminder using the reminder ID
             try {
                 val workRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
                     .setInitialDelay(reminderMinutes, TimeUnit.MINUTES)
                     .setInputData(workDataOf(
-                        "taskTitle" to task.title,
-                        "taskId" to task.id
+                        "noteTitle" to reminderContent,
+                        "noteId" to reminder.id,
+                        "notificationType" to "reminder"
                     ))
                     .build()
                 
@@ -2903,27 +3073,11 @@ Output:
                 Log.e("NoteViewModel", "Failed to schedule reminder notification", e)
             }
             
-            // Broadcast to server for web sync
-            try {
-                val serverTask = ServerTask(
-                    id = java.util.UUID.randomUUID().toString(),
-                    title = task.title,
-                    body = task.description,
-                    done = task.isCompleted,
-                    updatedAt = java.time.Instant.ofEpochMilli(task.updatedAt).toString()
-                )
-                KtorServer.addTaskWithBroadcast(serverTask)
-            } catch (e: Exception) {
-                Log.e("NoteViewModel", "Failed to broadcast reminder task to server", e)
-            }
-            
-            loadTasks()
-            
             val timeText = if (reminderMinutes == 1L) "1 minute" else "$reminderMinutes minutes"
             speakText("Got it! I'll remind you about '$reminderContent' in $timeText.")
             
         } catch (e: Exception) {
-            Log.e("NoteViewModel", "Error creating reminder task", e)
+            Log.e("NoteViewModel", "Error creating reminder", e)
             speakText("Sorry, I couldn't set that reminder.")
         }
     }
@@ -2999,7 +3153,7 @@ Output:
             when {
                 shouldCreateReminder -> {
                     Log.d("NoteViewModel", "Creating reminder...")
-                    createReminderTask(text)
+                    createVoiceReminder(text)
                 }
                 shouldCreateTask -> {
                     Log.d("NoteViewModel", "Creating task...")
@@ -3015,7 +3169,7 @@ Output:
                     speakText(aiResponse)
                 }
                 else -> {
-                    Log.d("NoteViewModel", "Just chatting - no task/note/reminder creation")
+                    Log.d("NoteViewModel", "Just chatting - no task/note creation")
                     // Just chat - speak the AI response
                     speakText(aiResponse)
                 }
@@ -3035,6 +3189,7 @@ Output:
     init {
         // Load tasks when ViewModel is created
         loadTasksOnce()
+        loadRemindersOnce()
         loadChatMessages()
     }
     
@@ -3326,6 +3481,53 @@ fun addNoteWithBroadcast(title: String, content: String, imageUri: String? = nul
         val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
         dateFormat.timeZone = java.util.TimeZone.getTimeZone("UTC")
         return dateFormat.format(java.util.Date())
+    }
+
+    // ======================= REMINDER FUNCTIONALITY =======================
+    
+    private fun loadRemindersOnce() = viewModelScope.launch {
+        try {
+            repository.getAllReminders().collect { reminders ->
+                _allReminders.value = reminders
+                Log.d("NoteViewModel", "Loaded ${reminders.size} reminders")
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error loading reminders", e)
+        }
+    }
+    
+    fun createReminder(title: String, description: String = "", reminderTime: Long) = viewModelScope.launch {
+        try {
+            val newReminder = Reminder(
+                title = title,
+                description = description,
+                reminderTime = reminderTime,
+                isCompleted = false,
+                createdAt = System.currentTimeMillis()
+            )
+            repository.insertReminder(newReminder)
+            Log.d("NoteViewModel", "Created reminder: $title")
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating reminder", e)
+        }
+    }
+    
+    fun completeReminder(reminderId: Long) = viewModelScope.launch {
+        try {
+            repository.markReminderCompleted(reminderId)
+            Log.d("NoteViewModel", "Completed reminder: $reminderId")
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error completing reminder", e)
+        }
+    }
+    
+    fun deleteReminder(reminderId: Long) = viewModelScope.launch {
+        try {
+            repository.deleteReminderById(reminderId)
+            Log.d("NoteViewModel", "Deleted reminder: $reminderId")
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error deleting reminder", e)
+        }
     }
 
     // Export/Import functionality

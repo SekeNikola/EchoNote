@@ -8,7 +8,8 @@ import kotlinx.coroutines.flow.Flow
 class NoteRepository(
     internal val noteDao: NoteDao,
     internal val taskDao: TaskDao,
-    internal val chatMessageDao: ChatMessageDao
+    internal val chatMessageDao: ChatMessageDao,
+    internal val reminderDao: ReminderDao
 ) {
     // Note operations
     suspend fun insertNote(note: Note) = noteDao.insert(note)
@@ -38,6 +39,15 @@ class NoteRepository(
     suspend fun insertChatMessage(message: ChatMessage) = chatMessageDao.insert(message)
     suspend fun clearChatHistory() = chatMessageDao.deleteAll()
     suspend fun deleteChatSession(sessionId: String) = chatMessageDao.deleteSession(sessionId)
+    
+    // Reminder operations
+    fun getAllReminders(): Flow<List<Reminder>> = reminderDao.getAllReminders()
+    fun getActiveReminders(): Flow<List<Reminder>> = reminderDao.getActiveReminders()
+    suspend fun insertReminder(reminder: Reminder) = reminderDao.insert(reminder)
+    suspend fun updateReminder(reminder: Reminder) = reminderDao.update(reminder)
+    suspend fun deleteReminder(reminder: Reminder) = reminderDao.delete(reminder)
+    suspend fun deleteReminderById(id: Long) = reminderDao.deleteById(id)
+    suspend fun markReminderCompleted(id: Long) = reminderDao.markCompleted(id)
     
     // Export/Import operations
     suspend fun exportAllData(): ExportData {

@@ -101,27 +101,60 @@ fun VoiceAssistantDemoScreen(
                     SetupStep(
                         number = "1",
                         title = "Install KeyMapper",
-                        description = "Download KeyMapper from Google Play Store or F-Droid"
+                        description = """Download KeyMapper from Google Play Store or F-Droid. 
+
+KeyMapper allows you to remap physical buttons like volume keys, power button, or side keys to trigger custom actions.
+
+Google Play Store: Search "KeyMapper" by Seth Schroeder
+F-Droid: Available as open source alternative"""
                     )
                     
                     SetupStep(
                         number = "2",
                         title = "Create New Mapping",
-                        description = "Tap '+' button and record your side key press"
+                        description = """Open KeyMapper app and create a new key mapping:
+
+• Tap the '+' (Add) button in the bottom right
+• Choose "Record trigger" and press the physical key you want to use
+• Common options: Volume Down, Volume Up, Power Button (double tap), Bixby Button
+• The app will detect and record your key press"""
                     )
                     
                     SetupStep(
                         number = "3",
-                        title = "Configure Broadcast Action",
-                        description = """Select "Broadcast" and use:
-Action: com.example.app.VOICE_ASSISTANT_TRIGGER
-Package: com.example.app"""
+                        title = "Configure Action Type",
+                        description = """Set up the action to trigger Logion:
+
+• In the "Choose Action" section, select "App" then "Broadcast"
+• For Action, enter exactly: com.example.app.VOICE_ASSISTANT_TRIGGER
+• For Package, enter exactly: com.example.app
+• Leave Target Class empty
+• Enable "Send to package only" if available
+
+This broadcast will directly open Logion's voice assistant without any overlay."""
                     )
                     
                     SetupStep(
                         number = "4",
-                        title = "Test Activation",
-                        description = "Press your side key to trigger voice assistant"
+                        title = "Configure Constraints (Optional)",
+                        description = """Set when the mapping should work:
+
+• Screen State: Choose "Screen On" to only work when phone is unlocked
+• App in foreground: Leave blank to work from any app
+• Repeat: Set to "Don't repeat" for single activation
+• Vibrate: Enable for haptic feedback when triggered"""
+                    )
+                    
+                    SetupStep(
+                        number = "5",
+                        title = "Enable and Test",
+                        description = """Activate your mapping and test:
+
+• Enable the mapping with the toggle switch
+• Grant any required permissions (Accessibility Service)
+• Press your configured key to test
+• Logion should open directly to the voice assistant screen
+• No floating orb will appear - you'll go straight to voice input"""
                     )
                 }
             }
@@ -142,6 +175,49 @@ Package: com.example.app"""
             
             Spacer(modifier = Modifier.height(16.dp))
             
+            // Troubleshooting Section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        text = "Troubleshooting",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    TroubleshootingItem(
+                        problem = "Key press not working",
+                        solution = "• Enable Accessibility Service for KeyMapper in Settings\n• Check if mapping is enabled (toggle switch)\n• Try recording the key again"
+                    )
+                    
+                    TroubleshootingItem(
+                        problem = "App doesn't open",
+                        solution = "• Verify package name is exactly: com.example.app\n• Check action name: com.example.app.VOICE_ASSISTANT_TRIGGER\n• Ensure Logion is installed and accessible"
+                    )
+                    
+                    TroubleshootingItem(
+                        problem = "Opens wrong screen",
+                        solution = "• Make sure you selected 'Broadcast' not 'Open App'\n• Double-check the action string matches exactly\n• Restart KeyMapper after making changes"
+                    )
+                    
+                    TroubleshootingItem(
+                        problem = "Permissions issues",
+                        solution = "• Grant notification permissions to Logion\n• Allow KeyMapper to access system settings\n• Enable 'Display over other apps' for KeyMapper"
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Alternative methods
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -277,6 +353,30 @@ private fun AlternativeMethod(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun TroubleshootingItem(
+    problem: String,
+    solution: String
+) {
+    Column(
+        modifier = Modifier.padding(vertical = 8.dp)
+    ) {
+        Text(
+            text = "❌ $problem",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.error
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = solution,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            lineHeight = 16.sp
+        )
     }
 }
 

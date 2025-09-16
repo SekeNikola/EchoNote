@@ -6,7 +6,10 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "reminders")
 data class Reminder(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val noteId: Long,
-    val time: Long,
-    val isDone: Boolean = false
+    val title: String,
+    val description: String = "",
+    val reminderTime: Long,
+    val isCompleted: Boolean = false,
+    val createdAt: Long = System.currentTimeMillis(),
+    val noteId: Long? = null // Optional reference to a note
 )
