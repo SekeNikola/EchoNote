@@ -306,10 +306,27 @@ class MainActivity : ComponentActivity() {
 								widgetAction == "web_page" -> "webPage"
 								widgetAction == "upload_files" -> "documentUpload"
 								widgetAction == "assistant" -> "voiceCommand"
+								widgetAction == "create_task" -> "all_tasks"
+								widgetAction == "create_note" -> "enhanced_note_creation"
 								else -> "home"
 							}
 							
 							LogionNavGraph(navController, viewModel, startDestination)
+
+							// Handle deep links from widget for opening specific items
+							LaunchedEffect(widgetAction) {
+								val openTaskId = intent.getLongExtra("open_task_id", -1L)
+								val openNoteId = intent.getLongExtra("open_note_id", -1L)
+								if (openTaskId > 0) {
+									navController.navigate("task_detail/$openTaskId")
+								} else if (openNoteId > 0) {
+									navController.navigate("noteDetail/$openNoteId")
+								} else if (widgetAction == "create_task") {
+									navController.navigate("all_tasks")
+								} else if (widgetAction == "create_note") {
+									navController.navigate("enhanced_note_creation")
+								}
+							}
 						}
 					}
 					

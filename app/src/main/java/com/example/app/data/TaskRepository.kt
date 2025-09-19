@@ -1,9 +1,10 @@
 package com.example.app.data
 
+import android.content.Context
 import kotlinx.coroutines.flow.Flow
 import java.util.*
 
-class TaskRepository(private val taskDao: TaskDao) {
+class TaskRepository(private val taskDao: TaskDao, private val context: Context? = null) {
     
     fun getAllTasks(): Flow<List<Task>> = taskDao.getAllTasks()
     fun getActiveTasks(): Flow<List<Task>> = taskDao.getActiveTasks()
@@ -14,8 +15,17 @@ class TaskRepository(private val taskDao: TaskDao) {
     suspend fun updateTask(task: Task) = taskDao.update(task)
     suspend fun deleteTaskById(id: Long) = taskDao.deleteById(id)
     
-    suspend fun markTaskCompleted(id: Long, isCompleted: Boolean) = 
+    suspend fun markTaskCompleted(id: Long, isCompleted: Boolean) {
         taskDao.updateCompleted(id, isCompleted)
+        // Refresh widget when task completion changes
+        context?.let {
+            try {
+                val widgetClass = Class.forName("com.example.app.widget.LogionListWidgetProvider")
+                val updateMethod = widgetClass.getMethod("updateAllWidgets", Context::class.java)
+                updateMethod.invoke(null, it)
+            } catch (_: Exception) { /* Widget not available */ }
+        }
+    }
     
     suspend fun updateTaskDueDate(id: Long, dueDate: Long) {
         // We need to get the task first, then update it
