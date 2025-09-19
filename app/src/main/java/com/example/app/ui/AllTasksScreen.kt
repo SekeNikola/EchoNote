@@ -25,6 +25,7 @@ import com.example.app.data.Task
 import com.example.app.viewmodel.TaskViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.app.ui.components.PriorityChip
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -265,19 +266,8 @@ private fun TaskCard(
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Priority indicator
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = priorityColor.copy(alpha = 0.2f)
-                        ) {
-                            Text(
-                                text = task.priority,
-                                color = priorityColor,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                            )
-                        }
+                        // Priority chip
+                        PriorityChip(priority = task.priority)
                         
                         Spacer(modifier = Modifier.width(8.dp))
                         

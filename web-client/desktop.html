@@ -232,16 +232,14 @@
         
         
         .note-expanded-actions .edit-btn:hover {
-            background: #e07600;
-            color:white
+            color:#4caf50
 
         }
         
        
         
         .note-expanded-actions .delete-btn:hover {
-            background: #d32f2f;
-            color:white
+            color:#f44336
 
         }
         
@@ -258,7 +256,6 @@
             font-size: 16px;
             line-height: 1.6;
             margin-bottom: 20px;
-            white-space: pre-wrap;
         }
         
         .note-expanded-image {
@@ -1229,9 +1226,7 @@
                     <label style="display: block; color: #bbb; margin-bottom: 4px;">Due Time:</label>
                     <input type="time" id="taskTime" style="width: 100%;">
                 </div>
-            </div>
-            
-            <div style="margin: 12px 0;">
+                 <div style="margin: 12px 0;">
                 <label style="display: block; color: #bbb; margin-bottom: 4px;">Priority:</label>
                 <select id="taskPriority" style="width: 100%; background-color: #333; border: 1px solid #555; color: white; padding: 12px; border-radius: 4px;">
                     <option value="Low">Low</option>
@@ -1240,6 +1235,9 @@
                     <option value="Urgent">Urgent</option>
                 </select>
             </div>
+            </div>
+            
+           
             
             <div class="action-buttons">
                 <button class="btn btn-primary" id="saveTask">Save</button>
@@ -1948,10 +1946,10 @@
                                                    style="margin: 0;">
                                             <div style="flex: 1;">
                                                 <div style="display: flex; align-items: center; gap: 8px;">
-                                                    <div style="width: 8px; height: 8px; border-radius: 50%; background-color: ${priorityColors[priority]}; flex-shrink: 0;"></div>
+                                                    <span class="task-priority-badge" style="background-color: ${priorityColors[priority]}; color: white;">${priority}</span>
                                                     <div class="card-title" style="text-decoration: ${task.done ? 'line-through' : 'none'}; flex: 1;">
                                                         ${this.escapeHtml(task.title)}
-                                                        ${task.dueTime ? '<span style="color: #bbb; font-size: 12px; margin-left: 8px;">' + task.dueTime + '</span>' : ''}
+                                                        ${task.dueTime ? '<span style=\"color: #bbb; font-size: 12px; margin-left: 8px;\">' + task.dueTime + '</span>' : ''}
                                                     </div>
                                                 </div>
                                             </div>
@@ -2685,10 +2683,7 @@
                                             ${this.escapeHtml(task.title)}
                                         </div>
                                         <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0;">
-                                            <span style="background-color: ${priorityColors[priority]}; color: white; 
-                                                        padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;">
-                                                ${priority.toUpperCase()}
-                                            </span>
+                                            <span class="task-priority-badge" style="background-color: ${priorityColors[priority]}; color: white;">${priority}</span>
                                             ${dueDateTimeStr ? '<span style="color: #888; font-size: 11px;">' + dueDateTimeStr + '</span>' : ''}
                                         </div>
                                         ${task.body ? '<div class="card-content">' + this.cleanHtmlForPreview(task.body) + '</div>' : ''}

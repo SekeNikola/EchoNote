@@ -797,20 +797,8 @@ fun TaskCard(
         
         Spacer(modifier = Modifier.width(12.dp))
         
-        // Priority circle
-        val priorityColor = when (task.priority.lowercase()) {
-            "high" -> Color(0xFFFF4444) // Bright red for high priority
-            "medium" -> Color(0xFFFF8C00) // Orange/amber for medium priority (matching checkbox)
-            "low" -> Color(0xFF00C851) // Green for low priority
-            else -> Color(0xFF6B7280) // Gray for unknown priority
-        }
-        
-        Icon(
-            Icons.Default.Circle,
-            contentDescription = "Priority: ${task.priority}",
-            tint = priorityColor,
-            modifier = Modifier.size(12.dp)
-        )
+        // Priority chip
+        com.example.app.ui.components.PriorityChip(priority = task.priority)
         
         Spacer(modifier = Modifier.width(12.dp))
         
@@ -1017,7 +1005,7 @@ fun AddTaskBottomSheet(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     
-    val priorities = listOf("Low", "Medium", "High")
+    val priorities = listOf("Low", "Medium", "High", "Urgent")
     
     Column(
         modifier = Modifier

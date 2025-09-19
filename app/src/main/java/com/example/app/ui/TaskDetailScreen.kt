@@ -27,6 +27,7 @@ import com.example.app.data.CheckboxItem
 import com.example.app.data.CheckboxUtils
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.app.ui.components.PriorityChip
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 
@@ -239,9 +240,10 @@ fun TaskDetailScreen(
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        listOf("Low", "Medium", "High").forEach { priority ->
+                        listOf("Low", "Medium", "High", "Urgent").forEach { priority ->
                             val isSelected = editPriority == priority
                             val color = when (priority) {
+                                "Urgent" -> Color(0xFFE91E63)
                                 "High" -> Color(0xFFEF4444)
                                 "Medium" -> Color(0xFFF59E0B)
                                 else -> Color(0xFF10B981)
@@ -273,27 +275,7 @@ fun TaskDetailScreen(
                         }
                     }
                 } else {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .background(
-                                color = when (task.priority) {
-                                    "High" -> Color(0xFFEF4444)
-                                    "Medium" -> Color(0xFFF59E0B)
-                                    else -> Color(0xFF10B981)
-                                },
-                                shape = CircleShape
-                            )
-                    )
-                    
-                    Spacer(modifier = Modifier.width(12.dp))
-                    
-                    Text(
-                        text = "${task.priority} Priority",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFFB0B0B0)
-                    )
+                    PriorityChip(priority = task.priority)
                 }
             }
             
