@@ -2538,6 +2538,14 @@
                     // Find a title to send (server requires it)
                     const note = this.notes.find(n => n.id === noteId) || this.selectedNoteForExpanded || this.selectedNote || {};
                     const title = note.title || 'Untitled';
+                    
+                    // Ensure body is in JSON format; convert from HTML if necessary
+                    let bodyToSend = updatedContent;
+                    try {
+                        JSON.parse(updatedContent);
+                    } catch (e) {
+                        bodyToSend = htmlToJsonCheckboxes(updatedContent);
+                    }
 
                     const response = await fetch(`http://${this.serverAddress}/notes/${noteId}`, {
                         method: 'PUT',
@@ -2546,7 +2554,7 @@
                         },
                         body: JSON.stringify({
                             title: title,
-                            body: updatedContent,
+                            body: bodyToSend,
                             timestamp: Date.now()
                         })
                     });
@@ -3179,14 +3187,15 @@
                 const updatedContent = contentElement.innerHTML;
                 console.log('Saving note content:', updatedContent.substring(0, 100) + '...');
                 
-                // Send HTML directly; server will convert HTML -> markdown -> structured format
-                logionApp.saveNoteCheckboxChanges(noteId, updatedContent).then(() => {
+                // Build JSON from the live DOM to preserve accurate checked states
+                const jsonContent = jsonFromLiveCheckboxes(contentElement);
+                logionApp.saveNoteCheckboxChanges(noteId, jsonContent).then(() => {
                     console.log('Note saved successfully');
                     
                     // Update local data
                     const noteIndex = logionApp.notes.findIndex(n => n.id === noteId);
                     if (noteIndex !== -1) {
-                        logionApp.notes[noteIndex].body = updatedContent;
+                        logionApp.notes[noteIndex].body = jsonContent;
                         logionApp.notes[noteIndex].updatedAt = new Date().toISOString();
                         console.log('Local note data updated');
                     } else {
@@ -3387,6 +3396,41 @@
         }
 
         /**
+         * 🔄 LIVE DOM → JSON converter
+         * Reads from a live container element so we capture input.checked state accurately.
+         */
+        function jsonFromLiveCheckboxes(containerEl) {
+            if (!containerEl) return JSON.stringify({ text: '', checkboxes: [] });
+
+            // Extract non-checkbox text content
+            const textNodes = [];
+            containerEl.childNodes.forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                    textNodes.push(node.textContent.trim());
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    const el = node;
+                    if (!el.classList || !el.classList.contains('checkbox-item')) {
+                        const t = el.textContent.trim();
+                        if (t) textNodes.push(t);
+                    }
+                }
+            });
+            const textContent = textNodes.join('\n').trim();
+
+            // Extract live checkbox states
+            const checkboxes = Array.from(containerEl.querySelectorAll('.checkbox-item')).map(item => {
+                const input = item.querySelector("input[type='checkbox']");
+                const span = item.querySelector('span');
+                return {
+                    text: (span?.textContent || '').trim(),
+                    checked: !!(input && input.checked)
+                };
+            });
+
+            return JSON.stringify({ text: textContent, checkboxes });
+        }
+
+        /**
          * 🔄 JSON → HTML converter
          * Converts Android app JSON format to WebUI HTML checkbox format
          */
@@ -3515,13 +3559,12 @@
                 const taskDescription = document.getElementById('taskDescription');
                 
                 if (noteContent && noteContent.contains(checkbox) && logionApp && logionApp.selectedNote) {
-                    logionApp.selectedNote.body = htmlToJsonCheckboxes(noteContent.innerHTML);
+                    logionApp.selectedNote.body = jsonFromLiveCheckboxes(noteContent);
                 }
                 
                 if (expandedContent && expandedContent.contains(checkbox)) {
                     // Handle expanded view save with conversion
-                    const htmlContent = expandedContent.innerHTML;
-                    const jsonContent = htmlToJsonCheckboxes(htmlContent);
+                    const jsonContent = jsonFromLiveCheckboxes(expandedContent);
                     // Update the note data with JSON format
                     if (logionApp && logionApp.selectedNote) {
                         logionApp.selectedNote.body = jsonContent;
@@ -3529,7 +3572,7 @@
                 }
                 
                 if (taskDescription && taskDescription.contains(checkbox) && logionApp && logionApp.selectedTask) {
-                    logionApp.selectedTask.body = htmlToJsonCheckboxes(taskDescription.innerHTML);
+                    logionApp.selectedTask.body = jsonFromLiveCheckboxes(taskDescription);
                 }
             }, 150);
         };

@@ -279,21 +279,18 @@ fun NotesListScreen(
         }
     }
     
-    // Add Note Bottom Sheet
+    // Add Note Full Screen
     if (showAddNoteSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showAddNoteSheet = false },
-            containerColor = Color(0xFF282828),
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-        ) {
-            AddNoteBottomSheet(
-                onCreateNote = { title, content, imageUri ->
-                    // Sync the new note to the server/web immediately
-                    viewModel.addNoteWithBroadcast(title, content, imageUri)
-                    showAddNoteSheet = false
-                },
-                onDismiss = { showAddNoteSheet = false }
-            )
-        }
+        AddNoteFullScreen(
+            onCreateNote = { title, content, imageUri ->
+                viewModel.addNoteWithBroadcast(title, content, imageUri)
+                showAddNoteSheet = false
+            },
+            onSaveAndClose = { title, content, imageUri ->
+                viewModel.addNoteWithBroadcast(title, content, imageUri)
+                showAddNoteSheet = false
+            },
+            onDismiss = { showAddNoteSheet = false }
+        )
     }
 }

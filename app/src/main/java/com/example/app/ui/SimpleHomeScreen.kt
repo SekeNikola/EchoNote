@@ -1418,8 +1418,83 @@ fun AddNoteBottomSheet(
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
-        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Quick action icons above the title
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Camera
+            IconButton(
+                onClick = {
+                    createImageFile()?.let { uri ->
+                        capturedImageUri = uri
+                        cameraLauncher.launch(uri)
+                    }
+                },
+                modifier = Modifier
+                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = "Open Camera",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            // Insert photo (gallery)
+            IconButton(
+                onClick = { galleryLauncher.launch("image/*") },
+                modifier = Modifier
+                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PhotoLibrary,
+                    contentDescription = "Insert Photo",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            // Insert file (document picker)
+            IconButton(
+                onClick = { documentLauncher.launch("*/*") },
+                modifier = Modifier
+                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AttachFile,
+                    contentDescription = "Insert File",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            // Add task (insert checkbox marker into content)
+            IconButton(
+                onClick = {
+                    content = if (content.isEmpty()) "☐ New task" else "$content\n☐ New task"
+                },
+                modifier = Modifier
+                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
+                    .size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckBox,
+                    contentDescription = "Add Task",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
         // Title input
         OutlinedTextField(
             value = title,
@@ -1436,9 +1511,9 @@ fun AddNoteBottomSheet(
             shape = RoundedCornerShape(8.dp)
         )
         
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // Content input - Rich Text Editor
+    Spacer(modifier = Modifier.height(16.dp))
+
+    // Content input - Rich Text Editor
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1544,82 +1619,7 @@ fun AddNoteBottomSheet(
             }
         }
         
-        // Action icons row (Camera, Photo, File, Add Task) – stays above the keyboard
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .imePadding()
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Camera
-            IconButton(
-                onClick = {
-                    createImageFile()?.let { uri ->
-                        capturedImageUri = uri
-                        cameraLauncher.launch(uri)
-                    }
-                },
-                modifier = Modifier
-                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
-                    .size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PhotoCamera,
-                    contentDescription = "Open Camera",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            
-            // Insert photo (gallery)
-            IconButton(
-                onClick = { galleryLauncher.launch("image/*") },
-                modifier = Modifier
-                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
-                    .size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.PhotoLibrary,
-                    contentDescription = "Insert Photo",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            
-            // Insert file (document picker)
-            IconButton(
-                onClick = { documentLauncher.launch("*/*") },
-                modifier = Modifier
-                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
-                    .size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AttachFile,
-                    contentDescription = "Insert File",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            
-            // Add task (insert checkbox marker into content)
-            IconButton(
-                onClick = {
-                    content = if (content.isEmpty()) "☐ New task" else "$content\n☐ New task"
-                },
-                modifier = Modifier
-                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
-                    .size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CheckBox,
-                    contentDescription = "Add Task",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-        
+        // Removed the bottom icon row (now placed above title)
         Spacer(modifier = Modifier.height(24.dp))
         
         // Create button
