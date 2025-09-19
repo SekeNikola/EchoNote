@@ -33,6 +33,7 @@ sealed class Screen(val route: String) {
     object AllTasks : Screen("all_tasks")
     object EnhancedNoteCreation : Screen("enhanced_note_creation")
     object VoiceAssistantDemo : Screen("voice_assistant_demo")
+    object Examples : Screen("examples")
 }
 
 @Composable
@@ -151,8 +152,7 @@ fun LogionNavGraph(
         
         composable(Screen.EnhancedNoteCreation.route) {
             EnhancedNoteCreationScreen(
-                onNavigateBack = { navController.popBackStack() },
-                noteViewModel = viewModel
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -166,6 +166,12 @@ fun LogionNavGraph(
             RemindersScreen(
                 viewModel = viewModel,
                 onBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable(Screen.Examples.route) {
+            ExamplesScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

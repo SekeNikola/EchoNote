@@ -134,8 +134,46 @@ fun SettingsScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                     
+                    // Add network information
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Color(0xFF2A4A3E),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.NetworkWifi,
+                            contentDescription = null,
+                            tint = Color(0xFF4CAF50),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            val networkType = com.example.app.util.NetworkUtils.getNetworkType(context)
+                            val currentIp = com.example.app.util.NetworkUtils.getCurrentIpAddress()
+                            
+                            Text(
+                                text = "Network: $networkType",
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "IP Address: ${currentIp ?: "Not available"}",
+                                color = Color(0xFFB0B0B0),
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    
                     Text(
-                        text = "Use these URLs to access the web client from any device",
+                        text = "Server automatically updates when switching networks",
                         fontSize = 12.sp,
                         color = Color(0xFFB0B0B0)
                     )

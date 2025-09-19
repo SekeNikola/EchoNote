@@ -36,6 +36,8 @@ public final class TaskDao_Impl implements TaskDao {
 
   private final EntityInsertionAdapter<Task> __insertionAdapterOfTask;
 
+  private final TaskItemListConverter __taskItemListConverter = new TaskItemListConverter();
+
   private final EntityDeletionOrUpdateAdapter<Task> __updateAdapterOfTask;
 
   private final SharedSQLiteStatement __preparedStmtOfDeleteById;
@@ -50,87 +52,99 @@ public final class TaskDao_Impl implements TaskDao {
       @Override
       @NonNull
       protected String createQuery() {
-        return "INSERT OR REPLACE INTO `tasks` (`id`,`title`,`description`,`priority`,`dueDate`,`duration`,`isCompleted`,`createdAt`,`updatedAt`,`serverId`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?)";
+        return "INSERT OR REPLACE INTO `tasks` (`id`,`serverId`,`title`,`description`,`checkboxItems`,`priority`,`dueDate`,`duration`,`isCompleted`,`createdAt`,`updatedAt`) VALUES (nullif(?, 0),?,?,?,?,?,?,?,?,?,?)";
       }
 
       @Override
       protected void bind(@NonNull final SupportSQLiteStatement statement,
           @NonNull final Task entity) {
         statement.bindLong(1, entity.getId());
-        if (entity.getTitle() == null) {
+        if (entity.getServerId() == null) {
           statement.bindNull(2);
         } else {
-          statement.bindString(2, entity.getTitle());
+          statement.bindString(2, entity.getServerId());
         }
-        if (entity.getDescription() == null) {
+        if (entity.getTitle() == null) {
           statement.bindNull(3);
         } else {
-          statement.bindString(3, entity.getDescription());
+          statement.bindString(3, entity.getTitle());
         }
-        if (entity.getPriority() == null) {
+        if (entity.getDescription() == null) {
           statement.bindNull(4);
         } else {
-          statement.bindString(4, entity.getPriority());
+          statement.bindString(4, entity.getDescription());
         }
-        statement.bindLong(5, entity.getDueDate());
-        if (entity.getDuration() == null) {
+        final String _tmp = __taskItemListConverter.fromCheckboxItemList(entity.getCheckboxItems());
+        if (_tmp == null) {
+          statement.bindNull(5);
+        } else {
+          statement.bindString(5, _tmp);
+        }
+        if (entity.getPriority() == null) {
           statement.bindNull(6);
         } else {
-          statement.bindString(6, entity.getDuration());
+          statement.bindString(6, entity.getPriority());
         }
-        final int _tmp = entity.isCompleted() ? 1 : 0;
-        statement.bindLong(7, _tmp);
-        statement.bindLong(8, entity.getCreatedAt());
-        statement.bindLong(9, entity.getUpdatedAt());
-        if (entity.getServerId() == null) {
-          statement.bindNull(10);
+        statement.bindLong(7, entity.getDueDate());
+        if (entity.getDuration() == null) {
+          statement.bindNull(8);
         } else {
-          statement.bindString(10, entity.getServerId());
+          statement.bindString(8, entity.getDuration());
         }
+        final int _tmp_1 = entity.isCompleted() ? 1 : 0;
+        statement.bindLong(9, _tmp_1);
+        statement.bindLong(10, entity.getCreatedAt());
+        statement.bindLong(11, entity.getUpdatedAt());
       }
     };
     this.__updateAdapterOfTask = new EntityDeletionOrUpdateAdapter<Task>(__db) {
       @Override
       @NonNull
       protected String createQuery() {
-        return "UPDATE OR ABORT `tasks` SET `id` = ?,`title` = ?,`description` = ?,`priority` = ?,`dueDate` = ?,`duration` = ?,`isCompleted` = ?,`createdAt` = ?,`updatedAt` = ?,`serverId` = ? WHERE `id` = ?";
+        return "UPDATE OR ABORT `tasks` SET `id` = ?,`serverId` = ?,`title` = ?,`description` = ?,`checkboxItems` = ?,`priority` = ?,`dueDate` = ?,`duration` = ?,`isCompleted` = ?,`createdAt` = ?,`updatedAt` = ? WHERE `id` = ?";
       }
 
       @Override
       protected void bind(@NonNull final SupportSQLiteStatement statement,
           @NonNull final Task entity) {
         statement.bindLong(1, entity.getId());
-        if (entity.getTitle() == null) {
+        if (entity.getServerId() == null) {
           statement.bindNull(2);
         } else {
-          statement.bindString(2, entity.getTitle());
+          statement.bindString(2, entity.getServerId());
         }
-        if (entity.getDescription() == null) {
+        if (entity.getTitle() == null) {
           statement.bindNull(3);
         } else {
-          statement.bindString(3, entity.getDescription());
+          statement.bindString(3, entity.getTitle());
         }
-        if (entity.getPriority() == null) {
+        if (entity.getDescription() == null) {
           statement.bindNull(4);
         } else {
-          statement.bindString(4, entity.getPriority());
+          statement.bindString(4, entity.getDescription());
         }
-        statement.bindLong(5, entity.getDueDate());
-        if (entity.getDuration() == null) {
+        final String _tmp = __taskItemListConverter.fromCheckboxItemList(entity.getCheckboxItems());
+        if (_tmp == null) {
+          statement.bindNull(5);
+        } else {
+          statement.bindString(5, _tmp);
+        }
+        if (entity.getPriority() == null) {
           statement.bindNull(6);
         } else {
-          statement.bindString(6, entity.getDuration());
+          statement.bindString(6, entity.getPriority());
         }
-        final int _tmp = entity.isCompleted() ? 1 : 0;
-        statement.bindLong(7, _tmp);
-        statement.bindLong(8, entity.getCreatedAt());
-        statement.bindLong(9, entity.getUpdatedAt());
-        if (entity.getServerId() == null) {
-          statement.bindNull(10);
+        statement.bindLong(7, entity.getDueDate());
+        if (entity.getDuration() == null) {
+          statement.bindNull(8);
         } else {
-          statement.bindString(10, entity.getServerId());
+          statement.bindString(8, entity.getDuration());
         }
-        statement.bindLong(11, entity.getId());
+        final int _tmp_1 = entity.isCompleted() ? 1 : 0;
+        statement.bindLong(9, _tmp_1);
+        statement.bindLong(10, entity.getCreatedAt());
+        statement.bindLong(11, entity.getUpdatedAt());
+        statement.bindLong(12, entity.getId());
       }
     };
     this.__preparedStmtOfDeleteById = new SharedSQLiteStatement(__db) {
@@ -283,20 +297,27 @@ public final class TaskDao_Impl implements TaskDao {
         final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
         try {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
           final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
+          final int _cursorIndexOfCheckboxItems = CursorUtil.getColumnIndexOrThrow(_cursor, "checkboxItems");
           final int _cursorIndexOfPriority = CursorUtil.getColumnIndexOrThrow(_cursor, "priority");
           final int _cursorIndexOfDueDate = CursorUtil.getColumnIndexOrThrow(_cursor, "dueDate");
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
-          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final List<Task> _result = new ArrayList<Task>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Task _item;
             final long _tmpId;
             _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
             final String _tmpTitle;
             if (_cursor.isNull(_cursorIndexOfTitle)) {
               _tmpTitle = null;
@@ -309,6 +330,14 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpDescription = _cursor.getString(_cursorIndexOfDescription);
             }
+            final List<CheckboxItem> _tmpCheckboxItems;
+            final String _tmp;
+            if (_cursor.isNull(_cursorIndexOfCheckboxItems)) {
+              _tmp = null;
+            } else {
+              _tmp = _cursor.getString(_cursorIndexOfCheckboxItems);
+            }
+            _tmpCheckboxItems = __taskItemListConverter.toCheckboxItemList(_tmp);
             final String _tmpPriority;
             if (_cursor.isNull(_cursorIndexOfPriority)) {
               _tmpPriority = null;
@@ -324,20 +353,14 @@ public final class TaskDao_Impl implements TaskDao {
               _tmpDuration = _cursor.getString(_cursorIndexOfDuration);
             }
             final boolean _tmpIsCompleted;
-            final int _tmp;
-            _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
-            _tmpIsCompleted = _tmp != 0;
+            final int _tmp_1;
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsCompleted);
+            _tmpIsCompleted = _tmp_1 != 0;
             final long _tmpCreatedAt;
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            final String _tmpServerId;
-            if (_cursor.isNull(_cursorIndexOfServerId)) {
-              _tmpServerId = null;
-            } else {
-              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
-            }
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt,_tmpServerId);
+            _item = new Task(_tmpId,_tmpServerId,_tmpTitle,_tmpDescription,_tmpCheckboxItems,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
             _result.add(_item);
           }
           return _result;
@@ -365,20 +388,27 @@ public final class TaskDao_Impl implements TaskDao {
         final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
         try {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
           final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
+          final int _cursorIndexOfCheckboxItems = CursorUtil.getColumnIndexOrThrow(_cursor, "checkboxItems");
           final int _cursorIndexOfPriority = CursorUtil.getColumnIndexOrThrow(_cursor, "priority");
           final int _cursorIndexOfDueDate = CursorUtil.getColumnIndexOrThrow(_cursor, "dueDate");
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
-          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final List<Task> _result = new ArrayList<Task>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Task _item;
             final long _tmpId;
             _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
             final String _tmpTitle;
             if (_cursor.isNull(_cursorIndexOfTitle)) {
               _tmpTitle = null;
@@ -391,6 +421,14 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpDescription = _cursor.getString(_cursorIndexOfDescription);
             }
+            final List<CheckboxItem> _tmpCheckboxItems;
+            final String _tmp;
+            if (_cursor.isNull(_cursorIndexOfCheckboxItems)) {
+              _tmp = null;
+            } else {
+              _tmp = _cursor.getString(_cursorIndexOfCheckboxItems);
+            }
+            _tmpCheckboxItems = __taskItemListConverter.toCheckboxItemList(_tmp);
             final String _tmpPriority;
             if (_cursor.isNull(_cursorIndexOfPriority)) {
               _tmpPriority = null;
@@ -406,20 +444,14 @@ public final class TaskDao_Impl implements TaskDao {
               _tmpDuration = _cursor.getString(_cursorIndexOfDuration);
             }
             final boolean _tmpIsCompleted;
-            final int _tmp;
-            _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
-            _tmpIsCompleted = _tmp != 0;
+            final int _tmp_1;
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsCompleted);
+            _tmpIsCompleted = _tmp_1 != 0;
             final long _tmpCreatedAt;
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            final String _tmpServerId;
-            if (_cursor.isNull(_cursorIndexOfServerId)) {
-              _tmpServerId = null;
-            } else {
-              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
-            }
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt,_tmpServerId);
+            _item = new Task(_tmpId,_tmpServerId,_tmpTitle,_tmpDescription,_tmpCheckboxItems,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
             _result.add(_item);
           }
           return _result;
@@ -442,20 +474,27 @@ public final class TaskDao_Impl implements TaskDao {
         final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
         try {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
           final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
+          final int _cursorIndexOfCheckboxItems = CursorUtil.getColumnIndexOrThrow(_cursor, "checkboxItems");
           final int _cursorIndexOfPriority = CursorUtil.getColumnIndexOrThrow(_cursor, "priority");
           final int _cursorIndexOfDueDate = CursorUtil.getColumnIndexOrThrow(_cursor, "dueDate");
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
-          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final List<Task> _result = new ArrayList<Task>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Task _item;
             final long _tmpId;
             _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
             final String _tmpTitle;
             if (_cursor.isNull(_cursorIndexOfTitle)) {
               _tmpTitle = null;
@@ -468,6 +507,14 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpDescription = _cursor.getString(_cursorIndexOfDescription);
             }
+            final List<CheckboxItem> _tmpCheckboxItems;
+            final String _tmp;
+            if (_cursor.isNull(_cursorIndexOfCheckboxItems)) {
+              _tmp = null;
+            } else {
+              _tmp = _cursor.getString(_cursorIndexOfCheckboxItems);
+            }
+            _tmpCheckboxItems = __taskItemListConverter.toCheckboxItemList(_tmp);
             final String _tmpPriority;
             if (_cursor.isNull(_cursorIndexOfPriority)) {
               _tmpPriority = null;
@@ -483,20 +530,14 @@ public final class TaskDao_Impl implements TaskDao {
               _tmpDuration = _cursor.getString(_cursorIndexOfDuration);
             }
             final boolean _tmpIsCompleted;
-            final int _tmp;
-            _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
-            _tmpIsCompleted = _tmp != 0;
+            final int _tmp_1;
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsCompleted);
+            _tmpIsCompleted = _tmp_1 != 0;
             final long _tmpCreatedAt;
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            final String _tmpServerId;
-            if (_cursor.isNull(_cursorIndexOfServerId)) {
-              _tmpServerId = null;
-            } else {
-              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
-            }
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt,_tmpServerId);
+            _item = new Task(_tmpId,_tmpServerId,_tmpTitle,_tmpDescription,_tmpCheckboxItems,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
             _result.add(_item);
           }
           return _result;
@@ -526,19 +567,26 @@ public final class TaskDao_Impl implements TaskDao {
         final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
         try {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
           final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
+          final int _cursorIndexOfCheckboxItems = CursorUtil.getColumnIndexOrThrow(_cursor, "checkboxItems");
           final int _cursorIndexOfPriority = CursorUtil.getColumnIndexOrThrow(_cursor, "priority");
           final int _cursorIndexOfDueDate = CursorUtil.getColumnIndexOrThrow(_cursor, "dueDate");
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
-          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final Task _result;
           if (_cursor.moveToFirst()) {
             final long _tmpId;
             _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
             final String _tmpTitle;
             if (_cursor.isNull(_cursorIndexOfTitle)) {
               _tmpTitle = null;
@@ -551,6 +599,14 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpDescription = _cursor.getString(_cursorIndexOfDescription);
             }
+            final List<CheckboxItem> _tmpCheckboxItems;
+            final String _tmp;
+            if (_cursor.isNull(_cursorIndexOfCheckboxItems)) {
+              _tmp = null;
+            } else {
+              _tmp = _cursor.getString(_cursorIndexOfCheckboxItems);
+            }
+            _tmpCheckboxItems = __taskItemListConverter.toCheckboxItemList(_tmp);
             final String _tmpPriority;
             if (_cursor.isNull(_cursorIndexOfPriority)) {
               _tmpPriority = null;
@@ -566,20 +622,14 @@ public final class TaskDao_Impl implements TaskDao {
               _tmpDuration = _cursor.getString(_cursorIndexOfDuration);
             }
             final boolean _tmpIsCompleted;
-            final int _tmp;
-            _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
-            _tmpIsCompleted = _tmp != 0;
+            final int _tmp_1;
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsCompleted);
+            _tmpIsCompleted = _tmp_1 != 0;
             final long _tmpCreatedAt;
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            final String _tmpServerId;
-            if (_cursor.isNull(_cursorIndexOfServerId)) {
-              _tmpServerId = null;
-            } else {
-              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
-            }
-            _result = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt,_tmpServerId);
+            _result = new Task(_tmpId,_tmpServerId,_tmpTitle,_tmpDescription,_tmpCheckboxItems,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
           } else {
             _result = null;
           }
@@ -605,20 +655,27 @@ public final class TaskDao_Impl implements TaskDao {
         final Cursor _cursor = DBUtil.query(__db, _statement, false, null);
         try {
           final int _cursorIndexOfId = CursorUtil.getColumnIndexOrThrow(_cursor, "id");
+          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final int _cursorIndexOfTitle = CursorUtil.getColumnIndexOrThrow(_cursor, "title");
           final int _cursorIndexOfDescription = CursorUtil.getColumnIndexOrThrow(_cursor, "description");
+          final int _cursorIndexOfCheckboxItems = CursorUtil.getColumnIndexOrThrow(_cursor, "checkboxItems");
           final int _cursorIndexOfPriority = CursorUtil.getColumnIndexOrThrow(_cursor, "priority");
           final int _cursorIndexOfDueDate = CursorUtil.getColumnIndexOrThrow(_cursor, "dueDate");
           final int _cursorIndexOfDuration = CursorUtil.getColumnIndexOrThrow(_cursor, "duration");
           final int _cursorIndexOfIsCompleted = CursorUtil.getColumnIndexOrThrow(_cursor, "isCompleted");
           final int _cursorIndexOfCreatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "createdAt");
           final int _cursorIndexOfUpdatedAt = CursorUtil.getColumnIndexOrThrow(_cursor, "updatedAt");
-          final int _cursorIndexOfServerId = CursorUtil.getColumnIndexOrThrow(_cursor, "serverId");
           final List<Task> _result = new ArrayList<Task>(_cursor.getCount());
           while (_cursor.moveToNext()) {
             final Task _item;
             final long _tmpId;
             _tmpId = _cursor.getLong(_cursorIndexOfId);
+            final String _tmpServerId;
+            if (_cursor.isNull(_cursorIndexOfServerId)) {
+              _tmpServerId = null;
+            } else {
+              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
+            }
             final String _tmpTitle;
             if (_cursor.isNull(_cursorIndexOfTitle)) {
               _tmpTitle = null;
@@ -631,6 +688,14 @@ public final class TaskDao_Impl implements TaskDao {
             } else {
               _tmpDescription = _cursor.getString(_cursorIndexOfDescription);
             }
+            final List<CheckboxItem> _tmpCheckboxItems;
+            final String _tmp;
+            if (_cursor.isNull(_cursorIndexOfCheckboxItems)) {
+              _tmp = null;
+            } else {
+              _tmp = _cursor.getString(_cursorIndexOfCheckboxItems);
+            }
+            _tmpCheckboxItems = __taskItemListConverter.toCheckboxItemList(_tmp);
             final String _tmpPriority;
             if (_cursor.isNull(_cursorIndexOfPriority)) {
               _tmpPriority = null;
@@ -646,20 +711,14 @@ public final class TaskDao_Impl implements TaskDao {
               _tmpDuration = _cursor.getString(_cursorIndexOfDuration);
             }
             final boolean _tmpIsCompleted;
-            final int _tmp;
-            _tmp = _cursor.getInt(_cursorIndexOfIsCompleted);
-            _tmpIsCompleted = _tmp != 0;
+            final int _tmp_1;
+            _tmp_1 = _cursor.getInt(_cursorIndexOfIsCompleted);
+            _tmpIsCompleted = _tmp_1 != 0;
             final long _tmpCreatedAt;
             _tmpCreatedAt = _cursor.getLong(_cursorIndexOfCreatedAt);
             final long _tmpUpdatedAt;
             _tmpUpdatedAt = _cursor.getLong(_cursorIndexOfUpdatedAt);
-            final String _tmpServerId;
-            if (_cursor.isNull(_cursorIndexOfServerId)) {
-              _tmpServerId = null;
-            } else {
-              _tmpServerId = _cursor.getString(_cursorIndexOfServerId);
-            }
-            _item = new Task(_tmpId,_tmpTitle,_tmpDescription,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt,_tmpServerId);
+            _item = new Task(_tmpId,_tmpServerId,_tmpTitle,_tmpDescription,_tmpCheckboxItems,_tmpPriority,_tmpDueDate,_tmpDuration,_tmpIsCompleted,_tmpCreatedAt,_tmpUpdatedAt);
             _result.add(_item);
           }
           return _result;

@@ -1,5 +1,6 @@
 package com.example.app.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,8 +33,14 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
 
+// Sealed class for different editor items
+sealed class EditorItem {
+    data class Text(val text: String) : EditorItem()
+    data class Checkbox(val text: String, val isChecked: Boolean, val id: String = "cb_${System.currentTimeMillis()}") : EditorItem()
+}
+
+// Legacy data classes for compatibility
 data class RichTextState(
     val text: TextFieldValue = TextFieldValue(),
     val isBold: Boolean = false,
@@ -58,13 +65,19 @@ fun RichTextEditor(
     onTextChange: (String, List<CheckboxItem>) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var richTextState by remember { 
+    // Parse initial text into editor items
+    var editorItems by remember {
         mutableStateOf(
-            RichTextState(
-                text = TextFieldValue(initialText),
-                checkboxes = parseCheckboxes(initialText).toMutableList()
-            )
+            parseTextToEditorItems(initialText).ifEmpty { 
+                listOf(EditorItem.Text("")) 
+            }
         )
+    }
+
+    // Trigger callback when items change
+    LaunchedEffect(editorItems) {
+        val (text, checkboxes) = convertEditorItemsToOutput(editorItems)
+        onTextChange(text, checkboxes)
     }
 
     Column(
@@ -72,30 +85,66 @@ fun RichTextEditor(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Formatting toolbar
-        FormattingToolbar(
-            state = richTextState,
-            onStateChange = { richTextState = it },
-            onAddCheckbox = {
-                val newCheckbox = CheckboxItem(
-                    id = "cb_${System.currentTimeMillis()}",
-                    text = "",
-                    position = richTextState.text.text.length
-                )
-                richTextState = richTextState.copy(
-                    checkboxes = richTextState.checkboxes.apply { add(newCheckbox) }
+        // Rich text formatting toolbar
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF1E1E1E)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Add Text Block Button
+                IconButton(
+                    onClick = {
+                        editorItems = editorItems + EditorItem.Text("")
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Add,
+                        contentDescription = "Add text block",
+                        tint = Color(0xFFB0B0B0)
+                    )
+                }
+                
+                // Add Checkbox Button - Main feature
+                IconButton(
+                    onClick = {
+                        editorItems = editorItems + EditorItem.Checkbox("", false)
+                    },
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        Icons.Default.CheckBox,
+                        contentDescription = "Add checkbox",
+                        tint = Color(0xFF4CAF50)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                Text(
+                    text = "${editorItems.count { it is EditorItem.Checkbox }} checkboxes",
+                    color = Color(0xFFB0B0B0),
+                    fontSize = 12.sp,
+                    modifier = Modifier.align(Alignment.CenterVertically)
                 )
             }
-        )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Main text editor
+        // Main editor area
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF2D2D2D))
         ) {
             Column(
                 modifier = Modifier
@@ -103,274 +152,264 @@ fun RichTextEditor(
                     .padding(16.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                // Render text with checkboxes
-                RenderRichText(
-                    state = richTextState,
-                    onStateChange = { richTextState = it },
-                    onTextChange = onTextChange
+                RichTextEditorWithCheckboxes(
+                    items = editorItems,
+                    onItemsChange = { newItems ->
+                        editorItems = newItems
+                    }
                 )
             }
         }
-
-
     }
 }
 
 @Composable
-private fun FormattingToolbar(
-    state: RichTextState,
-    onStateChange: (RichTextState) -> Unit,
-    onAddCheckbox: () -> Unit
-) {
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp)
-    ) {
-        item {
-            FormatButton(
-                icon = Icons.Default.FormatBold,
-                isSelected = state.isBold,
-                onClick = { onStateChange(state.copy(isBold = !state.isBold)) }
-            )
-        }
-        
-        item {
-            FormatButton(
-                icon = Icons.Default.FormatItalic,
-                isSelected = state.isItalic,
-                onClick = { onStateChange(state.copy(isItalic = !state.isItalic)) }
-            )
-        }
-        
-        item {
-            FormatButton(
-                icon = Icons.Default.FormatUnderlined,
-                isSelected = state.isUnderline,
-                onClick = { onStateChange(state.copy(isUnderline = !state.isUnderline)) }
-            )
-        }
-        
-        item {
-            FormatButton(
-                icon = Icons.Default.FormatStrikethrough,
-                isSelected = state.isStrikethrough,
-                onClick = { onStateChange(state.copy(isStrikethrough = !state.isStrikethrough)) }
-            )
-        }
-        
-        item {
-            Divider(
-                modifier = Modifier
-                    .height(32.dp)
-                    .width(1.dp)
-            )
-        }
-        
-        item {
-            FormatButton(
-                icon = Icons.Default.CheckBox,
-                isSelected = false,
-                onClick = onAddCheckbox
-            )
-        }
-        
-        item {
-            // Font size controls
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        RoundedCornerShape(8.dp)
-                    )
-                    .padding(4.dp)
-            ) {
-                IconButton(
-                    onClick = { 
-                        if (state.fontSize > 12) {
-                            onStateChange(state.copy(fontSize = state.fontSize - 2))
-                        }
-                    },
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Remove,
-                        contentDescription = "Decrease font size",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-                
-                Text(
-                    text = "${state.fontSize}",
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp)
-                )
-                
-                IconButton(
-                    onClick = { 
-                        if (state.fontSize < 24) {
-                            onStateChange(state.copy(fontSize = state.fontSize + 2))
-                        }
-                    },
-                    modifier = Modifier.size(24.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Add,
-                        contentDescription = "Increase font size",
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FormatButton(
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
-                else Color.Transparent
-            )
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (isSelected) MaterialTheme.colorScheme.primary 
-                   else MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun RenderRichText(
-    state: RichTextState,
-    onStateChange: (RichTextState) -> Unit,
-    onTextChange: (String, List<CheckboxItem>) -> Unit
+private fun RichTextEditorWithCheckboxes(
+    items: List<EditorItem>,
+    onItemsChange: (List<EditorItem>) -> Unit
 ) {
     Column {
-        // Render checkboxes
-        state.checkboxes.forEach { checkbox ->
-            CheckboxRow(
-                checkbox = checkbox,
-                onCheckedChange = { isChecked ->
-                    val updatedCheckboxes = state.checkboxes.map { cb ->
-                        if (cb.id == checkbox.id) cb.copy(isChecked = isChecked) else cb
-                    }.toMutableList()
-                    
-                    val newState = state.copy(checkboxes = updatedCheckboxes)
-                    onStateChange(newState)
-                    onTextChange(newState.text.text, newState.checkboxes)
-                },
-                onTextChange = { newText ->
-                    val updatedCheckboxes = state.checkboxes.map { cb ->
-                        if (cb.id == checkbox.id) cb.copy(text = newText) else cb
-                    }.toMutableList()
-                    
-                    val newState = state.copy(checkboxes = updatedCheckboxes)
-                    onStateChange(newState)
-                    onTextChange(newState.text.text, newState.checkboxes)
-                },
-                onRemove = {
-                    val updatedCheckboxes = state.checkboxes.filter { it.id != checkbox.id }.toMutableList()
-                    val newState = state.copy(checkboxes = updatedCheckboxes)
-                    onStateChange(newState)
-                    onTextChange(newState.text.text, newState.checkboxes)
+        items.forEachIndexed { index, item ->
+            when (item) {
+                is EditorItem.Text -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF2D2D2D)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            BasicTextField(
+                                value = item.text,
+                                onValueChange = { newValue ->
+                                    val newItems = items.toMutableList()
+                                    newItems[index] = EditorItem.Text(newValue)
+                                    onItemsChange(newItems)
+                                },
+                                textStyle = TextStyle(
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    lineHeight = 24.sp
+                                ),
+                                modifier = Modifier.weight(1f),
+                                decorationBox = { innerTextField ->
+                                    if (item.text.isEmpty()) {
+                                        Text(
+                                            "Enter text...",
+                                            color = Color(0xFF808080),
+                                            fontSize = 16.sp
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                            
+                            // Remove button for text blocks too
+                            IconButton(
+                                onClick = {
+                                    val newItems = items.toMutableList()
+                                    newItems.removeAt(index)
+                                    onItemsChange(newItems)
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove text block",
+                                    tint = Color(0xFF808080),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
                 }
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+                is EditorItem.Checkbox -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF383838)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = item.isChecked,
+                                onCheckedChange = { checked ->
+                                    val newItems = items.toMutableList()
+                                    newItems[index] = item.copy(isChecked = checked)
+                                    onItemsChange(newItems)
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = Color(0xFF4CAF50),
+                                    uncheckedColor = Color(0xFFB0B0B0),
+                                    checkmarkColor = Color.White
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            BasicTextField(
+                                value = item.text,
+                                onValueChange = { newValue ->
+                                    val newItems = items.toMutableList()
+                                    newItems[index] = item.copy(text = newValue)
+                                    onItemsChange(newItems)
+                                },
+                                textStyle = TextStyle(
+                                    color = if (item.isChecked) Color(0xFFB0B0B0) else Color.White,
+                                    fontSize = 16.sp,
+                                    textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None
+                                ),
+                                modifier = Modifier.weight(1f),
+                                decorationBox = { innerTextField ->
+                                    if (item.text.isEmpty()) {
+                                        Text(
+                                            "Enter task...",
+                                            color = Color(0xFF808080),
+                                            fontSize = 16.sp
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            )
+                            
+                            // Remove button
+                            IconButton(
+                                onClick = {
+                                    val newItems = items.toMutableList()
+                                    newItems.removeAt(index)
+                                    onItemsChange(newItems)
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove checkbox",
+                                    tint = Color(0xFF808080),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
-
-        // Main text field
-        OutlinedTextField(
-            value = state.text,
-            onValueChange = { newValue ->
-                val newState = state.copy(text = newValue)
-                onStateChange(newState)
-                onTextChange(newValue.text, newState.checkboxes)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            textStyle = TextStyle(
-                fontSize = state.fontSize.sp,
-                fontWeight = if (state.isBold) FontWeight.Bold else FontWeight.Normal,
-                fontStyle = if (state.isItalic) FontStyle.Italic else FontStyle.Normal,
-                textDecoration = when {
-                    state.isUnderline && state.isStrikethrough -> 
-                        TextDecoration.combine(listOf(TextDecoration.Underline, TextDecoration.LineThrough))
-                    state.isUnderline -> TextDecoration.Underline
-                    state.isStrikethrough -> TextDecoration.LineThrough
-                    else -> TextDecoration.None
-                }
-            ),
-            placeholder = { Text("Start typing your note...") },
-            minLines = 5,
-            keyboardOptions = KeyboardOptions.Default.copy(imeAction = ImeAction.Default)
-        )
+        
+        // Add text block button if list is empty or last item is checkbox
+        if (items.isEmpty() || items.last() is EditorItem.Checkbox) {
+            TextButton(
+                onClick = {
+                    onItemsChange(items + EditorItem.Text(""))
+                },
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = "Add text",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Add text block", color = Color(0xFFB0B0B0))
+            }
+        }
     }
 }
 
-@Composable
-private fun CheckboxRow(
-    checkbox: CheckboxItem,
-    onCheckedChange: (Boolean) -> Unit,
-    onTextChange: (String) -> Unit,
-    onRemove: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(
-            checked = checkbox.isChecked,
-            onCheckedChange = onCheckedChange
-        )
+// Helper functions for parsing and converting
+private fun parseTextToEditorItems(text: String): List<EditorItem> {
+    if (text.isEmpty()) return listOf(EditorItem.Text(""))
+    
+    // First try to parse as JSON
+    try {
+        val json = org.json.JSONObject(text)
+        val textContent = json.optString("text", "")
+        val checkboxesArray = json.optJSONArray("checkboxes")
         
-        OutlinedTextField(
-            value = checkbox.text,
-            onValueChange = onTextChange,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("Enter task...") },
-            singleLine = true,
-            textStyle = TextStyle(
-                textDecoration = if (checkbox.isChecked) TextDecoration.LineThrough else TextDecoration.None
-            )
-        )
+        val items = mutableListOf<EditorItem>()
         
-        IconButton(onClick = onRemove) {
-            Icon(
-                Icons.Default.Close,
-                contentDescription = "Remove checkbox",
-                tint = MaterialTheme.colorScheme.error
-            )
+        // Add text content if present
+        if (textContent.isNotBlank()) {
+            items.add(EditorItem.Text(textContent))
         }
+        
+        // Add checkboxes if present
+        if (checkboxesArray != null) {
+            for (i in 0 until checkboxesArray.length()) {
+                val checkboxJson = checkboxesArray.getJSONObject(i)
+                items.add(
+                    EditorItem.Checkbox(
+                        text = checkboxJson.getString("text"),
+                        isChecked = checkboxJson.getBoolean("checked")
+                    )
+                )
+            }
+        }
+        
+        return items.ifEmpty { listOf(EditorItem.Text("")) }
+    } catch (e: Exception) {
+        // Fallback to markdown parsing
+        val lines = text.split("\n")
+        val items = mutableListOf<EditorItem>()
+        val textLines = mutableListOf<String>()
+        
+        for (line in lines) {
+            if (line.matches(Regex("""- \[[x ]\] .+"""))) {
+                // Found checkbox, first add any accumulated text
+                if (textLines.isNotEmpty()) {
+                    items.add(EditorItem.Text(textLines.joinToString("\n")))
+                    textLines.clear()
+                }
+                
+                // Add checkbox
+                val isChecked = line.contains("- [x]")
+                val checkboxText = line.removePrefix("- [x] ").removePrefix("- [ ] ")
+                items.add(EditorItem.Checkbox(checkboxText, isChecked))
+            } else {
+                textLines.add(line)
+            }
+        }
+        
+        // Add remaining text if any
+        if (textLines.isNotEmpty()) {
+            items.add(EditorItem.Text(textLines.joinToString("\n")))
+        }
+        
+        return items.ifEmpty { listOf(EditorItem.Text("")) }
     }
 }
 
-private fun parseCheckboxes(text: String): List<CheckboxItem> {
+private fun convertEditorItemsToOutput(items: List<EditorItem>): Pair<String, List<CheckboxItem>> {
+    val textParts = mutableListOf<String>()
     val checkboxes = mutableListOf<CheckboxItem>()
-    val checkboxPattern = Regex("""- \[([x ])\] (.+)""")
     
-    checkboxPattern.findAll(text).forEachIndexed { index, match ->
-        val isChecked = match.groupValues[1] == "x"
-        val taskText = match.groupValues[2]
-        
-        checkboxes.add(
-            CheckboxItem(
-                id = "cb_parsed_$index",
-                text = taskText,
-                isChecked = isChecked,
-                position = match.range.first
-            )
-        )
+    items.forEach { item ->
+        when (item) {
+            is EditorItem.Text -> {
+                if (item.text.isNotBlank()) {
+                    textParts.add(item.text)
+                }
+            }
+            is EditorItem.Checkbox -> {
+                checkboxes.add(
+                    CheckboxItem(
+                        id = item.id,
+                        text = item.text,
+                        isChecked = item.isChecked,
+                        position = 0 // Position is not used in new system
+                    )
+                )
+            }
+        }
     }
     
-    return checkboxes
+    return Pair(textParts.joinToString("\n\n"), checkboxes)
 }

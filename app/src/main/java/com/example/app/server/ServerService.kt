@@ -12,12 +12,14 @@ import kotlinx.coroutines.*
 import com.example.app.MainActivity
 import com.example.app.R
 import com.example.app.data.AppDatabase
+import com.example.app.util.NetworkChangeManager
 
 class ServerService : Service() {
     private var serverJob: Job? = null
     private var serviceScope: CoroutineScope? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var healthCheckJob: Job? = null
+    private var networkChangeManager: NetworkChangeManager? = null
     
     companion object {
         private const val CHANNEL_ID = "LogionServerChannel"
@@ -54,6 +56,15 @@ class ServerService : Service() {
         val database = AppDatabase.getDatabase(applicationContext)
         DataSyncManager.initialize(database)
         
+        // Initialize network change monitoring
+        networkChangeManager = NetworkChangeManager(applicationContext) { networkInfo ->
+            // Update notification when network changes
+            val networkStatus = "${networkInfo.type} (${networkInfo.ipAddress ?: "No IP"})"
+            updateNotification("Logion server running - $networkStatus")
+            Log.i("ServerService", "Network changed: $networkStatus")
+        }
+        networkChangeManager?.startMonitoring()
+        
         // Start health check monitoring
         startHealthCheck()
     }
@@ -88,8 +99,10 @@ class ServerService : Service() {
                 NgrokManager.startTunnel()
                 Log.d("ServerService", "Server URLs: {NgrokManager.getServerUrls()}")
                 
-                // Final notification update
-                updateNotification("Logion server is running - Ready for connections")
+                // Final notification update with network info
+                val networkInfo = networkChangeManager?.getNetworkInfo()
+                val networkStatus = "${networkInfo?.type} (${networkInfo?.ipAddress ?: "No IP"})"
+                updateNotification("Logion server running - $networkStatus")
                 
             } catch (e: Exception) {
                 Log.e("ServerService", "Failed to start server", e)
@@ -108,6 +121,10 @@ class ServerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d("ServerService", "Stopping server service")
+        
+        // Stop network change monitoring
+        networkChangeManager?.stopMonitoring()
+        networkChangeManager = null
         
         // Release wake lock
         releaseWakeLock()

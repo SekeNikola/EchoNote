@@ -15,7 +15,9 @@ interface OpenAIService {
     @POST("/v1/audio/transcriptions")
     suspend fun transcribeAudio(
         @Part file: MultipartBody.Part,
-        @Part("model") model: RequestBody
+        @Part("model") model: RequestBody,
+        @Part("language") language: RequestBody? = null,
+        @Part("prompt") prompt: RequestBody? = null
     ): Response<TranscriptionResponse>
 
     @Headers("Content-Type: application/json")
@@ -26,4 +28,10 @@ interface OpenAIService {
 
     @GET("/v1/models")
     suspend fun validateApiKey(): Response<ModelsResponse>
+
+    @Headers("Content-Type: application/json")
+    @POST("/v1/audio/speech")
+    suspend fun generateSpeech(
+        @Body request: TTSRequest
+    ): Response<okhttp3.ResponseBody>
 }

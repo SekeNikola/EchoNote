@@ -151,7 +151,7 @@ public final class ReminderDao_Impl implements ReminderDao {
   }
 
   @Override
-  public Object insert(final Reminder reminder, final Continuation<? super Unit> arg1) {
+  public Object insert(final Reminder reminder, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -165,11 +165,11 @@ public final class ReminderDao_Impl implements ReminderDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
-  public Object delete(final Reminder reminder, final Continuation<? super Unit> arg1) {
+  public Object delete(final Reminder reminder, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -183,11 +183,11 @@ public final class ReminderDao_Impl implements ReminderDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
-  public Object update(final Reminder reminder, final Continuation<? super Unit> arg1) {
+  public Object update(final Reminder reminder, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -201,11 +201,11 @@ public final class ReminderDao_Impl implements ReminderDao {
           __db.endTransaction();
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
-  public Object markCompleted(final long id, final Continuation<? super Unit> arg1) {
+  public Object markCompleted(final long id, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -226,11 +226,12 @@ public final class ReminderDao_Impl implements ReminderDao {
           __preparedStmtOfMarkCompleted.release(_stmt);
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override
-  public Object reschedule(final long id, final long time, final Continuation<? super Unit> arg2) {
+  public Object reschedule(final long id, final long time,
+      final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -253,11 +254,11 @@ public final class ReminderDao_Impl implements ReminderDao {
           __preparedStmtOfReschedule.release(_stmt);
         }
       }
-    }, arg2);
+    }, $completion);
   }
 
   @Override
-  public Object deleteById(final long id, final Continuation<? super Unit> arg1) {
+  public Object deleteById(final long id, final Continuation<? super Unit> $completion) {
     return CoroutinesRoom.execute(__db, true, new Callable<Unit>() {
       @Override
       @NonNull
@@ -278,7 +279,7 @@ public final class ReminderDao_Impl implements ReminderDao {
           __preparedStmtOfDeleteById.release(_stmt);
         }
       }
-    }, arg1);
+    }, $completion);
   }
 
   @Override

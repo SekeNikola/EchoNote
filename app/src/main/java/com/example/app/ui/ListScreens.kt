@@ -266,7 +266,7 @@ fun NotesListScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             
                             Text(
-                                text = note.transcript.take(100),
+                                text = parseNoteContentToDisplayText(note.transcript),
                                 fontSize = 14.sp,
                                 color = Color(0xFFB0B0B0),
                                 maxLines = 3,
@@ -288,7 +288,8 @@ fun NotesListScreen(
         ) {
             AddNoteBottomSheet(
                 onCreateNote = { title, content, imageUri ->
-                    viewModel.createNote(title, content, imageUri)
+                    // Sync the new note to the server/web immediately
+                    viewModel.addNoteWithBroadcast(title, content, imageUri)
                     showAddNoteSheet = false
                 },
                 onDismiss = { showAddNoteSheet = false }

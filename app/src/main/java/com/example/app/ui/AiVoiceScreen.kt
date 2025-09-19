@@ -155,6 +155,166 @@ fun AiVoiceScreen(
         
         Spacer(modifier = Modifier.height(40.dp))
     }
+    
+    // Task vs Reminder choice dialog
+    val taskReminderChoice by viewModel.showTaskReminderChoice.collectAsState()
+    
+    taskReminderChoice?.let { choice ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissTaskReminderChoice() },
+            title = {
+                Text(
+                    text = "Choose Type",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    text = "Should I create a task or reminder for: \"${choice.text}\"?",
+                    color = Color.White.copy(alpha = 0.9f)
+                )
+            },
+            confirmButton = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { viewModel.chooseTask() },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF4F46E5)
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, 
+                            Color(0xFF4F46E5)
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Task,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Task")
+                    }
+                    
+                    OutlinedButton(
+                        onClick = { viewModel.chooseReminder() },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF059669)
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, 
+                            Color(0xFF059669)
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Alarm,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Reminder")
+                    }
+                }
+            },
+            containerColor = Color(0xFF1F2937),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
+    
+    // List Creation Choice Dialog
+    val listCreationChoice by viewModel.showListCreationChoice.collectAsState()
+    
+    listCreationChoice?.let { choice ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissListCreationChoice() },
+            title = {
+                Text(
+                    text = "Create Checkbox Note?",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "I detected a list with ${choice.detectedItems.size} items:",
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    choice.detectedItems.take(3).forEach { item ->
+                        Text(
+                            text = "• $item",
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                    if (choice.detectedItems.size > 3) {
+                        Text(
+                            text = "... and ${choice.detectedItems.size - 3} more",
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Would you like to create a note with checkboxes?",
+                        color = Color.White.copy(alpha = 0.9f)
+                    )
+                }
+            },
+            confirmButton = {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { viewModel.createCheckboxNote() },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF4F46E5)
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, 
+                            Color(0xFF4F46E5)
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.CheckBox,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Checkbox Note")
+                    }
+                    
+                    OutlinedButton(
+                        onClick = { viewModel.createRegularNote() },
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color(0xFF059669)
+                        ),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp, 
+                            Color(0xFF059669)
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.Note,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Regular Note")
+                    }
+                }
+            },
+            containerColor = Color(0xFF1F2937),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
+        )
+    }
 }
 
 @Composable

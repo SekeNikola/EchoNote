@@ -25,8 +25,7 @@ import java.util.*
 fun EnhancedNoteCreationScreen(
     initialNoteText: String = "",
     onNavigateBack: () -> Unit,
-    taskViewModel: TaskViewModel = viewModel(),
-    noteViewModel: com.example.app.viewmodel.NoteViewModel = viewModel()
+    taskViewModel: TaskViewModel = viewModel()
 ) {
     var noteText by remember { mutableStateOf(initialNoteText) }
     var checkboxItems by remember { mutableStateOf<List<CheckboxItem>>(emptyList()) }
@@ -123,12 +122,12 @@ fun EnhancedNoteCreationScreen(
                                     
                                     android.util.Log.d("VoiceReminder", "Parsed reminder minutes: $reminderMinutes for text: '$reminderText'")
                                     
-                                    // Create a reminder (not a task) for voice commands
-                                    val reminderTime = System.currentTimeMillis() + (reminderMinutes * 60 * 1000)
-                                    noteViewModel.createReminder(
-                                        title = command.content,
+                                    taskViewModel.createTaskWithReminder(
+                                        title = "Reminder: ${command.content}",
                                         description = "Voice reminder",
-                                        reminderTime = reminderTime
+                                        priority = "High",
+                                        dueDate = System.currentTimeMillis() + (reminderMinutes * 60 * 1000),
+                                        reminderMinutes = reminderMinutes
                                     )
                                 }
                             }

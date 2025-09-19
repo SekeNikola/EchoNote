@@ -7,8 +7,8 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 
-@Database(entities = [Note::class, Reminder::class, NoteCrossRef::class, Task::class, ChatMessage::class], version = 7)
-@TypeConverters(Converters::class, ReminderConverters::class)
+@Database(entities = [Note::class, Reminder::class, NoteCrossRef::class, Task::class, ChatMessage::class], version = 9)
+@TypeConverters(Converters::class, ReminderConverters::class, TaskItemListConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun noteDao(): NoteDao
     abstract fun reminderDao(): ReminderDao
@@ -24,7 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "logion_db"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                 .fallbackToDestructiveMigration()
                 .build().also { INSTANCE = it }
             }
@@ -101,6 +101,37 @@ abstract class AppDatabase : RoomDatabase() {
                         noteId INTEGER
                     )
                 """.trimIndent())
+            }
+        }
+        
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // Add checkboxItems column to tasks table
+                database.execSQL("ALTER TABLE tasks ADD COLUMN checkboxItems TEXT NOT NULL DEFAULT '[]'")
+                
+                // Check if serverId column exists before adding it
+                val cursor = database.query("PRAGMA table_info(tasks)")
+                var hasServerId = false
+                while (cursor.moveToNext()) {
+                    val columnName = cursor.getString(1) // Column name is at index 1
+                    if (columnName == "serverId") {
+                        hasServerId = true
+                        break
+                    }
+                }
+                cursor.close()
+                
+                // Add serverId column only if it doesn't exist
+                if (!hasServerId) {
+                    database.execSQL("ALTER TABLE tasks ADD COLUMN serverId TEXT")
+                }
+            }
+        }
+        
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                // This migration ensures clean state - no changes needed
+                // All necessary columns should already exist from previous migrations
             }
         }
     }

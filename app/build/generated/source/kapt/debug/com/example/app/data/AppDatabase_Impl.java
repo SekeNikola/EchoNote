@@ -37,16 +37,16 @@ public final class AppDatabase_Impl extends AppDatabase {
   @Override
   @NonNull
   protected SupportSQLiteOpenHelper createOpenHelper(@NonNull final DatabaseConfiguration config) {
-    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(7) {
+    final SupportSQLiteOpenHelper.Callback _openCallback = new RoomOpenHelper(config, new RoomOpenHelper.Delegate(9) {
       @Override
       public void createAllTables(@NonNull final SupportSQLiteDatabase db) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `notes` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `serverId` TEXT, `title` TEXT NOT NULL, `snippet` TEXT NOT NULL, `transcript` TEXT NOT NULL, `audioPath` TEXT, `imagePath` TEXT, `highlights` TEXT NOT NULL, `isFavorite` INTEGER NOT NULL, `isArchived` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `reminderTime` INTEGER, `checklistState` TEXT)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `reminders` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `reminderTime` INTEGER NOT NULL, `isCompleted` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `noteId` INTEGER)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `note_cross_refs` (`noteId` INTEGER NOT NULL, `relatedNoteId` INTEGER NOT NULL, PRIMARY KEY(`noteId`, `relatedNoteId`))");
-        db.execSQL("CREATE TABLE IF NOT EXISTS `tasks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `priority` TEXT NOT NULL, `dueDate` INTEGER NOT NULL, `duration` TEXT NOT NULL, `isCompleted` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `serverId` TEXT)");
+        db.execSQL("CREATE TABLE IF NOT EXISTS `tasks` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `serverId` TEXT, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `checkboxItems` TEXT NOT NULL, `priority` TEXT NOT NULL, `dueDate` INTEGER NOT NULL, `duration` TEXT NOT NULL, `isCompleted` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL)");
         db.execSQL("CREATE TABLE IF NOT EXISTS `chat_messages` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `content` TEXT NOT NULL, `isUser` INTEGER NOT NULL, `timestamp` INTEGER NOT NULL, `sessionId` TEXT, `imageUri` TEXT)");
         db.execSQL("CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)");
-        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '32bf206b3ae15c5bad8d9782e08c76aa')");
+        db.execSQL("INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '620f1298373f97b15380adf9ec35b564')");
       }
 
       @Override
@@ -151,17 +151,18 @@ public final class AppDatabase_Impl extends AppDatabase {
                   + " Expected:\n" + _infoNoteCrossRefs + "\n"
                   + " Found:\n" + _existingNoteCrossRefs);
         }
-        final HashMap<String, TableInfo.Column> _columnsTasks = new HashMap<String, TableInfo.Column>(10);
+        final HashMap<String, TableInfo.Column> _columnsTasks = new HashMap<String, TableInfo.Column>(11);
         _columnsTasks.put("id", new TableInfo.Column("id", "INTEGER", true, 1, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("serverId", new TableInfo.Column("serverId", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("title", new TableInfo.Column("title", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("description", new TableInfo.Column("description", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
+        _columnsTasks.put("checkboxItems", new TableInfo.Column("checkboxItems", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("priority", new TableInfo.Column("priority", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("dueDate", new TableInfo.Column("dueDate", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("duration", new TableInfo.Column("duration", "TEXT", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("isCompleted", new TableInfo.Column("isCompleted", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("createdAt", new TableInfo.Column("createdAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
         _columnsTasks.put("updatedAt", new TableInfo.Column("updatedAt", "INTEGER", true, 0, null, TableInfo.CREATED_FROM_ENTITY));
-        _columnsTasks.put("serverId", new TableInfo.Column("serverId", "TEXT", false, 0, null, TableInfo.CREATED_FROM_ENTITY));
         final HashSet<TableInfo.ForeignKey> _foreignKeysTasks = new HashSet<TableInfo.ForeignKey>(0);
         final HashSet<TableInfo.Index> _indicesTasks = new HashSet<TableInfo.Index>(0);
         final TableInfo _infoTasks = new TableInfo("tasks", _columnsTasks, _foreignKeysTasks, _indicesTasks);
@@ -189,7 +190,7 @@ public final class AppDatabase_Impl extends AppDatabase {
         }
         return new RoomOpenHelper.ValidationResult(true, null);
       }
-    }, "32bf206b3ae15c5bad8d9782e08c76aa", "15c9bfcd34971f7025fccce0b2bcae63");
+    }, "620f1298373f97b15380adf9ec35b564", "c484ace1534179bd94b1b09d16d0c32b");
     final SupportSQLiteOpenHelper.Configuration _sqliteConfig = SupportSQLiteOpenHelper.Configuration.builder(config.context).name(config.name).callback(_openCallback).build();
     final SupportSQLiteOpenHelper _helper = config.sqliteOpenHelperFactory.create(_sqliteConfig);
     return _helper;

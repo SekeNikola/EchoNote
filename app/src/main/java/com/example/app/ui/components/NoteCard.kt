@@ -19,12 +19,63 @@ import org.json.JSONObject
 private fun extractDisplayText(snippet: String): String {
     return try {
         val json = JSONObject(snippet)
-        json.optString("text", "").takeIf { it.isNotEmpty() }
+        val textContent = json.optString("text", "")
+        val checkboxesArray = json.optJSONArray("checkboxes")
+        
+        // Build display string
+        val displayParts = mutableListOf<String>()
+        
+        // Add text content if present
+        if (textContent.isNotEmpty()) {
+            displayParts.add(textContent)
+        }
+        
+        // Add checkbox summary if present
+        if (checkboxesArray != null && checkboxesArray.length() > 0) {
+            val totalTasks = checkboxesArray.length()
+            var completedTasks = 0
+            
+            for (i in 0 until checkboxesArray.length()) {
+                val checkboxJson = checkboxesArray.getJSONObject(i)
+                if (checkboxJson.optBoolean("checked", false)) {
+                    completedTasks++
+                }
+            }
+            
+            val taskSummary = "$completedTasks/$totalTasks tasks completed"
+            displayParts.add(taskSummary)
+        }
+        
+        // Return combined text or fallback
+        displayParts.joinToString(" • ").takeIf { it.isNotEmpty() }
             ?: json.optString("summary", "").takeIf { it.isNotEmpty() }
-            ?: snippet // Fallback to original snippet if no text/summary found
+            ?: "Note with content"
     } catch (e: Exception) {
-        // If JSON parsing fails, return original snippet (it's probably plain text)
-        snippet
+        // If JSON parsing fails, check if it's markdown-style checkboxes
+        if (snippet.contains("- [")) {
+            val lines = snippet.split("\n")
+            val textLines = lines.filter { !it.matches(Regex("""- \[[x ]\] .+""")) && it.isNotBlank() }
+            val checkboxLines = lines.filter { it.matches(Regex("""- \[[x ]\] .+""")) }
+            
+            val displayParts = mutableListOf<String>()
+            
+            // Add text content
+            if (textLines.isNotEmpty()) {
+                displayParts.add(textLines.first()) // Show first line of text
+            }
+            
+            // Add checkbox summary
+            if (checkboxLines.isNotEmpty()) {
+                val completed = checkboxLines.count { it.contains("- [x]") }
+                val total = checkboxLines.size
+                displayParts.add("$completed/$total tasks completed")
+            }
+            
+            displayParts.joinToString(" • ").takeIf { it.isNotEmpty() } ?: snippet
+        } else {
+            // Return original snippet (plain text), but limit length
+            snippet.take(100).replace("\n", " ")
+        }
     }
 }
 

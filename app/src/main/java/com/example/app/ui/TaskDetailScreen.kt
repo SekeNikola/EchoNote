@@ -3,6 +3,8 @@ package com.example.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -16,10 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.app.viewmodel.NoteViewModel
+import com.example.app.data.CheckboxItem
+import com.example.app.data.CheckboxUtils
 import java.text.SimpleDateFormat
 import java.util.*
 import android.app.DatePickerDialog
@@ -39,6 +44,7 @@ fun TaskDetailScreen(
     var isEditMode by remember { mutableStateOf(false) }
     var editTitle by remember { mutableStateOf("") }
     var editDescription by remember { mutableStateOf("") }
+    var editCheckboxItems by remember { mutableStateOf<List<CheckboxItem>>(emptyList()) }
     var editPriority by remember { mutableStateOf("Medium") }
     var editDueDate by remember { mutableStateOf(0L) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -49,6 +55,12 @@ fun TaskDetailScreen(
         task?.let {
             editTitle = it.title
             editDescription = it.description
+            editCheckboxItems = if (it.checkboxItems.isNotEmpty()) {
+                it.checkboxItems
+            } else {
+                // Parse existing description for checkboxes if checkboxItems is empty
+                CheckboxUtils.parseCheckboxesFromText(it.description)
+            }
             editPriority = it.priority
             editDueDate = it.dueDate
         }
@@ -315,12 +327,13 @@ fun TaskDetailScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Task description (editable if in edit mode)
+            // Task description and checkbox items
             if (isEditMode) {
+                // Description field for additional text
                 OutlinedTextField(
                     value = editDescription,
                     onValueChange = { editDescription = it },
-                    label = { Text("Description", color = Color(0xFFB0B0B0)) },
+                    label = { Text("Additional Description", color = Color(0xFFB0B0B0)) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
@@ -329,9 +342,99 @@ fun TaskDetailScreen(
                         unfocusedBorderColor = Color(0xFF404056),
                         cursorColor = Color(0xFFFF8C00)
                     ),
-                    minLines = 3
+                    minLines = 2
                 )
-            } else {
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Button to add new checkbox item
+                OutlinedButton(
+                    onClick = {
+                        editCheckboxItems = editCheckboxItems + CheckboxItem(text = "New item")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = Color(0xFFFF8C00)
+                    )
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Add Checkbox Item")
+                }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+            
+            // Display checkbox items
+            if (editCheckboxItems.isNotEmpty() || task?.checkboxItems?.isNotEmpty() == true) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF2A2A3E)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        val itemsToShow = if (isEditMode) editCheckboxItems else task?.checkboxItems ?: emptyList()
+                        
+                        itemsToShow.forEachIndexed { index, checkboxItem ->
+                            CheckboxItemRow(
+                                item = checkboxItem,
+                                isEditMode = isEditMode,
+                                onCheckedChange = { isChecked ->
+                                    if (isEditMode) {
+                                        editCheckboxItems = CheckboxUtils.updateCheckboxState(
+                                            editCheckboxItems, checkboxItem.id, isChecked
+                                        )
+                                    } else {
+                                        // Update in real-time and save to database
+                                        task?.let { currentTask ->
+                                            val updatedItems = CheckboxUtils.updateCheckboxState(
+                                                currentTask.checkboxItems, checkboxItem.id, isChecked
+                                            )
+                                            viewModel.updateTaskCheckboxItems(currentTask.id, updatedItems)
+                                        }
+                                    }
+                                },
+                                onTextChange = { newText ->
+                                    if (isEditMode) {
+                                        editCheckboxItems = editCheckboxItems.map { item ->
+                                            if (item.id == checkboxItem.id) {
+                                                item.copy(text = newText)
+                                            } else {
+                                                item
+                                            }
+                                        }
+                                    }
+                                },
+                                onDelete = {
+                                    if (isEditMode) {
+                                        editCheckboxItems = editCheckboxItems.filter { it.id != checkboxItem.id }
+                                    }
+                                }
+                            )
+                            
+                            if (index < itemsToShow.size - 1) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                            }
+                        }
+                        
+                        // Show additional description if it exists
+                        if (!isEditMode && task?.description?.isNotBlank() == true) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = task.description,
+                                fontSize = 14.sp,
+                                color = Color(0xFFB0B0B0),
+                                lineHeight = 20.sp
+                            )
+                        }
+                    }
+                }
+            } else if (!isEditMode && task?.description?.isNotBlank() == true) {
+                // Show only description if no checkbox items
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -525,4 +628,72 @@ fun TaskDetailScreen(
 fun formatFullDate(timestamp: Long): String {
     val formatter = SimpleDateFormat("EEEE, MMM dd, yyyy 'at' h:mm a", Locale.getDefault())
     return formatter.format(Date(timestamp))
+}
+
+@Composable
+fun CheckboxItemRow(
+    item: CheckboxItem,
+    isEditMode: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onTextChange: (String) -> Unit,
+    onDelete: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Checkbox
+        Checkbox(
+            checked = item.isChecked,
+            onCheckedChange = onCheckedChange,
+            colors = CheckboxDefaults.colors(
+                checkedColor = Color(0xFFFF8C00),
+                uncheckedColor = Color(0xFF666666),
+                checkmarkColor = Color.White
+            )
+        )
+        
+        Spacer(modifier = Modifier.width(12.dp))
+        
+        // Text content
+        if (isEditMode) {
+            OutlinedTextField(
+                value = item.text,
+                onValueChange = onTextChange,
+                modifier = Modifier.weight(1f),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    focusedBorderColor = Color(0xFFFF8C00),
+                    unfocusedBorderColor = Color(0xFF404056),
+                    cursorColor = Color(0xFFFF8C00)
+                ),
+                singleLine = true
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            // Delete button
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete item",
+                    tint = Color(0xFFFF4444),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        } else {
+            // Display text with strikethrough if checked
+            Text(
+                text = item.text,
+                fontSize = 16.sp,
+                color = if (item.isChecked) Color(0xFF888888) else Color.White,
+                textDecoration = if (item.isChecked) TextDecoration.LineThrough else TextDecoration.None,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
 }

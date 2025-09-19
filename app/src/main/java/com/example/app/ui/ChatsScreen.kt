@@ -60,7 +60,10 @@ fun ChatsScreen(
             )
             
             IconButton(
-                onClick = { navController.navigate("ai_chat") }
+                onClick = { 
+                    viewModel.startNewChatSession()
+                    navController.navigate("ai_chat") 
+                }
             ) {
                 Icon(
                     Icons.Default.Add,
@@ -107,7 +110,10 @@ fun ChatsScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 Button(
-                    onClick = { navController.navigate("ai_chat") },
+                    onClick = { 
+                        viewModel.startNewChatSession()
+                        navController.navigate("ai_chat") 
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFFFF8C00)
                     )

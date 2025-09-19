@@ -260,29 +260,35 @@ class MainActivity : ComponentActivity() {
 							RetrofitInstance.init(context)
 							
 							// Validate existing API key on startup
-							var hasValidatedKey by remember { mutableStateOf(false) }
 							LaunchedEffect(Unit) {
 								val existingKey = ApiKeyProvider.getApiKey(context)
-								if (existingKey != null && !hasValidatedKey) {
+								if (existingKey != null) {
+									val prefs = getSharedPreferences("logion_prefs", MODE_PRIVATE)
+									val hasShownSuccessValidation = prefs.getBoolean("has_shown_success_validation", false)
+									
 									coroutineScope.launch {
 										try {
 											val isValid = ApiKeyValidator.validateOpenAIKey(context, existingKey)
-											val message = if (isValid) {
-												"OpenAI key valid ✓"
-											} else {
-												"OpenAI key invalid ✗"
+											
+											// Only show snackbar for invalid keys OR first time valid key
+											if (!isValid) {
+												snackbarHostState.showSnackbar(
+													message = "OpenAI key invalid ✗",
+													duration = SnackbarDuration.Short
+												)
+											} else if (isValid && !hasShownSuccessValidation) {
+												snackbarHostState.showSnackbar(
+													message = "OpenAI key valid ✓",
+													duration = SnackbarDuration.Short
+												)
+												// Mark that we've shown the success validation
+												prefs.edit().putBoolean("has_shown_success_validation", true).apply()
 											}
-											snackbarHostState.showSnackbar(
-												message = message,
-												duration = SnackbarDuration.Short
-											)
-											hasValidatedKey = true
 										} catch (e: Exception) {
 											snackbarHostState.showSnackbar(
 												message = "OpenAI key invalid ✗",
 												duration = SnackbarDuration.Short
 											)
-											hasValidatedKey = true
 										}
 									}
 								}

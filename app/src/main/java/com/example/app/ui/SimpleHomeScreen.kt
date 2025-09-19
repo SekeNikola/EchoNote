@@ -4,6 +4,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -61,6 +63,11 @@ import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.example.app.R
+
+data class NoteCheckboxItem(
+    val text: String,
+    val isChecked: Boolean
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -739,31 +746,21 @@ fun SimpleHomeScreen(
         }
     }
     
-    // Add Note Bottom Sheet
+    // Add Note Full Screen
     if (showAddNoteSheet) {
-        ModalBottomSheet(
-            onDismissRequest = { showAddNoteSheet = false },
-            containerColor = Color(0xFF282828),
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-        ) {
-            AddNoteBottomSheet(
-                onCreateNote = { title, content, imageUri ->
-                    viewModel.addNoteWithBroadcast(title, content, imageUri)
-                    showAddNoteSheet = false
-                },
-                onCreateTask = { taskTitle ->
-                    // Create task with medium priority and today's date
-                    viewModel.createTask(
-                        title = taskTitle,
-                        description = "Created from rich text note",
-                        priority = "Medium",
-                        dueDate = System.currentTimeMillis()
-                    )
-                },
-                onDismiss = { showAddNoteSheet = false },
-                key = noteSheetCounter
-            )
-        }
+        AddNoteFullScreen(
+            onCreateNote = { title, content, imageUri ->
+                val noteContent = if (content.isNotEmpty()) content else title
+                viewModel.addNoteWithBroadcast(title, noteContent, imageUri)
+                showAddNoteSheet = false
+            },
+            onSaveAndClose = { title, content, imageUri ->
+                val noteContent = if (content.isNotEmpty()) content else title
+                viewModel.addNoteWithBroadcast(title, noteContent, imageUri)
+                showAddNoteSheet = false
+            },
+            onDismiss = { showAddNoteSheet = false }
+        )
     }
 }
 
@@ -919,6 +916,67 @@ fun extractSummaryFromSnippet(snippet: String): String {
         }
     } catch (e: Exception) {
         snippet
+    }
+}
+
+// Function to parse note content and convert to display text
+fun parseNoteContentToDisplayText(content: String): String {
+    return try {
+        val json = JSONObject(content)
+        val text = json.optString("text", "")
+        val checkboxesArray = json.optJSONArray("checkboxes")
+        
+        val result = StringBuilder()
+        
+        // Add main text if present
+        if (text.isNotBlank()) {
+            result.append(text)
+        }
+        
+        // Add checkbox summary if present
+        if (checkboxesArray != null && checkboxesArray.length() > 0) {
+            if (result.isNotEmpty()) {
+                result.append("\n\n")
+            }
+            
+            val totalTasks = checkboxesArray.length()
+            var completedTasks = 0
+            
+            for (i in 0 until checkboxesArray.length()) {
+                val checkboxJson = checkboxesArray.getJSONObject(i)
+                if (checkboxJson.getBoolean("checked")) {
+                    completedTasks++
+                }
+            }
+            
+            result.append("📋 Tasks: $completedTasks/$totalTasks completed")
+            
+            // Show first few task titles as preview
+            if (totalTasks > 0) {
+                result.append("\n")
+                val maxPreview = minOf(2, totalTasks)
+                for (i in 0 until maxPreview) {
+                    val checkboxJson = checkboxesArray.getJSONObject(i)
+                    val taskText = checkboxJson.getString("text")
+                    val isChecked = checkboxJson.getBoolean("checked")
+                    val checkMark = if (isChecked) "✓" else "○"
+                    result.append("$checkMark $taskText")
+                    if (i < maxPreview - 1) result.append("\n")
+                }
+                if (totalTasks > maxPreview) {
+                    result.append("\n... and ${totalTasks - maxPreview} more")
+                }
+            }
+        }
+        
+        return if (result.isEmpty()) "No content" else result.toString()
+    } catch (e: Exception) {
+        // If it's not JSON, return as-is but truncate if too long
+        if (content.length > 100) {
+            content.substring(0, 100) + "..."
+        } else {
+            content
+        }
     }
 }
 
@@ -1287,6 +1345,20 @@ fun AddNoteBottomSheet(
         }
     }
     
+    // Document launcher
+    val documentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        try {
+            uri?.let {
+                // For now, just log the file selection. You can add attachment handling later.
+                android.util.Log.d("AddNoteBottomSheet", "File selected: $it")
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AddNoteBottomSheet", "Document picker result error", e)
+        }
+    }
+    
     // Function to create temporary file for camera
     fun createImageFile(): Uri? {
         return try {
@@ -1472,54 +1544,79 @@ fun AddNoteBottomSheet(
             }
         }
         
-        // Photo options row
+        // Action icons row (Camera, Photo, File, Add Task) – stays above the keyboard
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Camera button
-            OutlinedButton(
+            // Camera
+            IconButton(
                 onClick = {
                     createImageFile()?.let { uri ->
                         capturedImageUri = uri
                         cameraLauncher.launch(uri)
                     }
                 },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFFFF8C00)
-                ),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF8C00)),
-                shape = RoundedCornerShape(8.dp)
+                modifier = Modifier
+                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
+                    .size(48.dp)
             ) {
                 Icon(
-                    Icons.Default.CameraAlt,
-                    contentDescription = "Camera",
-                    modifier = Modifier.size(18.dp)
+                    imageVector = Icons.Default.PhotoCamera,
+                    contentDescription = "Open Camera",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Camera")
             }
             
-            // Gallery button
-            OutlinedButton(
-                onClick = {
-                    galleryLauncher.launch("image/*")
-                },
-                modifier = Modifier.weight(1f),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFFFF8C00)
-                ),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFF8C00)),
-                shape = RoundedCornerShape(8.dp)
+            // Insert photo (gallery)
+            IconButton(
+                onClick = { galleryLauncher.launch("image/*") },
+                modifier = Modifier
+                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
+                    .size(48.dp)
             ) {
                 Icon(
-                    Icons.Default.Photo,
-                    contentDescription = "Gallery",
-                    modifier = Modifier.size(18.dp)
+                    imageVector = Icons.Default.PhotoLibrary,
+                    contentDescription = "Insert Photo",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Gallery")
+            }
+            
+            // Insert file (document picker)
+            IconButton(
+                onClick = { documentLauncher.launch("*/*") },
+                modifier = Modifier
+                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
+                    .size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AttachFile,
+                    contentDescription = "Insert File",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            
+            // Add task (insert checkbox marker into content)
+            IconButton(
+                onClick = {
+                    content = if (content.isEmpty()) "☐ New task" else "$content\n☐ New task"
+                },
+                modifier = Modifier
+                    .background(Color(0xFF333333), RoundedCornerShape(8.dp))
+                    .size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CheckBox,
+                    contentDescription = "Add Task",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
         
@@ -1704,6 +1801,435 @@ fun CompactLottieVoiceOrb(
                     tint = Color.White,
                     modifier = Modifier.size(16.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+fun AddNoteFullScreen(
+    onCreateNote: (String, String, String?) -> Unit,
+    onCreateTask: (String) -> Unit = {},
+    onSaveAndClose: (String, String, String?) -> Unit,
+    onDismiss: () -> Unit,
+    key: Int = 0
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var title by remember { mutableStateOf("") }
+    var content by remember { mutableStateOf("") }
+    var selectedImageUri by remember { mutableStateOf<String?>(null) }
+    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // Checkbox management
+    var checkboxItems by remember { mutableStateOf<List<NoteCheckboxItem>>(emptyList()) }
+    
+    // Camera launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        try {
+            if (success && capturedImageUri != null) {
+                selectedImageUri = capturedImageUri.toString()
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AddNoteFullScreen", "Camera result error", e)
+        }
+    }
+    
+    // Gallery launcher
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        try {
+            uri?.let { selectedImageUri = it.toString() }
+        } catch (e: Exception) {
+            android.util.Log.e("AddNoteFullScreen", "Gallery result error", e)
+        }
+    }
+    
+    // Document launcher
+    val documentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        try {
+            uri?.let { selectedImageUri = it.toString() }
+        } catch (e: Exception) {
+            android.util.Log.e("AddNoteFullScreen", "Document result error", e)
+        }
+    }
+    
+    // Function to create temporary file for camera
+    fun createImageFile(): Uri? {
+        return try {
+            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+            val imageFileName = "JPEG_${timeStamp}_"
+            
+            // Try external files directory first, then cache directory as fallback
+            val storageDir = context.getExternalFilesDir("Pictures") ?: context.cacheDir
+            
+            if (!storageDir.exists()) {
+                storageDir.mkdirs()
+            }
+            
+            val imageFile = File.createTempFile(imageFileName, ".jpg", storageDir)
+            
+            return try {
+                FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    imageFile
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("AddNoteFullScreen", "FileProvider error, using file URI", e)
+                // Fallback to file URI if FileProvider fails
+                Uri.fromFile(imageFile)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("AddNoteFullScreen", "Error creating image file", e)
+            null
+        }
+    }
+    
+    // Function to create final content with checkboxes
+    fun createFinalContent(): String {
+        if (checkboxItems.isEmpty()) {
+            return if (content.isNotEmpty()) content else title
+        }
+        
+        // Create JSON structure for content with checkboxes
+        val jsonObject = JSONObject().apply {
+            put("text", content)
+            put("checkboxes", org.json.JSONArray().apply {
+                checkboxItems.forEach { checkbox ->
+                    put(JSONObject().apply {
+                        put("text", checkbox.text)
+                        put("checked", checkbox.isChecked)
+                    })
+                }
+            })
+        }
+        return jsonObject.toString()
+    }
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = Color(0xFF282828),
+        topBar = {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(0.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF282828))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = { onDismiss() }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Cancel",
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    
+                    Text(
+                        text = "New Note",
+                        color = Color.White,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    IconButton(
+                        onClick = {
+                            if (title.isNotEmpty() || content.isNotEmpty() || checkboxItems.isNotEmpty()) {
+                                val finalContent = createFinalContent()
+                                onSaveAndClose(title, finalContent, selectedImageUri)
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Save",
+                            tint = Color(0xFFFF8C00),
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            // Scrollable content area with ime padding
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp)
+                    .imePadding() // This handles keyboard adjustments for content
+            ) {
+                // Title field
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    placeholder = { 
+                        Text(
+                            "Note title...",
+                            color = Color(0xFF888888)
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFFFF8C00),
+                        unfocusedBorderColor = Color(0xFF555555),
+                        cursorColor = Color(0xFFFF8C00)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+                
+                // Content field
+                OutlinedTextField(
+                    value = content,
+                    onValueChange = { content = it },
+                    placeholder = { 
+                        Text(
+                            "Start writing your note...",
+                            color = Color(0xFF888888)
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedBorderColor = Color(0xFFFF8C00),
+                        unfocusedBorderColor = Color(0xFF555555),
+                        cursorColor = Color(0xFFFF8C00)
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 100.dp),
+                    maxLines = Int.MAX_VALUE
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Display checkboxes if any
+                checkboxItems.forEachIndexed { index, checkboxItem ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF383838)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = checkboxItem.isChecked,
+                                onCheckedChange = { checked ->
+                                    checkboxItems = checkboxItems.toMutableList().apply {
+                                        set(index, checkboxItem.copy(isChecked = checked))
+                                    }
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = Color(0xFF4CAF50),
+                                    uncheckedColor = Color(0xFFB0B0B0),
+                                    checkmarkColor = Color.White
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            OutlinedTextField(
+                                value = checkboxItem.text,
+                                onValueChange = { newText ->
+                                    checkboxItems = checkboxItems.toMutableList().apply {
+                                        set(index, checkboxItem.copy(text = newText))
+                                    }
+                                },
+                                placeholder = { 
+                                    Text(
+                                        "Enter task...",
+                                        color = Color(0xFF888888)
+                                    )
+                                },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = if (checkboxItem.isChecked) Color(0xFFB0B0B0) else Color.White,
+                                    unfocusedTextColor = if (checkboxItem.isChecked) Color(0xFFB0B0B0) else Color.White,
+                                    focusedBorderColor = Color(0xFFFF8C00),
+                                    unfocusedBorderColor = Color(0xFF555555),
+                                    cursorColor = Color(0xFFFF8C00)
+                                ),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            
+                            // Remove button
+                            IconButton(
+                                onClick = {
+                                    checkboxItems = checkboxItems.toMutableList().apply {
+                                        removeAt(index)
+                                    }
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove task",
+                                    tint = Color(0xFF808080),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Selected image preview
+                selectedImageUri?.let { uriString ->
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFF333333))
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            AsyncImage(
+                                model = uriString,
+                                contentDescription = "Selected image",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                            
+                            IconButton(
+                                onClick = { selectedImageUri = null },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(8.dp)
+                                    .background(
+                                        Color.Black.copy(alpha = 0.6f),
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Remove image",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Fixed bottom action buttons row
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding(), // Keep the bottom bar above the keyboard
+                shape = RoundedCornerShape(0.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF282828))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Camera button
+                    IconButton(
+                        onClick = {
+                            val uri = createImageFile()
+                            if (uri != null) {
+                                capturedImageUri = uri
+                                cameraLauncher.launch(uri)
+                            }
+                        },
+                        modifier = Modifier
+                            .background(
+                                Color(0xFF333333),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoCamera,
+                            contentDescription = "Camera",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    // Gallery button
+                    IconButton(
+                        onClick = { galleryLauncher.launch("image/*") },
+                        modifier = Modifier
+                            .background(
+                                Color(0xFF333333),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoLibrary,
+                            contentDescription = "Gallery",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    // Document button
+                    IconButton(
+                        onClick = { documentLauncher.launch("*/*") },
+                        modifier = Modifier
+                            .background(
+                                Color(0xFF333333),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AttachFile,
+                            contentDescription = "Attach File",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    // Checkbox/Task button
+                    IconButton(
+                        onClick = {
+                            checkboxItems = checkboxItems + NoteCheckboxItem("", false)
+                        },
+                        modifier = Modifier
+                            .background(
+                                Color(0xFF333333),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckBox,
+                            contentDescription = "Add Task",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
             }
         }
     }

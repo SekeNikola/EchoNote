@@ -9,7 +9,10 @@ object ApiKeyProvider {
 
     fun saveApiKey(context: Context, key: String) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_OPENAI, key).apply()
+        prefs.edit()
+            .putString(KEY_OPENAI, key)
+            .putBoolean("has_shown_success_validation", false) // Reset validation flag for new key
+            .apply()
     }
 
     fun getApiKey(context: Context): String? {

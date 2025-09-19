@@ -26,6 +26,7 @@ import com.example.app.audio.getAudioFileForUpload
 import com.example.app.network.GPTRequest
 import com.example.app.network.Message
 import com.example.app.network.RetrofitInstance
+import com.example.app.network.TTSRequest
 import com.example.app.worker.ReminderScheduler
 import com.example.app.util.ApiKeyProvider
 import com.example.app.utils.OpenAITTS
@@ -62,6 +63,7 @@ import android.speech.RecognitionListener
 import android.content.Intent
 import com.example.app.data.ChatMessage
 import com.example.app.data.Task
+import com.example.app.data.CheckboxItem
 import kotlinx.coroutines.flow.asStateFlow
 import android.speech.RecognizerIntent
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -99,20 +101,39 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             // Build conversation messages including history
             val messages = mutableListOf<Message>()
             messages.add(Message(role = "system", content = """
-                You are a helpful AI assistant for Logion. You can:
-                1. Answer general questions and provide information
-                2. Help with the user's notes (provided below)
-                3. Help create lists (shopping, grocery, travel, todo, etc.) when specifically requested
+                Hi there! I'm your personal AI assistant for EchoNote - think of me as your helpful digital companion. 
                 
-                IMPORTANT CONVERSATION GUIDELINES:
-                - Focus on natural conversation first - don't rush to create notes or lists
-                - Only create notes/lists when users explicitly ask or when they share substantial content to save
-                - When helping with lists, build them step by step but let users decide when to save
-                - Don't auto-save anything - let users control when content is saved
-                - Be patient and let conversations develop naturally
+                I'm here to chat with you naturally and help you stay organized. I can:
+                1. Have friendly conversations and answer your questions
+                2. Help you work with your existing notes (I can see them below)
+                3. Help you create lists when you need them - shopping lists, to-dos, travel plans, you name it!
                 
-                User's notes (for reference only):
+                IMPORTANT: When users mention multiple items (like "bread, milk, and eggs" or "create a shopping list with X, Y, Z"), format your response as a numbered or bulleted list. For example:
+                
+                User: "Create a shopping list with bread, milk, eggs, and tomato"
+                You should respond: "I'll create that shopping list for you:
+                1. Bread
+                2. Milk  
+                3. Eggs
+                4. Tomato"
+                
+                Or use bullet points:
+                • Bread
+                • Milk
+                • Eggs
+                • Tomato
+                
+                Let's keep our conversation natural and flowing:
+                - I won't rush to create notes or lists unless you actually want them
+                - I'll listen to what you need and respond thoughtfully  
+                - When you mention multiple items, I'll format them as lists automatically
+                - When you do want to save something, just let me know and I'll help organize it
+                - I believe in letting you control the pace - no pressure!
+                
+                Here are your current notes I can reference:
                 $notesContext
+                
+                What's on your mind today?
             """.trimIndent()))
             
             // Add conversation history (excluding the current message which has empty AI response)
@@ -201,7 +222,30 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
         val request = com.example.app.network.GPTRequest(
             model = "gpt-3.5-turbo",
             messages = listOf(
-                com.example.app.network.Message(role = "system", content = "You are a helpful assistant that summarizes notes and extracts tasks as a checklist. Only extract actual tasks or items mentioned by the user. Do not extract AI assistant responses or instructions like 'save note', 'I'll save this', etc. Focus on real actionable items."),
+                com.example.app.network.Message(role = "system", content = """
+    You are a JSON extractor for a task manager app. Always return a single valid JSON object.
+
+    SCHEMA:
+    {
+      "summary": "<short one-sentence summary>",
+      "tasks": [
+        {
+          "title": "<task text without time/date>",
+          "due": "<ISO 8601 datetime if specified, otherwise null>"
+        }
+      ]
+    }
+
+    RULES:
+    - Normalize natural language dates/times into ISO 8601.
+      Example: "tomorrow at 9am" -> "2025-09-18T09:00:00" (assuming today is 2025-09-17).
+    - If the user only says a day (e.g., "next Monday"), resolve it to the next occurrence of that weekday.
+    - If no time is mentioned, set "due" to null.
+    - Keep "title" free of dates/times, just the action.
+    - If multiple tasks are listed, create one object per task.
+    - Use the input language for titles, but always use ISO datetime for "due".
+    - Do not include commentary, markdown, or anything outside the JSON object.
+""".trimIndent()),
                 com.example.app.network.Message(role = "user", content = prompt)
             )
         )
@@ -317,48 +361,140 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             .trim()
     }
     
+    /**
+     * Enhanced extraction function that creates both notes and tasks with detailed structure
+     */
+    suspend fun extractNotesAndTasksWithStructure(transcript: String): String? {
+        Log.d("NoteViewModel", "=== EXTRACT NOTES AND TASKS START ===")
+        Log.d("NoteViewModel", "Input transcript: '$transcript'")
+        
+        val prompt = """
+            Extract notes and tasks from the following text and return a structured JSON response.
+            
+            Text: $transcript
+        """.trimIndent()
+        
+        val request = com.example.app.network.GPTRequest(
+            model = "gpt-3.5-turbo",
+            messages = listOf(
+                com.example.app.network.Message(role = "system", content = """
+    You are a JSON extractor for a comprehensive note-taking app. Always return a single valid JSON object.
+
+    SCHEMA:
+    {
+      "summary": "<short one-sentence summary>",
+      "notes": [
+        {
+          "title": "<note title>",
+          "body": "<detailed note content>",
+          "createdAt": "<ISO 8601 datetime>"
+        }
+      ],
+      "tasks": [
+        {
+          "title": "<task text without time/date>",
+          "due": "<ISO 8601 datetime if specified, otherwise null>"
+        }
+      ]
+    }
+
+    RULES:
+    - Normalize natural language dates/times into ISO 8601.
+      Example: "tomorrow at 9am" -> "2025-09-18T09:00:00" (assuming today is 2025-09-17).
+    - If the user only says a day (e.g., "next Monday"), resolve it to the next occurrence of that weekday.
+    - If no time is mentioned for tasks, set "due" to null.
+    - For notes, always set "createdAt" to current timestamp format.
+    - Keep task "title" free of dates/times, just the action.
+    - Extract meaningful notes from conversations, meetings, or information.
+    - Use the input language for all text fields, but always use ISO datetime for timestamps.
+    - Do not include commentary, markdown, or anything outside the JSON object.
+    
+    EXAMPLE:
+    {
+      "summary": "Met John about the project timeline",
+      "notes": [
+        {
+          "title": "Meeting with John",
+          "body": "Discussed project timeline, deadlines, and responsibilities",
+          "createdAt": "2025-09-17T21:00:00"
+        }
+      ],
+      "tasks": [
+        {
+          "title": "Prepare updated project timeline",
+          "due": "2025-09-20T12:00:00"
+        }
+      ]
+    }
+""".trimIndent()),
+                com.example.app.network.Message(role = "user", content = prompt)
+            )
+        )
+        
+        return try {
+            val response = com.example.app.network.RetrofitInstance.api.summarizeText(request)
+            Log.d("NoteViewModel", "API response received. Success: ${response.isSuccessful}")
+            
+            if (response.isSuccessful) {
+                val content = response.body()?.choices?.firstOrNull()?.message?.content
+                Log.d("NoteViewModel", "Raw API response content: '$content'")
+                
+                if (!content.isNullOrBlank()) {
+                    // Clean the content by removing markdown code blocks
+                    val cleanContent = content
+                        .replace("```json", "")
+                        .replace("```", "")
+                        .trim()
+                    
+                    Log.d("NoteViewModel", "Cleaned JSON content: '$cleanContent'")
+                    Log.d("NoteViewModel", "=== EXTRACT NOTES AND TASKS SUCCESS ===")
+                    
+                    cleanContent
+                } else {
+                    Log.w("NoteViewModel", "API response content was null or blank")
+                    null
+                }
+            } else {
+                Log.w("NoteViewModel", "API request failed with code: ${response.code()}")
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "=== EXTRACT NOTES AND TASKS ERROR ===", e)
+            null
+        }
+    }
+    
     fun updateNoteSnippet(noteId: Long, snippet: String) = viewModelScope.launch {
         repository.updateNoteSnippet(noteId, snippet)
         
-        // Get the updated note and broadcast to server for web UI sync
-        try {
-            val updatedNote = repository.getNoteById(noteId).first()
-            updatedNote?.let { note ->
-                val serverNote = ServerNote(
-                    id = noteId.toString(),
-                    title = note.title,
-                    body = note.snippet, // Use snippet content for the body
-                    imagePath = note.imagePath,
-                    updatedAt = getCurrentTimestamp()
-                )
-                
-                KtorServer.updateNoteWithBroadcast(serverNote)
-            }
-        } catch (e: Exception) {
-            Log.e("NoteViewModel", "Failed to broadcast note snippet update", e)
-        }
+        // Broadcast the just-updated snippet to server for web UI sync to avoid stale reads
+        broadcastUpdate(noteId, bodyOverride = snippet)
     }
 
     fun updateChecklistState(noteId: Long, checklistState: String) = viewModelScope.launch {
         repository.updateChecklistState(noteId, checklistState)
         
         // Broadcast note update to server for web sync
+        broadcastUpdate(noteId)
+    }
+    
+    private suspend fun broadcastUpdate(noteId: Long, bodyOverride: String? = null) {
         try {
-            // Get the updated note to send to server
             val note = repository.noteDao.getNoteById(noteId).firstOrNull()
             if (note != null) {
                 val serverNote = ServerNote(
                     id = note.serverId ?: noteId.toString(),
                     title = note.title,
-                    body = note.transcript.ifEmpty { note.snippet },
+                    // Prefer the provided override (freshly updated content), otherwise prefer snippet over transcript.
+                    body = bodyOverride ?: if (note.snippet.isNotEmpty()) note.snippet else note.transcript,
                     imagePath = note.imagePath,
                     updatedAt = java.time.Instant.now().toString()
                 )
                 KtorServer.updateNoteWithBroadcast(serverNote)
-                Log.d("NoteViewModel", "Note checklist update broadcasted to server: ${note.title}")
+                Log.d("NoteViewModel", "Note broadcasted: ${note.title}")
             }
         } catch (e: Exception) {
-            Log.e("NoteViewModel", "Failed to broadcast note checklist update to server", e)
+            Log.e("NoteViewModel", "Broadcast failed", e)
         }
     }
     private val compressedAudioRecorder = CompressedAudioRecorder(app.applicationContext)
@@ -486,6 +622,57 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
 
     private val _isSpeaking = MutableStateFlow(false)
     val isSpeaking: StateFlow<Boolean> = _isSpeaking.asStateFlow()
+
+    // Task vs Reminder Choice Dialog
+    data class TaskReminderChoice(
+        val text: String,
+        val aiResponse: String,
+        val context: List<ChatMessage>
+    )
+
+    // List Creation Choice Dialog
+    data class ListCreationChoice(
+        val userMessage: String,
+        val aiResponse: String,
+        val detectedItems: List<String>
+    )
+    
+    private val _showTaskReminderChoice = MutableStateFlow<TaskReminderChoice?>(null)
+    val showTaskReminderChoice: StateFlow<TaskReminderChoice?> = _showTaskReminderChoice.asStateFlow()
+
+    private val _showListCreationChoice = MutableStateFlow<ListCreationChoice?>(null)
+    val showListCreationChoice: StateFlow<ListCreationChoice?> = _showListCreationChoice.asStateFlow()
+
+    // Multilingual support
+    private val _detectedLanguage = MutableStateFlow("en") // Default to English
+    val detectedLanguage: StateFlow<String> = _detectedLanguage.asStateFlow()
+    
+    private val _preferredLanguage = MutableStateFlow("auto") // auto, en, es, fr, de, etc.
+    val preferredLanguage: StateFlow<String> = _preferredLanguage.asStateFlow()
+    
+    // Supported languages for Whisper and TTS
+    private val supportedLanguages = mapOf(
+        "auto" to "Auto Detect",
+        "en" to "English",
+        "es" to "Spanish", 
+        "fr" to "French",
+        "de" to "German",
+        "it" to "Italian",
+        "pt" to "Portuguese",
+        "ru" to "Russian",
+        "ja" to "Japanese",
+        "ko" to "Korean",
+        "zh" to "Chinese",
+        "ar" to "Arabic",
+        "hi" to "Hindi",
+        "nl" to "Dutch",
+        "sv" to "Swedish",
+        "da" to "Danish",
+        "no" to "Norwegian",
+        "fi" to "Finnish",
+        "sr" to "Serbian",
+        "sl" to "Slovenian"
+    )
 
     // Voice session chat history - separate from regular chat
     private val _voiceSessionHistory = MutableStateFlow<List<ChatMessage>>(emptyList())
@@ -653,33 +840,30 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
                     // Generate summary using OpenAI API, always as JSON
                     viewModelScope.launch {
                         val rules = """
-You are an assistant that reformats transcripts into JSON for a note-taking app.
+    You are a strict JSON extractor for a note-taking app. OUTPUT MUST BE A SINGLE VALID JSON OBJECT ONLY — nothing else.
 
-Rules:
-1. If the transcript contains action items like 'I need to...', 'remind me to...', 'buy...', 'call...', 'go to...', or similar, ALWAYS extract them into a JSON array called 'tasks'.
-2. If the transcript has general conversation or thoughts but no clear tasks, return a JSON object with a single 'summary' field.
-3. The JSON must be valid and contain ONLY the JSON object — no explanations, no extra text.
-4. Do NOT skip any tasks mentioned.
-5. Each task must be a short, clear string.
+    SCHEMA (required):
+    {
+      "summary": "<short summary string (20-40 words max)>",
+      "tasks": ["<task 1>", "<task 2>", ...]
+    }
 
-Examples:
+    RULES:
+    1) If transcript contains clear action items (verbs like buy, call, email, schedule, remind, book, pay, fix, send), put each as a short imperative string in "tasks".
+    2) If no action items, set "tasks": [] and put a concise summary in "summary".
+    3) Tasks must be concise (e.g., "Buy bread", "Call Mom"), no numbering, no extra punctuation.
+    4) Do NOT include assistant instructions, commentary, or explanations — only the JSON object.
+    5) Remove duplicates and normalize capitalization only as short phrases.
+    6) Return output in the same language as the transcript.
 
-Input:
-"I need to buy bread and milk and also call mom."
+    EXAMPLES:
+    Input: "I need to buy bread and milk and call mom."
+    Output: {"summary":"","tasks":["Buy bread","Buy milk","Call mom"]}
 
-Output:
-{
-    \"tasks\": [\"Buy bread\", \"Buy milk\", \"Call mom\"]
-}
-
-Input:
-"Today I met John and we discussed the project timeline."
-
-Output:
-{
-    \"summary\": \"Met John and discussed the project timeline.\"
-}
+    Input: "Met with John about the project timeline."
+    Output: {"summary":"Met with John about the project timeline.","tasks":[]}
 """.trimIndent()
+
                         val req = GPTRequest(
                             messages = listOf(
                                 Message(role = "system", content = rules),
@@ -741,7 +925,7 @@ Output:
         isVoiceOverlayVisible.value = true
         val req = GPTRequest(
             messages = listOf(
-                Message(role = "system", content = "You are a helpful voice note assistant."),
+                Message(role = "system", content = "Hey there! I'm your voice assistant - I love chatting with you through speech! I understand what you're saying and I'll respond in a warm, natural way. Whether you need help with notes, tasks, or just want to have a conversation, I'm here for you. Just talk to me like you would a friend!"),
                 Message(role = "user", content = query)
             )
         )
@@ -926,7 +1110,18 @@ Output:
                 
                 // If OpenAI failed, use fallback
                 val finalSummary = if (summaryOut.isBlank()) {
-                    "Chat conversation about various topics"
+                    // Create a better fallback summary from the chat content
+                    val userMessages = chatMessages.filter { it.isUser }.map { it.content }
+                    val lastUserMessage = userMessages.lastOrNull() ?: ""
+                    
+                    // Take the first substantial user message or the last one
+                    val summaryContent = if (lastUserMessage.length > 20) {
+                        lastUserMessage.take(200) + if (lastUserMessage.length > 200) "..." else ""
+                    } else {
+                        userMessages.find { it.length > 10 }?.take(200) ?: "Chat conversation"
+                    }
+                    
+                    summaryContent
                 } else summaryOut
                 
                 // Create JSON snippet same as recording
@@ -1398,32 +1593,21 @@ Output:
                 Log.d("NoteViewModel", "Starting OpenAI Vision API call with image size: ${base64Image.length} chars")
 
                 // Create a comprehensive prompt for image analysis
-                val prompt = buildString {
-                    append("You are an expert at identifying objects, products, and items in images. Analyze this image carefully and provide a detailed, conversational description.")
-                    append("\n\nBe very specific about:")
-                    append("\n- EXACTLY what objects you can identify (if it's a mouse, say 'computer mouse' or 'PC mouse')")
-                    append("\n- Brand names, model numbers, or product labels you can see")
-                    append("\n- Colors, materials, and design features")
-                    append("\n- The purpose and function of items shown")
-                    append("\n- Any technical specifications or features visible")
-                    append("\n- Text, logos, or markings on the items")
-                    
-                    append("\n\nIMPORTANT: Don't use generic terms. Instead of saying 'device' or 'object', identify the specific item:")
-                    append("\n- If it's a computer mouse, say 'computer mouse' or 'PC mouse'")
-                    append("\n- If it's a keyboard, say 'keyboard'")
-                    append("\n- If it's a phone, identify the brand and model if possible")
-                    append("\n- If it's food, name the specific food item")
-                    append("\n- If it's an app interface, identify the app name")
-                    
-                    append("\n\nWrite in a natural, conversational tone. Be confident in your identifications - if you can clearly see it's a mouse, say so definitively.")
-                    
-                    if (extractedText.isNotBlank()) {
-                        append("\n\nI can also see this text in the image: \"$extractedText\". ")
-                        append("Use this text to help identify brands, models, or provide additional context about what's shown.")
-                    }
-                    
-                    append("\n\nIf you can identify where someone might buy this item or similar products, mention that as well.")
-                }
+               val prompt = buildString {
+    append("You are an expert visual analyst. Provide a concise, structured description of the image.")
+    append("\n\nOUTPUT FORMAT:")
+    append("\nHeadline: One short sentence summarizing the image.")
+    append("\nDetails: A brief conversational paragraph with what you can identify.")
+    append("\nDetected items: A bullet list of clearly identified objects (brand/model if visible).")
+    append("\nText found: If OCR text exists, include it exactly under this heading.")
+    append("\n\nRULES:")
+    append("\n- Be specific: prefer 'computer mouse' over 'device'.")
+    append("\n- If uncertain, say 'possibly' rather than inventing details.")
+    if (extractedText.isNotBlank()) {
+        append("\n\nText found in image: \"$extractedText\"")
+    }
+}
+
 
                 // Updated to use gpt-4o which supports vision
                 val requestBody = JSONObject().apply {
@@ -1816,29 +2000,46 @@ Output:
             val hasRecentImages = currentChatMessages.any { !it.imageUri.isNullOrEmpty() }
             
             messages.add(Message(role = "system", content = """
-                You are Logion AI, a friendly and helpful personal assistant. 
+                Hey! I'm your personal AI companion in EchoNote - nice to meet you! 
                 
-                Current context: It's currently $timeContext time for the user.
+                Right now it's $timeContext, and I'm here to chat and help however you need.
                 
                 ${if (hasRecentImages && currentChatMessages.isNotEmpty()) {
-                    "IMPORTANT: The user has shared images in this current conversation. When they ask follow-up questions about images, refer back to the detailed descriptions you provided earlier."
+                    "I noticed you shared some images with me earlier in our conversation. Feel free to ask me anything about them - I remember what we discussed!"
                 } else {
-                    "You can see and analyze images when users share them. Answer the user's question directly."
+                    "I love looking at images and talking about what I see, so feel free to share any photos with me anytime."
                 }}
                 
-                Your role:
-                - Answer questions directly and accurately
-                - Have natural, helpful conversations with users
-                - When users share images, describe what you see clearly
-                - Stay focused on the current conversation topic
-                - Be conversational and engaging
+                Here's how I like to help:
+                - I answer your questions in a friendly, down-to-earth way
+                - I enjoy having real conversations - not just robotic responses
+                - When you share images, I'll tell you exactly what catches my eye
+                - I stay focused on what you're actually asking about
+                - I'm genuinely here to make your day a little easier
                 
-                Key behaviors:
-                - Answer the user's current question directly
-                - If they ask about text topics (like "where is the moon"), provide factual information
-                - Only mention images if the user actually shared an image in this conversation
-                - Don't assume there are images unless explicitly shared
-                - Provide helpful, accurate information based on the actual question asked
+                IMPORTANT: When users mention multiple items or ask for lists, always format them as numbered or bulleted lists:
+                • Use numbered lists (1. 2. 3.) or bullet points (• - *)
+                • Each item on its own line
+                • Clear, concise formatting
+                • When someone says "create a shopping list with X and Y" or mentions multiple items, immediately create a formatted list with those items
+                • Don't ask "anything else?" or "what else?" - just create the list with what they provided
+                
+                LIST CREATION RULES:
+                - If user says "create a list with X and Y" → immediately respond with:
+                  1. X
+                  2. Y
+                - Don't ask for additional items unless they specifically request it
+                - Format lists immediately without confirmation prompts
+                
+                What I always keep in mind:
+                - I respond to what you're actually asking, not what I think you might want
+                - If you ask about something specific (like "where is the moon"), I give you real, helpful info
+                - When you mention multiple items, I format them as proper lists
+                - I only talk about images when you've actually shared them with me
+                - I don't make assumptions - I work with what you give me
+                - My goal is to be genuinely helpful, not just sound smart
+                
+                So, what's going on? How can I help you today?
             """.trimIndent()))
             
             // Add current chat history (should be minimal after clearing)
@@ -1886,6 +2087,9 @@ Output:
     
     // Helper function to check for note/task creation in both voice and text chat
     private suspend fun checkForNoteTaskCreation(userMessage: String, aiResponse: String, imageUri: String? = null) {
+        Log.d("NoteViewModel", "checkForNoteTaskCreation called - userMessage: '$userMessage'")
+        Log.d("NoteViewModel", "checkForNoteTaskCreation called - aiResponse: '$aiResponse'")
+        
         val userWantsNote = userMessage.contains("create a note", ignoreCase = true) ||
                            userMessage.contains("make a note", ignoreCase = true) ||
                            userMessage.contains("save this", ignoreCase = true) ||
@@ -1910,6 +2114,19 @@ Output:
                             aiResponse.contains("creating a task", ignoreCase = true) ||
                             aiResponse.contains("I'll make a task", ignoreCase = true) ||
                             aiResponse.contains("making a task", ignoreCase = true)
+        
+        Log.d("NoteViewModel", "checkForNoteTaskCreation - userWantsNote: $userWantsNote, userWantsTask: $userWantsTask")
+        Log.d("NoteViewModel", "checkForNoteTaskCreation - aiConfirmsNote: $aiConfirmsNote, aiConfirmsTask: $aiConfirmsTask")
+        
+        // Check for list detection - when user provides list items
+        val listItems = detectListItems(userMessage, aiResponse)
+        Log.d("NoteViewModel", "checkForNoteTaskCreation - detected list items: $listItems")
+        if (listItems.isNotEmpty()) {
+            Log.d("NoteViewModel", "checkForNoteTaskCreation - Creating checkbox note with ${listItems.size} items")
+            // Automatically create checkbox note when list items are detected
+            createCheckboxNoteFromList(userMessage, aiResponse, listItems)
+            return
+        }
         
         // Priority: explicit user intent > AI confirmation
         when {
@@ -2167,6 +2384,138 @@ Output:
         return if (cleanedMessage.isNotBlank()) cleanedMessage else message.take(50)
     }
     
+    // Detect list items from user message and AI response
+    private fun detectListItems(userMessage: String, aiResponse: String): List<String> {
+        val items = mutableListOf<String>()
+        
+        Log.d("NoteViewModel", "Detecting list items from user: '$userMessage'")
+        Log.d("NoteViewModel", "AI response: '$aiResponse'")
+        
+        // Look for numbered lists in user message
+        val numberedPattern = Regex("""(?:^|\n)\s*(\d+)[\.\)]\s*(.+?)(?=\n\s*\d+[\.\)]|\n\s*$|$)""", RegexOption.MULTILINE)
+        numberedPattern.findAll(userMessage).forEach { match ->
+            val item = match.groupValues[2].trim()
+            if (item.isNotBlank() && item.length > 2) {
+                items.add(item)
+                Log.d("NoteViewModel", "Found numbered item: '$item'")
+            }
+        }
+        
+        // Look for bullet lists in user message  
+        val bulletPattern = Regex("""(?:^|\n)\s*[-*•]\s*(.+?)(?=\n\s*[-*•]|\n\s*$|$)""", RegexOption.MULTILINE)
+        bulletPattern.findAll(userMessage).forEach { match ->
+            val item = match.groupValues[1].trim()
+            if (item.isNotBlank() && item.length > 2) {
+                items.add(item)
+            }
+        }
+        
+        // Look for comma-separated lists when user mentions multiple items
+        if (items.isEmpty()) {
+            // Pattern for "I need to buy X, Y, and Z" or "buy/get X, Y, and Z"
+            val commaPattern = Regex("""(?:I\s+(?:need\s+to\s+)?|buy|get|need|purchase|take|bring|pack|remember|with|include|add)\s+(.+)""", RegexOption.IGNORE_CASE)
+            val match = commaPattern.find(userMessage)
+            if (match != null) {
+                val listText = match.groupValues[1]
+                Log.d("NoteViewModel", "Found comma pattern match: '$listText'")
+                
+                // First try to split by commas and "and" - improved handling
+                var commaItems = listText.split(Regex(""",\s*(?:and\s+)?|,\s*|\s+and\s+|\s+&\s+"""))
+                    .map { it.trim().removePrefix("and ").removePrefix("also ").trim() }
+                    .filter { it.isNotBlank() && it.length > 1 && !it.matches(Regex("""^(and|or|plus|also|the|a|an)$""", RegexOption.IGNORE_CASE)) }
+                
+                Log.d("NoteViewModel", "Comma-split items: $commaItems")
+                
+                // If we don't have enough items, try splitting by spaces for simple lists
+                if (commaItems.size < 2) {
+                    val spaceItems = listText.split(" ")
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() && it.length > 1 && !it.matches(Regex("""^(and|or|plus|also|the|a|an|to|i|need|want)$""", RegexOption.IGNORE_CASE)) }
+                    
+                    Log.d("NoteViewModel", "Space-split items: $spaceItems")
+                    if (spaceItems.size >= 2) {
+                        commaItems = spaceItems
+                    }
+                }
+                
+                if (commaItems.size >= 2) {
+                    items.addAll(commaItems)
+                    Log.d("NoteViewModel", "Added comma items: $commaItems")
+                }
+            }
+        }
+        
+        // Enhanced pattern for "create/make a [type] list with [items]"
+        if (items.isEmpty()) {
+            val listCreationPattern = Regex("""(?:create|make|build)\s+(?:a\s+)?(?:\w+\s+)?(?:list|checklist).*?(?:with|including?|contains?|of)\s*(.+)""", RegexOption.IGNORE_CASE)
+            val match = listCreationPattern.find(userMessage)
+            if (match != null) {
+                val listText = match.groupValues[1]
+                Log.d("NoteViewModel", "Found list creation pattern: '$listText'")
+                
+                val extractedItems = listText.split(Regex(""",\s*(?:and\s+)?|,\s*|\s+and\s+|\s+&\s+"""))
+                    .map { it.trim().removePrefix("and ").removePrefix("also ").trim() }
+                    .filter { it.isNotBlank() && it.length > 1 }
+                
+                Log.d("NoteViewModel", "List creation items: $extractedItems")
+                
+                if (extractedItems.size >= 2) {
+                    items.addAll(extractedItems)
+                    Log.d("NoteViewModel", "Added list creation items: $extractedItems")
+                }
+            }
+        }
+        
+        // Additional pattern specifically for "shopping list with X and Y" without comma
+        if (items.isEmpty()) {
+            val shoppingPattern = Regex("""(?:create|make|build)\s+(?:a\s+)?(?:shopping|grocery|task|to-?do)\s+list\s+(?:with|of)\s+([^,]+\s+and\s+[^,]+)""", RegexOption.IGNORE_CASE)
+            val match = shoppingPattern.find(userMessage)
+            if (match != null) {
+                val listText = match.groupValues[1]
+                Log.d("NoteViewModel", "Found shopping list pattern: '$listText'")
+                
+                // Split by "and" for simple two-item lists
+                val extractedItems = listText.split(Regex("""\s+and\s+|\s+&\s+""", RegexOption.IGNORE_CASE))
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() && it.length > 1 }
+                
+                Log.d("NoteViewModel", "Shopping list items: $extractedItems")
+                
+                if (extractedItems.size >= 2) {
+                    items.addAll(extractedItems)
+                    Log.d("NoteViewModel", "Added shopping list items: $extractedItems")
+                }
+            }
+        }
+        
+        // Also check AI response for formatted lists
+        if (items.isEmpty()) {
+            Log.d("NoteViewModel", "Checking AI response for lists")
+            val aiNumberedPattern = Regex("""(?:^|\n)\s*(\d+)[\.\)]\s*(.+?)(?=\n\s*\d+[\.\)]|\n\s*$|$)""", RegexOption.MULTILINE)
+            aiNumberedPattern.findAll(aiResponse).forEach { match ->
+                val item = match.groupValues[2].trim()
+                if (item.isNotBlank() && item.length > 2) {
+                    items.add(item)
+                    Log.d("NoteViewModel", "Found AI numbered item: '$item'")
+                }
+            }
+            
+            val aiBulletPattern = Regex("""(?:^|\n)\s*[-*•]\s*(.+?)(?=\n\s*[-*•]|\n\s*$|$)""", RegexOption.MULTILINE)
+            aiBulletPattern.findAll(aiResponse).forEach { match ->
+                val item = match.groupValues[1].trim()
+                if (item.isNotBlank() && item.length > 2) {
+                    items.add(item)
+                    Log.d("NoteViewModel", "Found AI bullet item: '$item'")
+                }
+            }
+        }
+        
+        // Only return items if we found at least 2 meaningful list items
+        val finalItems = if (items.size >= 2) items.take(10) else emptyList()
+        Log.d("NoteViewModel", "Final detected items: $finalItems")
+        return finalItems
+    }
+    
     // Save chat conversation as note
     private suspend fun saveChatAsNote(userMessage: String, aiResponse: String, imageUri: String? = null) {
         try {
@@ -2175,10 +2524,17 @@ Output:
                 copyImageToAppStorage(uri)
             }
             
+            // Create a concise summary instead of full chat
+            val summary = if (userMessage.length > 100) {
+                "${userMessage.take(100)}..."
+            } else {
+                userMessage
+            }
+            
             val note = Note(
                 title = "Chat Note - ${java.text.SimpleDateFormat("MMM dd, yyyy HH:mm", java.util.Locale.getDefault()).format(java.util.Date())}",
-                snippet = "User: $userMessage",
-                transcript = "User: $userMessage\n\nAI: $aiResponse",
+                snippet = summary,
+                transcript = aiResponse, // Keep AI response as transcript
                 imagePath = actualImagePath,
                 createdAt = System.currentTimeMillis()
             )
@@ -2263,16 +2619,14 @@ Output:
                     // Use GPT to answer the specific question with image context
                     val messages = mutableListOf<Message>()
                     messages.add(Message(role = "system", content = """
-                        You are Logion AI, a helpful assistant that can analyze images and answer questions about them.
+                        Hi! I'm your AI companion who loves looking at images and chatting about them!
                         
-                        Current context: It's currently $timeContext time for the user.
-                        
-                        The user has uploaded an image and asked a question about it. Here's what I can see in the image:
+                        Right now it's $timeContext, and you've shared an image with me. Let me tell you what I see:
                         $imageContext
                         
-                        Answer their question based on what you can see in the image. Be specific, helpful, and conversational.
+                        I'm here to answer your question about this image in a friendly, conversational way. I'll be specific about what I notice and give you helpful insights based on what's actually in the picture.
                         
-                        Remember this image analysis for any follow-up questions in this conversation.
+                        I'll remember what we discussed about this image, so feel free to ask follow-up questions!
                     """.trimIndent()))
                     
                     // Add recent chat history (last 5 messages for context) with image awareness
@@ -2332,6 +2686,15 @@ Output:
             repository.clearChatHistory()
         } catch (e: Exception) {
             Log.e("NoteViewModel", "Error clearing chat history", e)
+        }
+    }
+
+    fun startNewChatSession() = viewModelScope.launch {
+        try {
+            repository.clearChatHistory()
+            Log.d("NoteViewModel", "Started new chat session")
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error starting new chat session", e)
         }
     }
 
@@ -2491,47 +2854,14 @@ Output:
     }
     
     private fun speakText(text: String) {
-        try {
-            // Use OpenAI TTS if available, otherwise fall back to Android TTS
-            if (openAITTS != null) {
-                Log.d("NoteViewModel", "Using OpenAI TTS: $text")
-                
-                // Get preferred voice from SharedPreferences
-                val sharedPrefs = getApplication<Application>().getSharedPreferences("app_preferences", Application.MODE_PRIVATE)
-                val preferredVoice = sharedPrefs.getString("preferred_voice", "alloy") ?: "alloy"
-                
-                openAITTS?.speak(
-                    text = text,
-                    voice = preferredVoice,
-                    onReady = {
-                        Log.d("NoteViewModel", "OpenAI TTS started speaking")
-                        _isSpeaking.value = true
-                    },
-                    onComplete = {
-                        Log.d("NoteViewModel", "OpenAI TTS finished - auto-restarting listening")
-                        _isSpeaking.value = false
-                        // Auto-restart listening after TTS finishes
-                        viewModelScope.launch {
-                            delay(500) // Small delay after TTS completes
-                            if (!_isListening.value && !_isProcessing.value && _shouldAutoRestart.value) {
-                                startListening(getApplication<Application>().applicationContext)
-                            }
-                        }
-                    },
-                    onError = { error ->
-                        Log.e("NoteViewModel", "OpenAI TTS error: $error")
-                        _isSpeaking.value = false
-                        // Fall back to Android TTS on error
-                        useAndroidTTS(text)
-                    }
-                )
-            } else {
-                // Use Android TTS as fallback
+        viewModelScope.launch {
+            try {
+                // Use language-aware TTS for all speech
+                speakTextInLanguage(text, _detectedLanguage.value)
+            } catch (e: Exception) {
+                Log.e("NoteViewModel", "Error in speakText", e)
                 useAndroidTTS(text)
             }
-        } catch (e: Exception) {
-            Log.e("NoteViewModel", "Error in speakText", e)
-            useAndroidTTS(text)
         }
     }
     
@@ -2704,17 +3034,15 @@ Output:
     private suspend fun generateSmartTitle(text: String): String {
         return try {
             val messages = listOf(
-                Message(role = "system", content = """
-                    Generate a concise, descriptive title (3-6 words max) for this note content.
-                    The title should capture the main topic or action.
-                    Examples:
-                    - "I need to buy groceries tomorrow" -> "Grocery Shopping"
-                    - "Meeting with client about project updates" -> "Client Project Meeting"
-                    - "Remember to call mom about dinner plans" -> "Call Mom About Dinner"
-                    - "Ideas for the new marketing campaign" -> "Marketing Campaign Ideas"
-                    
-                    Return ONLY the title, no quotes or extra text.
-                """.trimIndent()),
+               Message(role = "system", content = """
+    Generate a concise descriptive title (3-6 words) for this note content.
+    - Capture the main topic or action.
+    - Use Title Case (or natural capitalization), no punctuation, and return ONLY the title (no quotes, no extra text).
+    Examples:
+    "I need to buy groceries tomorrow" -> "Grocery Shopping"
+    "Meeting with client about project updates" -> "Client Project Meeting"
+""".trimIndent()),
+
                 Message(role = "user", content = text)
             )
             
@@ -2913,20 +3241,40 @@ Output:
         Log.d("NoteViewModel", "Original text: '$originalText'")
         
         try {
+            // Parse date/time from the original text
+            val parsedDueDate = parseTimeFromMessage(originalText)
+            Log.d("NoteViewModel", "Parsed due date: $parsedDueDate (${if (parsedDueDate > System.currentTimeMillis()) "future" else "past/now"})")
+            
             val task = Task(
                 title = taskContent.take(100),
                 description = "", // Remove automatic descriptions
                 priority = "Medium",
-                dueDate = System.currentTimeMillis(),
+                dueDate = parsedDueDate,
                 duration = "",
                 isCompleted = false,
                 createdAt = System.currentTimeMillis(),
                 updatedAt = System.currentTimeMillis()
             )
             
-            Log.d("NoteViewModel", "Inserting task: ${task.title}")
-            repository.insertTask(task)
-            Log.d("NoteViewModel", "Task inserted successfully!")
+            Log.d("NoteViewModel", "Inserting task: ${task.title} due at ${task.dueDate}")
+            val taskId = repository.insertTask(task)
+            Log.d("NoteViewModel", "Task inserted successfully with ID: $taskId")
+            
+            // Schedule reminder if due date is in the future
+            if (parsedDueDate > System.currentTimeMillis()) {
+                val delayMillis = parsedDueDate - System.currentTimeMillis()
+                try {
+                    ReminderScheduler.scheduleTaskReminder(
+                        getApplication<android.app.Application>(),
+                        taskId,
+                        taskContent,
+                        delayMillis
+                    )
+                    Log.d("NoteViewModel", "Task reminder scheduled for ${delayMillis / 1000} seconds from now")
+                } catch (e: Exception) {
+                    Log.e("NoteViewModel", "Failed to schedule task reminder", e)
+                }
+            }
             
             // Broadcast task to server for web sync
             try {
@@ -3037,6 +3385,47 @@ Output:
         return "Something important"
     }
     
+    // Detect when both task and reminder could apply - needs user choice
+    private fun detectTaskOrReminderChoice(text: String): Boolean {
+        val lowerText = text.lowercase().trim()
+        
+        // Look for phrases that could be either a task or reminder with time
+        val hasTimeReference = lowerText.contains("tomorrow") ||
+                               lowerText.contains("at ") ||
+                               lowerText.contains("9am") ||
+                               lowerText.contains("9 am") ||
+                               lowerText.contains("morning") ||
+                               lowerText.contains("afternoon") ||
+                               lowerText.contains("evening") ||
+                               lowerText.contains("tonight") ||
+                               lowerText.contains("pm") ||
+                               lowerText.contains("am") ||
+                               Regex("\\b\\d{1,2}:\\d{2}\\b").containsMatchIn(lowerText)
+        
+        val hasActionableContent = lowerText.contains("fix") ||
+                                   lowerText.contains("do") ||
+                                   lowerText.contains("need to") ||
+                                   lowerText.contains("have to") ||
+                                   lowerText.contains("call") ||
+                                   lowerText.contains("meet") ||
+                                   lowerText.contains("buy") ||
+                                   lowerText.contains("get") ||
+                                   lowerText.contains("work on") ||
+                                   lowerText.contains("finish") ||
+                                   lowerText.contains("complete")
+        
+        // Exclude explicit task or reminder requests
+        val isExplicitTask = lowerText.contains("create a task") ||
+                            lowerText.contains("make a task") ||
+                            lowerText.contains("add a task")
+        
+        val isExplicitReminder = lowerText.contains("remind me") ||
+                               lowerText.contains("set reminder") ||
+                               lowerText.contains("reminder")
+        
+        return hasTimeReference && hasActionableContent && !isExplicitTask && !isExplicitReminder
+    }
+
     private fun createVoiceReminder(text: String) = viewModelScope.launch {
         try {
             val reminderMinutes = extractReminderTime(text)
@@ -3082,6 +3471,113 @@ Output:
         }
     }
     
+    // Handle task/reminder choice dialog
+    fun showTaskReminderChoiceDialog(text: String, aiResponse: String, context: List<ChatMessage>) {
+        _showTaskReminderChoice.value = TaskReminderChoice(text, aiResponse, context)
+    }
+    
+    fun chooseTask() = viewModelScope.launch {
+        val choice = _showTaskReminderChoice.value
+        if (choice != null) {
+            _showTaskReminderChoice.value = null
+            
+            // Create task from the original request
+            val taskContent = extractTaskFromConversation(choice.text, choice.context)
+            createTaskFromVoiceContext(taskContent, choice.text, choice.aiResponse)
+        }
+    }
+    
+    fun chooseReminder() = viewModelScope.launch {
+        val choice = _showTaskReminderChoice.value
+        if (choice != null) {
+            _showTaskReminderChoice.value = null
+            
+            // Create reminder from the original request
+            createVoiceReminder(choice.text)
+        }
+    }
+    
+    fun dismissTaskReminderChoice() {
+        _showTaskReminderChoice.value = null
+    }
+
+    // List Creation Choice Dialog Functions
+    fun showListCreationChoiceDialog(userMessage: String, aiResponse: String, items: List<String>) {
+        _showListCreationChoice.value = ListCreationChoice(userMessage, aiResponse, items)
+    }
+    
+    fun createCheckboxNote() = viewModelScope.launch {
+        val choice = _showListCreationChoice.value
+        if (choice != null) {
+            _showListCreationChoice.value = null
+            
+            // Create a note with checkbox items
+            val checkboxContent = buildString {
+                choice.detectedItems.forEach { item ->
+                    appendLine("- [ ] $item")
+                }
+            }
+            
+            val title = generateSmartTitle(choice.detectedItems.joinToString(", "))
+            
+            val note = Note(
+                title = title,
+                snippet = checkboxContent,
+                transcript = choice.userMessage,
+                audioPath = null,
+                createdAt = System.currentTimeMillis()
+            )
+            
+            repository.noteDao.insert(note)
+            Log.d("NoteViewModel", "Created checkbox note: $title with ${choice.detectedItems.size} items")
+        }
+    }
+    
+    fun createRegularNote() = viewModelScope.launch {
+        val choice = _showListCreationChoice.value
+        if (choice != null) {
+            _showListCreationChoice.value = null
+            
+            // Create a regular note
+            saveChatAsNote(choice.userMessage, choice.aiResponse)
+        }
+    }
+    
+    fun dismissListCreationChoice() {
+        _showListCreationChoice.value = null
+    }
+
+    // Automatically create checkbox note from detected list items
+    fun createCheckboxNoteFromList(userMessage: String, aiResponse: String, items: List<String>) = viewModelScope.launch {
+        try {
+            // Create a note with checkbox items
+            val checkboxContent = buildString {
+                items.forEach { item ->
+                    appendLine("- [ ] $item")
+                }
+            }
+            
+            val title = generateSmartTitle(items.joinToString(", "))
+            
+            val note = Note(
+                title = title,
+                snippet = checkboxContent,
+                transcript = checkboxContent, // Store the checkboxes in transcript for editing
+                audioPath = null,
+                createdAt = System.currentTimeMillis()
+            )
+            
+            repository.noteDao.insert(note)
+            Log.d("NoteViewModel", "Auto-created checkbox note: $title with ${items.size} items")
+            
+            // Clear assistant chat after creating note
+            clearAssistantChat()
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error creating checkbox note from list", e)
+        }
+    }
+
     fun processVoiceCommand(text: String) = viewModelScope.launch {
         _isProcessing.value = true
         
@@ -3096,39 +3592,21 @@ Output:
             
             // Use OpenAI to process the voice command with context
             val messages = mutableListOf<Message>()
-            messages.add(Message(role = "system", content = """
-                You're Logion AI - a smart, helpful assistant that understands context and conversation flow.
-                
-                CONVERSATION INTELLIGENCE:
-                - Remember what the user mentioned in previous messages
-                - If they say "fix the car" first, then "create a task for that" - extract "fix the car" as the task content
-                - If they confirm with just "task please" or "yes, task" - use the main action from earlier in the conversation
-                - Be contextually aware and extract the ACTUAL task content, not the creation command
-                
-                RESPONSE RULES:
-                - Keep responses brief and natural (1-2 sentences max)
-                - Use contractions and casual language
-                - When creating tasks/notes, just confirm what you're doing, don't ask again
-                
-                TASK/NOTE DETECTION:
-                - "create a task", "make a task", "add a task", "task please" → Create task
-                - "create a note", "make a note", "save as note" → Create note  
-                - Unclear actions like "fix the car" → Ask: "Should I create a task for this?"
-                
-                SMART EXTRACTION:
-                - "I need to fix the car" + "create a task" → Task title: "fix the car"
-                - "Buy groceries" + "task please" → Task title: "buy groceries"
-                - "Create a task for that" → Look for the actual task in conversation history
-                
-                EXAMPLES:
-                User: "I need to fix the car"
-                AI: "Should I create a task for this?"
-                User: "create a task for that"
-                AI: "Got it! Creating task to fix the car."
-                
-                Current conversation context:
-                $conversationContext
-            """.trimIndent()))
+            Message(role = "system", content = """
+    You are Logion AI — a fast, context-aware assistant for short voice commands.
+    CONVERSATION INTELLIGENCE:
+    - Use recent context to resolve pronouns and references.
+    - When user asks to create a task or confirms creation, extract the task text and reply with a single-line confirmation.
+    - If the requested action is ambiguous, ask one direct clarifying question.
+    RESPONSE RULES:
+    - Keep responses concise (one sentence, direct).
+    - When extracting a task, output it as a short imperative phrase.
+    - Do not perform multiple follow-up questions; ask one focused question if needed.
+    EXAMPLE:
+    User: "I need to fix the car" -> AI: "Should I create a task for that?" 
+    User: "Create a task for that" -> AI: "Got it — creating task: Fix the car."
+""".trimIndent())
+
             
             messages.add(Message(role = "user", content = text))
             
@@ -3146,11 +3624,26 @@ Output:
             val shouldCreateTask = detectTaskIntent(text, aiResponse, recentHistory)
             val shouldCreateNote = detectNoteIntent(text, aiResponse)
             val shouldCreateReminder = detectReminderIntent(text)
+            val needsChoice = detectTaskOrReminderChoice(text)
             
             Log.d("NoteViewModel", "Voice processing: text='$text', aiResponse='$aiResponse'")
-            Log.d("NoteViewModel", "Should create task: $shouldCreateTask, Should create note: $shouldCreateNote, Should create reminder: $shouldCreateReminder")
+            Log.d("NoteViewModel", "Should create task: $shouldCreateTask, Should create note: $shouldCreateNote, Should create reminder: $shouldCreateReminder, Needs choice: $needsChoice")
+            
+            // Check for list detection in voice commands
+            val listItems = detectListItems(text, aiResponse)
+            if (listItems.isNotEmpty()) {
+                Log.d("NoteViewModel", "Detected list with ${listItems.size} items in voice command")
+                createCheckboxNoteFromList(text, aiResponse, listItems)
+                speakText("I've created a note with checkboxes for your list items.")
+                return@launch
+            }
             
             when {
+                needsChoice -> {
+                    Log.d("NoteViewModel", "Showing task/reminder choice dialog...")
+                    showTaskReminderChoiceDialog(text, aiResponse, recentHistory)
+                    speakText("Would you like me to create a task or set a reminder for this?")
+                }
                 shouldCreateReminder -> {
                     Log.d("NoteViewModel", "Creating reminder...")
                     createVoiceReminder(text)
@@ -3467,6 +3960,43 @@ fun addNoteWithBroadcast(title: String, content: String, imageUri: String? = nul
         }
     }
     
+    fun updateTaskCheckboxItems(taskId: Long, checkboxItems: List<CheckboxItem>) = viewModelScope.launch {
+        try {
+            val currentTasks = _allTasks.value
+            val currentTask = currentTasks.find { it.id == taskId }
+            if (currentTask != null) {
+                val updatedTask = currentTask.copy(
+                    checkboxItems = checkboxItems,
+                    updatedAt = System.currentTimeMillis()
+                )
+                repository.updateTask(updatedTask)
+                
+                // Broadcast task update to server for web sync
+                try {
+                    val serverTask = ServerTask(
+                        id = updatedTask.serverId ?: updatedTask.id.toString(),
+                        title = updatedTask.title,
+                        body = updatedTask.description,
+                        done = updatedTask.isCompleted,
+                        updatedAt = java.time.Instant.ofEpochMilli(updatedTask.updatedAt).toString()
+                    )
+                    KtorServer.updateTaskWithBroadcast(serverTask)
+                    Log.d("NoteViewModel", "Task checkbox update broadcasted to server: ${updatedTask.title}")
+                } catch (e: Exception) {
+                    Log.e("NoteViewModel", "Failed to broadcast task checkbox update to server", e)
+                }
+                
+                _allTasks.update { tasks ->
+                    tasks.map { task ->
+                        if (task.id == taskId) updatedTask else task
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error updating task checkbox items", e)
+        }
+    }
+    
     // Helper function to check if a timestamp is today
     private fun isToday(timestamp: Long): Boolean {
         val today = java.util.Calendar.getInstance()
@@ -3535,5 +4065,312 @@ fun addNoteWithBroadcast(title: String, content: String, imageUri: String? = nul
     
     suspend fun importData(exportData: com.example.app.data.ExportData, replaceExisting: Boolean) {
         repository.importData(exportData, replaceExisting)
+    }
+    
+    // ======================= MULTILINGUAL SUPPORT =======================
+    
+    fun setPreferredLanguage(languageCode: String) {
+        _preferredLanguage.value = languageCode
+        Log.d("NoteViewModel", "Preferred language set to: $languageCode")
+    }
+    
+    fun getSupportedLanguages(): Map<String, String> = supportedLanguages
+    
+    // Detect language from text using OpenAI
+    private suspend fun detectLanguage(text: String): String {
+        try {
+            val messages = listOf(
+                Message(role = "system", content = """
+                    Detect the language of the following text and respond with only the ISO 639-1 language code.
+                    
+                    Pay special attention to:
+                    - Serbian (srpski): Use 'sr' - look for Cyrillic script or Latin with Serbian words
+                    - Slovenian (slovenščina): Use 'sl' - similar to Croatian but distinct
+                    - Croatian: Use 'hr'
+                    - English: Use 'en'
+                    - Spanish: Use 'es'
+                    - French: Use 'fr'
+                    - German: Use 'de'
+                    - Italian: Use 'it'
+                    - Portuguese: Use 'pt'
+                    
+                    If uncertain or mixed languages, default to 'en'.
+                    Response format: Just the 2-letter language code, nothing else.
+                """.trimIndent()),
+                Message(role = "user", content = text)
+            )
+            
+            val request = com.example.app.network.GPTRequest(
+    model = "gpt-3.5-turbo",
+    messages = listOf(
+        com.example.app.network.Message(role = "system", content = """
+            You are a precise extractor that converts user text into a JSON object only.
+            OUTPUT MUST BE A SINGLE VALID JSON OBJECT AND NOTHING ELSE.
+
+            JSON SCHEMA:
+            {
+              "summary": "<short one-line summary — 1 sentence, 20-40 words max, plain text>",
+              "tasks": ["<task 1>", "<task 2>", ...]
+            }
+
+            RULES:
+            - Extract only real user action items; ignore assistant-side instructions such as "I'll save this".
+            - Tasks should be short imperative phrases (e.g., "Buy milk", "Call Alice").
+            - Deduplicate tasks, do not invent tasks.
+            - If no tasks, return "tasks": [] and a meaningful "summary".
+            - Keep language identical to the input language.
+            - Do not wrap result in markdown, code fences, or commentary.
+
+            EXAMPLES:
+            Input: "I need to buy bread and milk and also call mom."
+            Output: {"summary": "","tasks":["Buy bread","Buy milk","Call mom"]}
+
+            Input: "Today I met John and we discussed the project timeline."
+            Output: {"summary":"Met John and discussed the project timeline.","tasks":[]}
+        """.trimIndent()),
+        com.example.app.network.Message(role = "user", content = text)
+    )
+)
+
+            
+            val response = RetrofitInstance.api.summarizeText(request)
+            val detectedCode = response.body()?.choices?.firstOrNull()?.message?.content?.trim()?.lowercase()
+            
+            // Validate the detected language code
+            val validCode = if (supportedLanguages.containsKey(detectedCode)) {
+                Log.d("NoteViewModel", "Valid language code detected: $detectedCode")
+                detectedCode!!
+            } else {
+                Log.w("NoteViewModel", "Invalid language code '$detectedCode', defaulting to English")
+                "en" // Default to English if invalid
+            }
+            
+            _detectedLanguage.value = validCode
+            Log.d("NoteViewModel", "Final language detection result: $validCode for text: '${text.take(50)}'")
+            return validCode
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Language detection failed for: '${text.take(50)}'", e)
+            _detectedLanguage.value = "en"
+            return "en"
+        }
+    }
+    
+    // Enhanced audio transcription with language support
+    private suspend fun transcribeAudioWithLanguage(audioFile: File, languageCode: String? = null): String {
+        try {
+            val requestFile = audioFile.asRequestBody("audio/wav".toMediaType())
+            val body = MultipartBody.Part.createFormData("file", audioFile.name, requestFile)
+            val model = "whisper-1".toRequestBody("text/plain".toMediaType())
+            
+            // Use preferred language or auto-detect
+            val language = when {
+                languageCode != null && languageCode != "auto" -> {
+                    Log.d("NoteViewModel", "Using specified language for Whisper: $languageCode")
+                    languageCode.toRequestBody("text/plain".toMediaType())
+                }
+                _preferredLanguage.value != "auto" -> {
+                    Log.d("NoteViewModel", "Using preferred language for Whisper: ${_preferredLanguage.value}")
+                    _preferredLanguage.value.toRequestBody("text/plain".toMediaType())
+                }
+                else -> {
+                    Log.d("NoteViewModel", "Using auto-detection for Whisper")
+                    null // Let Whisper auto-detect
+                }
+            }
+            
+            val response = RetrofitInstance.api.transcribeAudio(body, model, language)
+            val transcription = response.body()?.text ?: ""
+            
+            Log.d("NoteViewModel", "Whisper transcription result: '$transcription'")
+            
+            if (transcription.isNotEmpty()) {
+                // Detect language from transcription for better context
+                val detectedLang = detectLanguage(transcription)
+                _detectedLanguage.value = detectedLang
+                Log.d("NoteViewModel", "Final detected language: $detectedLang for text: '${transcription.take(50)}'")
+            }
+            
+            return transcription
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error transcribing audio with language support", e)
+            return ""
+        }
+    }
+    
+    // Enhanced TTS with language support
+    private suspend fun speakTextInLanguage(text: String, languageCode: String? = null) {
+        try {
+            val targetLanguage = languageCode ?: _detectedLanguage.value
+            
+            // Use OpenAI TTS if available, otherwise fall back to Android TTS
+            if (openAITTS != null) {
+                Log.d("NoteViewModel", "Using OpenAI TTS for language: $targetLanguage")
+                
+                // Select appropriate voice for language
+                val voice = when (targetLanguage) {
+                    "es" -> "nova"   // Good for Spanish
+                    "fr" -> "alloy"  // Good for French  
+                    "de" -> "echo"   // Good for German
+                    "it" -> "fable"  // Good for Italian
+                    "pt" -> "onyx"   // Good for Portuguese
+                    "ja" -> "shimmer" // Good for Japanese
+                    "ko" -> "alloy"  // Good for Korean
+                    "zh" -> "nova"   // Good for Chinese
+                    "sr" -> "onyx"   // Good for Serbian
+                    "sl" -> "echo"   // Good for Slovenian
+                    else -> "alloy"  // Default voice for English and others
+                }
+
+                openAITTS?.speak(
+                    text = text,
+                    voice = voice,
+                    onReady = {
+                        Log.d("NoteViewModel", "OpenAI TTS started speaking in $targetLanguage")
+                        _isSpeaking.value = true
+                    },
+                    onComplete = {
+                        Log.d("NoteViewModel", "OpenAI TTS finished - auto-restarting listening")
+                        _isSpeaking.value = false
+                        // Auto-restart listening after TTS finishes
+                        viewModelScope.launch {
+                            delay(500) // Small delay after TTS completes
+                            if (!_isListening.value && !_isProcessing.value && _shouldAutoRestart.value) {
+                                startListening(getApplication<Application>().applicationContext)
+                            }
+                        }
+                    },
+                    onError = { error ->
+                        Log.e("NoteViewModel", "OpenAI TTS error: $error")
+                        _isSpeaking.value = false
+                        // Fall back to Android TTS on error
+                        useAndroidTTS(text)
+                    }
+                )
+            } else {
+                // Use Android TTS as fallback
+                useAndroidTTS(text)
+            }
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error generating multilingual speech", e)
+            // Fallback to Android TTS
+            useAndroidTTS(text)
+        }
+    }
+    
+    private fun playAudioFile(audioFile: File) {
+        try {
+            val mediaPlayer = android.media.MediaPlayer().apply {
+                setDataSource(audioFile.absolutePath)
+                prepare()
+                start()
+                setOnCompletionListener { release() }
+            }
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error playing audio file", e)
+        }
+    }
+    
+    // Enhanced voice processing with multilingual support
+    fun processVoiceCommandMultilingual(audioFile: File) = viewModelScope.launch {
+        _isProcessing.value = true
+        
+        try {
+            // Transcribe with language detection
+            val transcription = transcribeAudioWithLanguage(audioFile)
+            
+            if (transcription.isNotEmpty()) {
+                // Update voice text
+                _voiceText.value = transcription
+                
+                // Process the command with language context
+                val detectedLang = _detectedLanguage.value
+                Log.d("NoteViewModel", "Processing voice command with detected language: $detectedLang")
+                
+                val languageContext = if (detectedLang != "en") {
+                    val languageName = supportedLanguages[detectedLang] ?: detectedLang
+                    Log.d("NoteViewModel", "User is speaking in $languageName ($detectedLang)")
+                    "User is speaking in $languageName. Please respond in the same language ($languageName)."
+                } else {
+                    Log.d("NoteViewModel", "User is speaking in English")
+                    ""
+                }
+                
+                // Get AI response with language context
+                val messages = listOf(
+                    Message(role = "system", content = """
+    You are Logion AI — a fast, context-aware assistant for short voice commands.
+    CONVERSATION INTELLIGENCE:
+    - Use recent context to resolve pronouns and references.
+    - When user asks to create a task or confirms creation, extract the task text and reply with a single-line confirmation.
+    - If the requested action is ambiguous, ask one direct clarifying question.
+    RESPONSE RULES:
+    - Keep responses concise (one sentence, direct).
+    - When extracting a task, output it as a short imperative phrase.
+    - Do not perform multiple follow-up questions; ask one focused question if needed.
+    EXAMPLE:
+    User: "I need to fix the car" -> AI: "Should I create a task for that?" 
+    User: "Create a task for that" -> AI: "Got it — creating task: Fix the car."
+""".trimIndent()),
+
+                    Message(role = "user", content = transcription)
+                )
+                
+                val request = GPTRequest(messages = messages)
+                val response = RetrofitInstance.api.summarizeText(request)
+                val aiResponse = response.body()?.choices?.firstOrNull()?.message?.content?.trim()
+                    ?: "I understand."
+                
+                // Add to voice session history
+                val userMessage = ChatMessage(content = transcription, isUser = true)
+                val aiMessage = ChatMessage(content = aiResponse, isUser = false)
+                _voiceSessionHistory.update { it + userMessage + aiMessage }
+                
+                // Process intent detection
+                processMultilingualIntent(transcription, aiResponse)
+                
+                // Speak response in detected language
+                speakTextInLanguage(aiResponse, detectedLang)
+                
+            }
+            
+        } catch (e: Exception) {
+            Log.e("NoteViewModel", "Error processing multilingual voice command", e)
+            speakText("Sorry, I had trouble understanding that.")
+        } finally {
+            _isProcessing.value = false
+        }
+    }
+    
+    private suspend fun processMultilingualIntent(text: String, aiResponse: String) {
+        // Enhanced intent detection that works across languages
+        val listItems = detectListItems(text, aiResponse)
+        if (listItems.isNotEmpty()) {
+            createCheckboxNoteFromList(text, aiResponse, listItems)
+            return
+        }
+        
+        // Detect task/reminder/note creation in multiple languages
+        val taskKeywords = listOf("task", "tarea", "tâche", "aufgabe", "attività", "tarefa", "задача", "タスク", "작업", "任务")
+        val reminderKeywords = listOf("remind", "recordar", "rappeler", "erinnern", "ricordare", "lembrar", "напомнить", "思い出させる", "상기시키다", "提醒")
+        val noteKeywords = listOf("note", "nota", "note", "notiz", "nota", "nota", "заметка", "ノート", "메모", "笔记")
+        
+        val lowerText = text.lowercase()
+        val lowerAI = aiResponse.lowercase()
+        
+        when {
+            taskKeywords.any { lowerText.contains(it) || lowerAI.contains(it) } -> {
+                val taskContent = extractTaskFromMessage(text)
+                createTaskFromVoiceContext(taskContent, text, aiResponse)
+            }
+            reminderKeywords.any { lowerText.contains(it) || lowerAI.contains(it) } -> {
+                createVoiceReminder(text)
+            }
+            noteKeywords.any { lowerText.contains(it) || lowerAI.contains(it) } -> {
+                saveVoiceSessionAsNote()
+            }
+        }
     }
 }

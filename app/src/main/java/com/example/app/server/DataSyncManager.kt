@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.Calendar
+import org.json.JSONArray
+import org.json.JSONObject
 
 object DataSyncManager {
     private var database: AppDatabase? = null
@@ -99,11 +101,25 @@ object DataSyncManager {
                 Log.d("DataSyncManager", "Syncing ${dbNotes.size} notes from database to server")
                 
                 dbNotes.forEach { dbNote ->
+                    Log.d("DataSyncManager", "Processing note: ${dbNote.title}")
+                    Log.d("DataSyncManager", "  transcript length: ${dbNote.transcript.length}")
+                    Log.d("DataSyncManager", "  snippet length: ${dbNote.snippet.length}")
+                    
+                    // Use snippet as primary content (from rich text editor), fallback to transcript (from voice notes)
+                    val noteBody = if (dbNote.snippet.isNotEmpty()) {
+                        Log.d("DataSyncManager", "  Using snippet as body")
+                        dbNote.snippet
+                    } else {
+                        Log.d("DataSyncManager", "  Using transcript as body")
+                        dbNote.transcript
+                    }
+                    
                     val serverNote = ServerNote(
-                        id = dbNote.id.toString(),
+                        id = dbNote.serverId ?: dbNote.id.toString(),
                         title = dbNote.title,
-                        body = dbNote.transcript.ifEmpty { dbNote.snippet }, // Use transcript first, fallback to snippet
+                        body = noteBody,
                         imagePath = dbNote.imagePath, // Include image path
+                        // Note entity doesn't track updatedAt; use createdAt as best available
                         updatedAt = java.time.Instant.ofEpochMilli(dbNote.createdAt).toString()
                     )
                     KtorServer.addNote(serverNote)
@@ -173,18 +189,57 @@ object DataSyncManager {
     suspend fun syncNoteToDatabase(serverNote: ServerNote) {
         database?.let { db ->
             try {
+                // Attempt to derive checklist state from body (supports JSON structured and Markdown formats)
+                fun extractChecklistState(body: String?): String? {
+                    if (body.isNullOrEmpty()) return null
+                    // 1) Try structured JSON: { text: string, checkboxes: [{text, checked}] }
+                    try {
+                        val json = JSONObject(body)
+                        if (json.has("checkboxes")) {
+                            val boxes = json.optJSONArray("checkboxes")
+                            if (boxes != null) {
+                                val states = JSONArray()
+                                for (i in 0 until boxes.length()) {
+                                    val item = boxes.optJSONObject(i)
+                                    states.put(item?.optBoolean("checked", false) ?: false)
+                                }
+                                return states.toString()
+                            }
+                        }
+                    } catch (ignored: Exception) {
+                        // Not JSON, try markdown
+                    }
+                    // 2) Try markdown pattern: - [ ] text or - [x] text
+                    return try {
+                        val regex = Regex("""- \[([ xX])] .*""")
+                        val matches = regex.findAll(body)
+                        val states = JSONArray()
+                        var found = false
+                        matches.forEach { m ->
+                            found = true
+                            val token = m.groups[1]?.value?.firstOrNull()
+                            states.put(token == 'x' || token == 'X')
+                        }
+                        if (found) states.toString() else null
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+
                 // First, try to find an existing note by serverId for exact matching
                 val existingNotes = db.noteDao().getAllNotes().first()
                 var existingNote = existingNotes.find { it.serverId == serverNote.id }
                 
                 if (existingNote != null) {
                     // Update existing note found by serverId
+                    val checklist = extractChecklistState(serverNote.body)
                     val updatedNote = existingNote.copy(
                         title = serverNote.title,
                         snippet = serverNote.body, // Store in snippet field for display
                         transcript = serverNote.body, // Also store in transcript for compatibility
                         imagePath = serverNote.imagePath, // Include image path
-                        serverId = serverNote.id
+                        serverId = serverNote.id,
+                        checklistState = checklist
                     )
                     db.noteDao().update(updatedNote)
                     Log.d("DataSyncManager", "Updated existing note by serverId: ${serverNote.title}")
@@ -196,17 +251,20 @@ object DataSyncManager {
                     
                     if (existingNote != null) {
                         // Update existing note and set serverId
+                        val checklist = extractChecklistState(serverNote.body)
                         val updatedNote = existingNote.copy(
                             title = serverNote.title,
                             snippet = serverNote.body, // Store in snippet field for display
                             transcript = serverNote.body, // Also store in transcript for compatibility
                             imagePath = serverNote.imagePath, // Include image path
-                            serverId = serverNote.id
+                            serverId = serverNote.id,
+                            checklistState = checklist
                         )
                         db.noteDao().update(updatedNote)
                         Log.d("DataSyncManager", "Updated existing note and set serverId: ${serverNote.title}")
                     } else {
                         // Insert new note
+                        val checklist = extractChecklistState(serverNote.body)
                         val dbNote = Note(
                             id = 0, // Let the database generate the ID
                             title = serverNote.title,
@@ -214,7 +272,8 @@ object DataSyncManager {
                             transcript = serverNote.body, // Also store in transcript for compatibility
                             imagePath = serverNote.imagePath, // Include image path
                             createdAt = System.currentTimeMillis(),
-                            serverId = serverNote.id
+                            serverId = serverNote.id,
+                            checklistState = checklist
                         )
                         db.noteDao().insert(dbNote)
                         Log.d("DataSyncManager", "Inserted new note: ${serverNote.title}")

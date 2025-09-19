@@ -225,22 +225,24 @@
         
         .note-expanded-actions button:hover {
             background: #444;
+            color:white
+
         }
         
-        .note-expanded-actions .edit-btn {
-            background: #FF8C00;
-        }
+        
         
         .note-expanded-actions .edit-btn:hover {
             background: #e07600;
+            color:white
+
         }
         
-        .note-expanded-actions .delete-btn {
-            background: #f44336;
-        }
+       
         
         .note-expanded-actions .delete-btn:hover {
             background: #d32f2f;
+            color:white
+
         }
         
         .note-expanded-actions .back-btn {
@@ -698,7 +700,7 @@
             border-radius: 8px;
             padding: 24px;
             width: 90%;
-            max-width: 500px;
+            max-width: 1180px;
             max-height: 80vh;
             overflow-y: auto;
             display: flex;
@@ -753,8 +755,10 @@
             flex-wrap: wrap;
             align-items: center;
         }
-        
-        .toolbar-btn {
+
+       
+
+        .toolbar-btn, .rich-text-toolbar > button  {
             padding: 6px 10px;
             background-color: #555;
             border: none;
@@ -834,6 +838,55 @@
             border-radius: 50%;
             cursor: pointer;
             font-size: 12px;
+        }
+        
+        /* Note checkboxes styles */
+        .note-checkboxes {
+            margin-top: 15px;
+            padding: 10px;
+            border-top: 1px solid #444;
+        }
+        
+        .note-checkboxes .checkbox-item {
+            background-color: transparent;
+            padding: 4px 0;
+            margin: 4px 0;
+        }
+        
+        .note-checkboxes .checkbox-text {
+            color: #fff;
+            flex: 1;
+        }
+        
+        .note-checkboxes .checkbox-checked .checkbox-text {
+            text-decoration: line-through;
+            opacity: 0.7;
+            color: #888;
+        }
+        
+        /* Task checkboxes styles */
+        .task-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+            padding: 4px 0;
+        }
+        
+        .task-checkbox-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .task-checkbox-text {
+            color: #fff;
+            flex: 1;
+        }
+        
+        .task-checkbox-text.completed {
+            text-decoration: line-through;
+            opacity: 0.7;
+            color: #888;
         }
         
         .checkbox-list {
@@ -926,6 +979,7 @@
                     <input type="text" id="serverAddress" placeholder="192.168.1.96" value="192.168.1.96" />
                     <span class="server-suffix">:auto</span>
                 </div>
+                <p style="color: #888; font-size: 12px; margin-top: 8px;">Now uses AdGuard-friendly ports (8888, 9090, etc.)</p>
                 <button class="btn btn-primary" id="connectButton">Connect</button>
             </div>
         </div>
@@ -1122,7 +1176,7 @@
                 <button class="toolbar-btn" onclick="formatText('underline')" title="Underline"><u>U</u></button>
                 <button class="toolbar-btn" onclick="formatText('strikeThrough')" title="Strikethrough"><s>S</s></button>
                 <div class="toolbar-separator"></div>
-                <button class="toolbar-btn" onclick="addCheckboxItem()" title="Add Checkbox">☑</button>
+                <button class="toolbar-btn" onclick="insertCheckbox('noteContent')" title="Add Checkbox">☑</button>
                 <button class="toolbar-btn" onclick="formatText('insertUnorderedList')" title="Bullet List">• List</button>
                 <div class="toolbar-separator"></div>
                 <select class="toolbar-btn" onchange="changeFontSize(this.value)">
@@ -1135,12 +1189,6 @@
             </div>
             
             <div contenteditable="true" id="noteContent" class="rich-text-editor" placeholder="Write your note..."></div>
-            
-            <!-- Checkbox List -->
-            <div class="checkbox-list" id="checkboxList">
-                <h4 style="margin-bottom: 8px; color: #ccc;">Task Checkboxes:</h4>
-            </div>
-            <button class="add-checkbox-btn" onclick="addCheckboxItem()">+ Add Checkbox</button>
             
             <div class="image-upload" id="imageUpload">
                 <p>Click to add image or drag and drop</p>
@@ -1167,7 +1215,7 @@
                 <button type="button" onclick="formatTaskText('italic')" style="font-style: italic;">I</button>
                 <button type="button" onclick="formatTaskText('underline')" style="text-decoration: underline;">U</button>
                 <button type="button" onclick="formatTaskText('strikethrough')" style="text-decoration: line-through;">S</button>
-                <button type="button" onclick="addTaskCheckboxItem()">☑ Task</button>
+                <button type="button" onclick="insertCheckbox('taskDescription')" title="Add Checkbox">☑</button>
             </div>
             
             <div id="taskDescription" contenteditable="true" class="rich-text-editor" style="min-height: 120px; padding: 12px; border: 1px solid #555; border-radius: 4px; background-color: #333; color: white; margin-bottom: 12px;" placeholder="Task description..."></div>
@@ -1290,6 +1338,15 @@
                 const ports = [8080];
                 console.log(`Starting server discovery on ${baseAddress} - using port 8080`);
                 
+                // Detect if we're on HTTPS and warn user
+                const isHTTPS = window.location.protocol === 'https:';
+                if (isHTTPS) {
+                    console.warn('⚠️ HTTPS detected: Cannot connect to HTTP server due to mixed content restrictions');
+                    console.warn('💡 Solution: Access this page via HTTP instead of HTTPS');
+                    alert('❌ Connection Error\n\nYou\'re accessing this page via HTTPS, but the Android server runs on HTTP.\n\nSolution: Access the WebUI via:\n• http://localhost:3000/desktop.html (if using local server)\n• Or save the HTML file and open it directly\n• The Android server must be running on your device');
+                    return null;
+                }
+                
                 for (const port of ports) {
                     try {
                         const testAddress = `${baseAddress}:${port}`;
@@ -1343,6 +1400,13 @@
             
             connectWebSocket() {
                 try {
+                    // Check for HTTPS restriction
+                    if (window.location.protocol === 'https:') {
+                        console.error('❌ Cannot create WebSocket from HTTPS page to HTTP server');
+                        alert('❌ WebSocket Connection Error\n\nCannot connect from HTTPS page to HTTP WebSocket.\n\nSolution:\n• Access via HTTP: http://localhost:3000/desktop.html\n• Or save file and open locally');
+                        return;
+                    }
+                    
                     this.socket = new WebSocket(`ws://${this.serverAddress}/sync`);
                     
                     this.socket.onopen = () => {
@@ -1483,6 +1547,24 @@
                     this.notes.unshift(note);
                 }
                 this.renderNotes();
+
+                // If expanded view is open for this note, update its content live
+                if (this.selectedNoteForExpanded && this.selectedNoteForExpanded.id === note.id) {
+                    this.selectedNoteForExpanded = note;
+                    const contentElement = document.getElementById('noteExpandedContent');
+                    if (contentElement) {
+                        try {
+                            JSON.parse(note.body);
+                            contentElement.innerHTML = jsonToHtmlCheckboxes(note.body);
+                        } catch (e) {
+                            contentElement.innerHTML = this.makeCheckboxesInteractive(note.body || 'No content');
+                        }
+                    }
+                    const titleEl = document.getElementById('noteExpandedTitle');
+                    if (titleEl) titleEl.textContent = note.title || '';
+                    const metaEl = document.getElementById('noteExpandedMeta');
+                    if (metaEl) metaEl.textContent = `Last updated: ${this.formatDate(note.updatedAt)}`;
+                }
             }
             
             updateTask(task) {
@@ -1721,6 +1803,22 @@
                 
                 document.getElementById('editNoteBtn').addEventListener('click', () => {
                     if (this.selectedNoteForExpanded) {
+                        // Save any checkbox changes before switching to edit mode
+                        const contentElement = document.getElementById('noteExpandedContent');
+                        if (contentElement) {
+                            const updatedContent = contentElement.innerHTML;
+                            const noteId = this.selectedNoteForExpanded.id;
+                            
+                            // Update the selected note data with current content
+                            if (updatedContent !== this.selectedNoteForExpanded.body) {
+                                this.selectedNoteForExpanded.body = updatedContent;
+                                                                // Save to server asynchronously using app method
+                                                                this.saveNoteCheckboxChanges(noteId, updatedContent).catch(error => {
+                                                                        console.error('Error saving checkbox changes before edit:', error);
+                                                                });
+                            }
+                        }
+                        
                         this.selectedNote = this.selectedNoteForExpanded;
                         this.hideNoteExpanded();
                         this.showNoteModal(true);
@@ -1757,7 +1855,7 @@
                 gridContainer.innerHTML = sortedNotes.map(note => `
                     <div class="note-card-grid" data-id="${note.id}">
                         <div class="card-title">${this.escapeHtml(note.title)}</div>
-                        <div class="card-content" style="flex: 1;">${this.escapeHtml(note.body.substring(0, 120))}${note.body.length > 120 ? '...' : ''}</div>
+                        <div class="card-content" style="flex: 1;">${this.cleanHtmlForPreview(note.body, 120)}</div>
                         ${note.imagePath ? '<img src="' + this.convertImagePath(note.imagePath) + '" style="max-width: 100%; max-height: 60px; border-radius: 4px; margin: 8px 0; object-fit: cover;" alt="Note image" onerror="this.style.display=\'none\';">' : ''}
                         <div class="card-date" style="margin-top: auto;">${this.formatDate(note.updatedAt)}</div>
                     </div>
@@ -1898,6 +1996,32 @@
             }
             
             hideNoteExpanded() {
+                // Save any checkbox changes before hiding the view
+                if (this.selectedNoteForExpanded) {
+                    const contentElement = document.getElementById('noteExpandedContent');
+                    if (contentElement) {
+                        const updatedContent = contentElement.innerHTML;
+                        const noteId = this.selectedNoteForExpanded.id;
+                        
+                        // Check if content has changed and save if needed
+                        if (updatedContent !== this.selectedNoteForExpanded.body) {
+                            console.log('Saving checkbox changes before hiding expanded view');
+                            this.saveNoteCheckboxChanges(noteId, updatedContent).then(() => {
+                                console.log('Checkbox changes saved successfully');
+                                
+                                // Update local data
+                                const noteIndex = this.notes.findIndex(n => n.id === noteId);
+                                if (noteIndex !== -1) {
+                                    this.notes[noteIndex].body = updatedContent;
+                                    this.notes[noteIndex].updatedAt = new Date().toISOString();
+                                }
+                            }).catch(error => {
+                                console.error('Error saving checkbox changes:', error);
+                            });
+                        }
+                    }
+                }
+                
                 // Show the notes grid and hide expanded view
                 document.getElementById('notesContent').style.display = 'block';
                 document.getElementById('noteExpandedView').classList.remove('active');
@@ -1914,8 +2038,20 @@
                 // Set title
                 document.getElementById('noteExpandedTitle').textContent = note.title;
                 
-                // Set content
-                document.getElementById('noteExpandedContent').textContent = note.body || 'No content';
+                // Set content with interactive checkboxes - convert JSON to HTML first
+                const contentElement = document.getElementById('noteExpandedContent');
+                let displayContent = note.body || 'No content';
+                
+                // Try to convert JSON to HTML if it's in JSON format
+                try {
+                    JSON.parse(note.body);
+                    displayContent = jsonToHtmlCheckboxes(note.body);
+                } catch (e) {
+                    // If not JSON, use existing makeCheckboxesInteractive
+                    displayContent = this.makeCheckboxesInteractive(note.body || 'No content');
+                }
+                
+                contentElement.innerHTML = displayContent;
                 
                 // Set image if exists
                 const imageElement = document.getElementById('noteExpandedImage');
@@ -2113,7 +2249,18 @@
                 
                 if (editMode && this.selectedNote) {
                     titleInput.value = this.selectedNote.title;
-                    contentInput.value = this.selectedNote.body;
+                    
+                    // Convert JSON to HTML for editing
+                    let editContent = this.selectedNote.body || '';
+                    try {
+                        JSON.parse(this.selectedNote.body);
+                        editContent = jsonToHtmlCheckboxes(this.selectedNote.body);
+                    } catch (e) {
+                        // If not JSON, use existing makeCheckboxesInteractive
+                        editContent = this.makeCheckboxesInteractive(this.selectedNote.body || '');
+                    }
+                    
+                    contentInput.innerHTML = editContent;
                     if (this.selectedNote.imagePath) {
                         imagePreview.src = this.convertImagePath(this.selectedNote.imagePath);
                         imagePreview.style.display = 'block';
@@ -2128,7 +2275,7 @@
                     }
                 } else {
                     titleInput.value = '';
-                    contentInput.value = '';
+                    contentInput.innerHTML = '';
                     imagePreview.style.display = 'none';
                     imageInput.value = '';
                     if (uploadText) uploadText.style.display = 'block';
@@ -2148,7 +2295,7 @@
                 
                 if (editMode && this.selectedTask) {
                     titleInput.value = this.selectedTask.title;
-                    descriptionInput.innerHTML = this.selectedTask.body || '';
+                    descriptionInput.innerHTML = this.makeCheckboxesInteractive(this.selectedTask.body || '');
                     dateInput.value = this.selectedTask.dueDate || '';
                     timeInput.value = this.selectedTask.dueTime || '';
                     priorityInput.value = this.selectedTask.priority || 'Medium';
@@ -2172,7 +2319,6 @@
                 // Clear rich text editor
                 document.getElementById('noteTitle').value = '';
                 document.getElementById('noteContent').innerHTML = '';
-                clearCheckboxes();
                 
                 // Reset image upload area
                 const imagePreview = document.getElementById('imagePreview');
@@ -2196,68 +2342,114 @@
             
             saveNote() {
                 const title = document.getElementById('noteTitle').value.trim();
-                const content = document.getElementById('noteContent').innerHTML.trim();
+                let content = document.getElementById('noteContent').innerHTML.trim();
                 const imageInput = document.getElementById('imageInput');
                 
                 if (!title) {
                     alert('Please enter a note title');
                     return;
                 }
-                
-                // Get checked items for task creation
-                const checkedItems = getCheckedItems();
+
+                // Convert HTML content to JSON format for consistent storage
+                content = htmlToJsonCheckboxes(content);
                 
                 const noteData = {
                     id: this.selectedNote ? this.selectedNote.id : Date.now().toString(),
                     title: title,
                     body: content,
                     updatedAt: new Date().toISOString()
-                };
-                
-                // Handle image if selected
+                };                // Handle image if selected
                 if (imageInput.files && imageInput.files[0]) {
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         noteData.imagePath = e.target.result;
                         this.sendNote(noteData);
-                        this.createTasksFromCheckboxes(checkedItems);
                     };
                     reader.readAsDataURL(imageInput.files[0]);
                 } else if (this.selectedNote && this.selectedNote.imagePath) {
                     noteData.imagePath = this.selectedNote.imagePath;
                     this.sendNote(noteData);
-                    this.createTasksFromCheckboxes(checkedItems);
                 } else {
                     this.sendNote(noteData);
-                    this.createTasksFromCheckboxes(checkedItems);
                 }
                 
                 this.hideNoteModal();
             }
             
-            createTasksFromCheckboxes(checkedItems) {
-                checkedItems.forEach(item => {
-                    const taskData = {
-                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-                        title: item.text,
-                        description: 'Created from note checkbox',
-                        priority: 'Medium',
-                        dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
-                        isCompleted: false,
-                        updatedAt: new Date().toISOString()
-                    };
-                    this.sendTask(taskData);
+            makeCheckboxesInteractive(htmlContent) {
+                // Handle both - [ ]/- [x] patterns and HTML checkboxes
+                let processedContent = htmlContent;
+                
+                // First, convert markdown-style checkboxes to HTML
+                processedContent = processedContent.replace(/- \[([ x])\] (.+?)(?=<br|$|\n)/gi, (match, checkStatus, text) => {
+                    const isChecked = checkStatus.toLowerCase() === 'x';
+                    const checkboxId = 'checkbox_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    return `<div class="checkbox-item ${isChecked ? 'checkbox-checked' : ''}">
+                        <input type="checkbox" id="${checkboxId}" ${isChecked ? 'checked' : ''}>
+                        <span style="color: #fff; ${isChecked ? 'text-decoration: line-through; opacity: 0.7; color: #888;' : ''}">${text.trim()}</span>
+                    </div>`;
                 });
                 
-                if (checkedItems.length > 0) {
-                    alert(`${checkedItems.length} tasks created from checkboxes!`);
-                    clearCheckboxes();
-                }
+                // Then, process any existing HTML checkboxes and clean them up
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = processedContent;
+                
+                // Find all checkboxes and clean up their attributes
+                const checkboxes = tempDiv.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach((checkbox, index) => {
+                    if (!checkbox.id) {
+                        checkbox.id = `checkbox-${Date.now()}-${index}`;
+                    }
+                    
+                    // Remove any existing handlers - event delegation will handle all clicks
+                    checkbox.removeAttribute('onchange');
+                    checkbox.removeAttribute('onclick');
+                    
+                    // Update parent container and text styling
+                    const container = checkbox.parentElement;
+                    const textElement = container.querySelector('span') || container.querySelector('label');
+                    
+                    // Ensure container has proper class
+                    if (!container.classList.contains('checkbox-item')) {
+                        container.classList.add('checkbox-item');
+                    }
+                    
+                    if (checkbox.checked) {
+                        container.classList.add('checkbox-checked', 'completed');
+                        if (textElement) {
+                            textElement.style.textDecoration = 'line-through';
+                            textElement.style.opacity = '0.7';
+                            textElement.style.color = '#888';
+                        }
+                    } else {
+                        container.classList.remove('checkbox-checked', 'completed');
+                        if (textElement) {
+                            textElement.style.textDecoration = 'none';
+                            textElement.style.opacity = '1';
+                            textElement.style.color = '#fff';
+                        }
+                    }
+                    
+                    // Ensure the text element has proper styling
+                    if (textElement) {
+                        if (textElement.tagName.toLowerCase() === 'label') {
+                            // Convert label to span for consistency
+                            const span = document.createElement('span');
+                            span.innerHTML = textElement.innerHTML;
+                            span.style.color = textElement.style.color || '#fff';
+                            span.style.textDecoration = textElement.style.textDecoration || 'none';
+                            span.style.opacity = textElement.style.opacity || '1';
+                            textElement.parentNode.replaceChild(span, textElement);
+                        }
+                    }
+                });
+                
+                return tempDiv.innerHTML;
             }
             
             async saveTask() {
                 const title = document.getElementById('taskTitle').value.trim();
-                const description = document.getElementById('taskDescription').innerHTML.trim();
+                let description = document.getElementById('taskDescription').innerHTML.trim();
                 const dueDate = document.getElementById('taskDate').value;
                 const dueTime = document.getElementById('taskTime').value;
                 const priority = document.getElementById('taskPriority').value;
@@ -2266,6 +2458,9 @@
                     alert('Please enter a task title');
                     return;
                 }
+                
+                // Make checkboxes functional by adding event handlers
+                description = this.makeCheckboxesInteractive(description);
                 
                 try {
                     const url = `http://${this.serverAddress}/tasks` + (this.selectedTask ? `/${this.selectedTask.id}` : '');
@@ -2338,6 +2533,40 @@
                 }
             }
             
+            async saveNoteCheckboxChanges(noteId, updatedContent) {
+                try {
+                    // Find a title to send (server requires it)
+                    const note = this.notes.find(n => n.id === noteId) || this.selectedNoteForExpanded || this.selectedNote || {};
+                    const title = note.title || 'Untitled';
+
+                    const response = await fetch(`http://${this.serverAddress}/notes/${noteId}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            title: title,
+                            body: updatedContent,
+                            timestamp: Date.now()
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log('Note checkbox changes saved:', result);
+                        return result;
+                    } else {
+                        let text = '';
+                        try { text = await response.text(); } catch (e) { text = ''; }
+                        console.error('Failed to save note checkbox changes:', response.status, response.statusText, text);
+                        throw new Error('Failed to save note checkbox changes');
+                    }
+                } catch (error) {
+                    console.error('Error saving note checkbox changes:', error);
+                    throw error;
+                }
+            }
+            
             async toggleTask(taskId) {
                 const task = this.tasks.find(t => t.id === taskId);
                 if (!task) return;
@@ -2398,7 +2627,7 @@
                 gridContainer.innerHTML = notes.map(note => `
                     <div class="note-card-grid" data-id="${note.id}">
                         <div class="card-title">${this.escapeHtml(note.title)}</div>
-                        <div class="card-content" style="flex: 1;">${this.escapeHtml(note.body.substring(0, 120))}${note.body.length > 120 ? '...' : ''}</div>
+                        <div class="card-content" style="flex: 1;">${this.cleanHtmlForPreview(note.body, 120)}</div>
                         ${note.imagePath ? '<img src="' + this.convertImagePath(note.imagePath) + '" style="max-width: 100%; max-height: 60px; border-radius: 4px; margin: 8px 0; object-fit: cover;" alt="Note image" onerror="this.style.display=\'none\';">' : ''}
                         <div class="card-date" style="margin-top: auto;">${this.formatDate(note.updatedAt)}</div>
                     </div>
@@ -2454,7 +2683,7 @@
                                             </span>
                                             ${dueDateTimeStr ? '<span style="color: #888; font-size: 11px;">' + dueDateTimeStr + '</span>' : ''}
                                         </div>
-                                        ${task.body ? '<div class="card-content">' + this.escapeHtml(task.body) + '</div>' : ''}
+                                        ${task.body ? '<div class="card-content">' + this.cleanHtmlForPreview(task.body) + '</div>' : ''}
                                     </div>
                                 </div>
                                 <button onclick="app.deleteTask('${task.id}'); event.stopPropagation();" 
@@ -2512,6 +2741,66 @@
                 const div = document.createElement('div');
                 div.textContent = text;
                 return div.innerHTML;
+            }
+            
+            cleanHtmlForPreview(html, maxLength = 120) {
+                if (!html) return '';
+                
+                // Check if content is JSON format first
+                try {
+                    const jsonData = JSON.parse(html);
+                    if (jsonData.text || jsonData.checkboxes) {
+                        // Handle JSON format
+                        let preview = '';
+                        
+                        // Add text content
+                        if (jsonData.text) {
+                            preview += jsonData.text;
+                        }
+                        
+                        // Add checkbox summary
+                        if (jsonData.checkboxes && jsonData.checkboxes.length > 0) {
+                            const checkedCount = jsonData.checkboxes.filter(cb => cb.checked).length;
+                            const totalCount = jsonData.checkboxes.length;
+                            
+                            if (preview) preview += ' • ';
+                            preview += `${totalCount} task${totalCount !== 1 ? 's' : ''}`;
+                            if (checkedCount > 0) {
+                                preview += ` (${checkedCount} completed)`;
+                            }
+                        }
+                        
+                        return preview.length > maxLength ? preview.substring(0, maxLength) + '...' : preview;
+                    }
+                } catch (e) {
+                    // Not JSON, continue with HTML processing
+                }
+                
+                // Create a temporary div to parse HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = html;
+                
+                // Convert checkboxes to readable text
+                const checkboxes = tempDiv.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    const isChecked = checkbox.checked;
+                    const textNode = document.createTextNode(isChecked ? '☑ ' : '☐ ');
+                    checkbox.parentNode.insertBefore(textNode, checkbox);
+                    checkbox.remove();
+                });
+                
+                // Get clean text content without HTML tags
+                let cleanText = tempDiv.textContent || tempDiv.innerText || '';
+                
+                // Clean up extra whitespace
+                cleanText = cleanText.replace(/\s+/g, ' ').trim();
+                
+                // Truncate to maxLength if specified
+                if (maxLength && cleanText.length > maxLength) {
+                    cleanText = cleanText.substring(0, maxLength) + '...';
+                }
+                
+                return cleanText;
             }
             
             exportData() {
@@ -2722,8 +3011,11 @@
         }
         
         // Rich Text Editor Functions (moved outside class)
-        let checkboxCounter = 0;
-        let checkboxItems = [];
+    let checkboxCounter = 0;
+    let checkboxItems = [];
+    // Debounce/control flags
+    let isSavingExpandedNote = false;
+    let saveExpandedNoteTimer = null;
         
         function formatText(command) {
             document.execCommand(command, false, null);
@@ -2732,6 +3024,19 @@
         
         function changeFontSize(size) {
             document.execCommand('fontSize', false, size);
+        }
+        
+        function insertCheckbox(editorId) {
+            const editor = document.getElementById(editorId);
+            editor.focus();
+            
+            // Create a checkbox element without onclick since we use event delegation
+            const checkboxHtml = `<div class="checkbox-item" style="margin: 4px 0; display: flex; align-items: center;">
+                <input type="checkbox" style="margin-right: 8px;">
+                <span contenteditable="true" style="flex: 1; color: #fff;">New checkbox item</span>
+            </div><br>`;
+            
+            document.execCommand('insertHTML', false, checkboxHtml);
         }
         
         function updateToolbarState() {
@@ -2749,63 +3054,159 @@
             });
         }
         
-        function addCheckboxItem() {
-            checkboxCounter++;
-            const checkboxList = document.getElementById('checkboxList');
+        function toggleAnyCheckbox(checkbox) {
+            console.log('toggleAnyCheckbox called for checkbox:', checkbox.id);
+            // Debounce duplicate rapid invocations (click + programmatic or double click)
+            const nowTs = Date.now();
+            const lastTs = parseInt(checkbox.dataset.lastToggleAt || '0', 10);
+            if (nowTs - lastTs < 150) {
+                return;
+            }
+            checkbox.dataset.lastToggleAt = String(nowTs);
             
-            const checkboxItem = document.createElement('div');
-            checkboxItem.className = 'checkbox-item';
-            checkboxItem.innerHTML = `
-                <input type="checkbox" onchange="toggleCheckbox(${checkboxCounter})">
-                <input type="text" placeholder="Enter task..." onchange="updateCheckboxText(${checkboxCounter}, this.value)">
-                <button class="checkbox-remove" onclick="removeCheckbox(${checkboxCounter})">×</button>
-            `;
+            // Simple universal checkbox toggle function
+            const container = checkbox.parentElement;
+            const textElement = container.querySelector('span') || container.querySelector('label');
             
-            checkboxList.appendChild(checkboxItem);
+            console.log('Container:', container);
+            console.log('Text element:', textElement);
+            console.log('Checkbox checked:', checkbox.checked);
             
-            checkboxItems[checkboxCounter] = {
-                id: checkboxCounter,
-                text: '',
-                checked: false
-            };
-        }
-        
-        function toggleCheckbox(id) {
-            const checkboxItem = checkboxItems[id];
-            if (checkboxItem) {
-                checkboxItem.checked = !checkboxItem.checked;
-                const container = event.target.parentElement;
-                if (checkboxItem.checked) {
-                    container.classList.add('completed');
-                } else {
-                    container.classList.remove('completed');
+            if (checkbox.checked) {
+                container.classList.add('checkbox-checked', 'completed');
+                if (textElement) {
+                    textElement.style.textDecoration = 'line-through';
+                    textElement.style.opacity = '0.7';
+                    textElement.style.color = '#888';
+                }
+            } else {
+                container.classList.remove('checkbox-checked', 'completed');
+                if (textElement) {
+                    textElement.style.textDecoration = 'none';
+                    textElement.style.opacity = '1';
+                    textElement.style.color = '#fff';
                 }
             }
+            
+            // Save the checkbox state changes
+            saveCheckboxChanges(checkbox);
         }
         
-        function updateCheckboxText(id, text) {
-            const checkboxItem = checkboxItems[id];
-            if (checkboxItem) {
-                checkboxItem.text = text;
+        function saveCheckboxChanges(checkbox) {
+            // Determine which content area this checkbox belongs to and save accordingly
+            const expandedView = document.getElementById('noteExpandedView');
+            const noteModal = document.getElementById('noteModal');
+            const taskModal = document.getElementById('taskModal');
+            
+            // Check if the checkbox is in the expanded note view
+            if (expandedView && expandedView.classList.contains('active')) {
+                const expandedContent = document.getElementById('noteExpandedContent');
+                if (expandedContent && expandedContent.contains(checkbox)) {
+                    // We're in the expanded note view and checkbox is within it
+                    saveExpandedNoteChanges();
+                    return;
+                }
+            }
+            
+            // Check if the checkbox is in the note edit modal
+            if (noteModal && noteModal.classList.contains('active')) {
+                const noteContent = document.getElementById('noteContent');
+                if (noteContent && noteContent.contains(checkbox)) {
+                    // Auto-save changes in note edit modal
+                    setTimeout(() => {
+                        if (logionApp && logionApp.selectedNote) {
+                            logionApp.selectedNote.body = noteContent.innerHTML;
+                            logionApp.sendNote(logionApp.selectedNote);
+                        }
+                    }, 100);
+                    return;
+                }
+            }
+            
+            // Check if the checkbox is in the task edit modal
+            if (taskModal && taskModal.classList.contains('active')) {
+                const taskDescription = document.getElementById('taskDescription');
+                if (taskDescription && taskDescription.contains(checkbox)) {
+                    // Auto-save changes in task edit modal
+                    setTimeout(() => {
+                        if (logionApp && logionApp.selectedTask) {
+                            logionApp.selectedTask.body = taskDescription.innerHTML;
+                            logionApp.sendTask(logionApp.selectedTask);
+                        }
+                    }, 100);
+                    return;
+                }
+            }
+            
+            // If none of the above contexts match, this might be an app-created checkbox
+            // Try to find if it's part of any note content and save accordingly
+            const noteCards = document.querySelectorAll('.note-card-grid');
+            noteCards.forEach(card => {
+                if (card.contains(checkbox)) {
+                    // This checkbox is in a note card - but we can't save from here
+                    // User needs to open the note to edit it
+                    console.log('Checkbox in note card - open note to edit');
+                }
+            });
+        }
+        
+        function saveExpandedNoteChanges() {
+            console.log('saveExpandedNoteChanges called');
+            // Debounce saves to avoid flooding the server
+            if (saveExpandedNoteTimer) {
+                clearTimeout(saveExpandedNoteTimer);
+            }
+            saveExpandedNoteTimer = setTimeout(() => doSaveExpandedNoteChanges(), 150);
+        }
+
+        function doSaveExpandedNoteChanges() {
+            if (isSavingExpandedNote) {
+                // Skip if a save is in-flight; next change will schedule another save
+                return;
+            }
+            isSavingExpandedNote = true;
+            
+            // Save changes from the expanded note view
+            if (logionApp && logionApp.selectedNoteForExpanded) {
+                const noteId = logionApp.selectedNoteForExpanded.id;
+                const contentElement = document.getElementById('noteExpandedContent');
+                
+                if (!contentElement) {
+                    console.error('noteExpandedContent element not found');
+                    return;
+                }
+                
+                const updatedContent = contentElement.innerHTML;
+                console.log('Saving note content:', updatedContent.substring(0, 100) + '...');
+                
+                // Send HTML directly; server will convert HTML -> markdown -> structured format
+                logionApp.saveNoteCheckboxChanges(noteId, updatedContent).then(() => {
+                    console.log('Note saved successfully');
+                    
+                    // Update local data
+                    const noteIndex = logionApp.notes.findIndex(n => n.id === noteId);
+                    if (noteIndex !== -1) {
+                        logionApp.notes[noteIndex].body = updatedContent;
+                        logionApp.notes[noteIndex].updatedAt = new Date().toISOString();
+                        console.log('Local note data updated');
+                    } else {
+                        console.error('Note not found in local data');
+                    }
+                }).catch(error => {
+                    console.error('Error saving note:', error);
+                }).finally(() => {
+                    isSavingExpandedNote = false;
+                });
+            } else {
+                console.error('logionApp or selectedNoteForExpanded not available');
+                isSavingExpandedNote = false;
             }
         }
         
-        function removeCheckbox(id) {
-            const container = event.target.parentElement;
-            container.remove();
-            delete checkboxItems[id];
-        }
-        
-        function getCheckedItems() {
-            return Object.values(checkboxItems).filter(item => item.checked && item.text.trim());
-        }
-        
-        function clearCheckboxes() {
-            const checkboxList = document.getElementById('checkboxList');
-            const items = checkboxList.querySelectorAll('.checkbox-item');
-            items.forEach(item => item.remove());
-            checkboxItems = [];
-            checkboxCounter = 0;
+        // Fallback function for Android app checkboxes
+        function updateNoteCheckbox(noteId, checkboxElement) {
+            // Simply redirect to our universal toggle function
+            toggleAnyCheckbox(checkboxElement);
         }
         
         // Task-specific rich text functions
@@ -2815,17 +3216,29 @@
             document.execCommand(command, false, null);
         }
         
-        function addTaskCheckboxItem() {
-            const taskEditor = document.getElementById('taskDescription');
-            taskEditor.focus();
-            
-            const checkboxHtml = '<div class="checkbox-item" style="margin: 4px 0; display: flex; align-items: center;"><input type="checkbox" style="margin-right: 8px;"><span contenteditable="true" style="flex: 1;">New task item</span></div>';
-            
-            document.execCommand('insertHTML', false, checkboxHtml);
-        }
-        
         // Initialize rich text editor
         document.addEventListener('DOMContentLoaded', function() {
+            // Add global event delegation for checkboxes
+            document.addEventListener('click', function(event) {
+                if (event.target.type === 'checkbox') {
+                    // Prevent double-processing if this event was already handled
+                    if (event.target.dataset.processed === 'true') {
+                        return;
+                    }
+                    
+                    // Mark as processed to prevent double-handling
+                    event.target.dataset.processed = 'true';
+                    
+                    // Use our universal toggle function for any checkbox click
+                    toggleAnyCheckbox(event.target);
+                    
+                    // Reset the processed flag after a short delay
+                    setTimeout(() => {
+                        event.target.dataset.processed = 'false';
+                    }, 100);
+                }
+            });
+            
             const editor = document.getElementById('noteContent');
             if (editor) {
                 editor.addEventListener('input', updateToolbarState);
@@ -2924,6 +3337,202 @@
         document.addEventListener('DOMContentLoaded', function() {
             checkSession();
         });
+
+        // ============================================================================
+        // 🔄 CHECKBOX FORMAT CONVERTERS - Android App ↔ WebUI
+        // ============================================================================
+        
+        /**
+         * 🔄 HTML → JSON converter
+         * Converts WebUI HTML checkbox format to Android app JSON format
+         */
+        function htmlToJsonCheckboxes(html) {
+            const container = document.createElement("div");
+            container.innerHTML = html;
+
+            const checkboxes = [];
+            let textContent = "";
+
+            // Extract main text content (non-checkbox elements)
+            const textNodes = [];
+            container.childNodes.forEach(node => {
+                if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) {
+                    textNodes.push(node.textContent.trim());
+                } else if (node.nodeType === Node.ELEMENT_NODE && !node.classList.contains("checkbox-item")) {
+                    const text = node.textContent.trim();
+                    if (text && !text.match(/^\s*$/)) {
+                        textNodes.push(text);
+                    }
+                }
+            });
+            textContent = textNodes.join("\n").trim();
+
+            // Extract checkboxes
+            container.querySelectorAll(".checkbox-item").forEach(item => {
+                const input = item.querySelector("input[type='checkbox']");
+                const span = item.querySelector("span");
+
+                if (input && span) {
+                    checkboxes.push({
+                        text: span.textContent.trim(),
+                        checked: input.checked
+                    });
+                }
+            });
+
+            return JSON.stringify({
+                text: textContent,
+                checkboxes: checkboxes
+            });
+        }
+
+        /**
+         * 🔄 JSON → HTML converter
+         * Converts Android app JSON format to WebUI HTML checkbox format
+         */
+        function jsonToHtmlCheckboxes(jsonString) {
+            let obj;
+            try {
+                obj = JSON.parse(jsonString);
+            } catch (e) {
+                // If it's not valid JSON, treat as plain text
+                return escapeHtml(jsonString);
+            }
+
+            let html = "";
+
+            // Add main text content if present
+            if (obj.text && obj.text.trim()) {
+                html += `<div class="note-text" style="margin-bottom: 16px; color: #fff; line-height: 1.5;">${escapeHtml(obj.text)}</div>`;
+            }
+
+            // Add checkboxes if present
+            if (obj.checkboxes && Array.isArray(obj.checkboxes)) {
+                html += obj.checkboxes.map((cb, i) => {
+                    const checkboxId = `checkbox-${Date.now()}-${i}`;
+                    const isChecked = cb.checked;
+                    const checkedClass = isChecked ? "checkbox-checked completed" : "";
+                    const checkedAttr = isChecked ? "checked" : "";
+                    const textStyle = isChecked 
+                        ? "text-decoration: line-through; opacity: 0.7; color: #888;" 
+                        : "text-decoration: none; opacity: 1; color: #fff;";
+
+                    return `
+                        <div class="checkbox-item ${checkedClass}" style="
+                            display: flex; 
+                            align-items: center; 
+                            margin: 8px 0; 
+                            padding: 8px; 
+                            background: rgba(255,255,255,0.05); 
+                            border-radius: 8px;
+                        ">
+                            <input 
+                                type="checkbox" 
+                                ${checkedAttr} 
+                                id="${checkboxId}"
+                                style="
+                                    margin-right: 12px; 
+                                    transform: scale(1.2);
+                                    accent-color: #4CAF50;
+                                "
+                            >
+                            <span style="
+                                flex: 1; 
+                                ${textStyle}
+                                font-size: 16px;
+                                cursor: pointer;
+                            " onclick="document.getElementById('${checkboxId}').click()">
+                                ${escapeHtml(cb.text)}
+                            </span>
+                        </div>`;
+                }).join("");
+            }
+
+            return html || '<div style="color: #888; font-style: italic;">No content</div>';
+        }
+
+        /**
+         * Helper function to escape HTML entities
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        /**
+         * 🔧 Enhanced save function that converts HTML to JSON before sending
+         */
+        function saveNoteWithConversion(note) {
+            if (note && note.body) {
+                // Convert HTML content to JSON format before saving
+                const jsonContent = htmlToJsonCheckboxes(note.body);
+                
+                // Update the note object with JSON format
+                const noteToSave = { ...note, body: jsonContent };
+                
+                // Use existing save logic
+                if (logionApp && logionApp.sendNote) {
+                    logionApp.sendNote(noteToSave);
+                }
+            }
+        }
+
+        /**
+         * 🔧 Enhanced load function that converts JSON to HTML for display
+         */
+        function displayNoteWithConversion(note, targetElementId) {
+            if (note && note.body) {
+                try {
+                    // Try to parse as JSON first
+                    JSON.parse(note.body);
+                    
+                    // If it's valid JSON, convert to HTML
+                    const htmlContent = jsonToHtmlCheckboxes(note.body);
+                    document.getElementById(targetElementId).innerHTML = htmlContent;
+                    
+                } catch (e) {
+                    // If it's not JSON, display as-is (backward compatibility)
+                    document.getElementById(targetElementId).innerHTML = note.body;
+                }
+            }
+        }
+
+        // ============================================================================
+        // 🔧 INTEGRATION HELPERS - Use these in your existing code
+        // ============================================================================
+        
+        // Override existing save functions to use conversion
+        const originalSaveCheckboxChanges = saveCheckboxChanges;
+        saveCheckboxChanges = function(checkbox) {
+            // Call original function first
+            originalSaveCheckboxChanges(checkbox);
+            
+            // Then ensure JSON conversion on save
+            setTimeout(() => {
+                const noteContent = document.getElementById('noteContent');
+                const expandedContent = document.getElementById('noteExpandedContent');
+                const taskDescription = document.getElementById('taskDescription');
+                
+                if (noteContent && noteContent.contains(checkbox) && logionApp && logionApp.selectedNote) {
+                    logionApp.selectedNote.body = htmlToJsonCheckboxes(noteContent.innerHTML);
+                }
+                
+                if (expandedContent && expandedContent.contains(checkbox)) {
+                    // Handle expanded view save with conversion
+                    const htmlContent = expandedContent.innerHTML;
+                    const jsonContent = htmlToJsonCheckboxes(htmlContent);
+                    // Update the note data with JSON format
+                    if (logionApp && logionApp.selectedNote) {
+                        logionApp.selectedNote.body = jsonContent;
+                    }
+                }
+                
+                if (taskDescription && taskDescription.contains(checkbox) && logionApp && logionApp.selectedTask) {
+                    logionApp.selectedTask.body = htmlToJsonCheckboxes(taskDescription.innerHTML);
+                }
+            }, 150);
+        };
         
         // Initialize the app
         logionApp = new LogionDesktop();
