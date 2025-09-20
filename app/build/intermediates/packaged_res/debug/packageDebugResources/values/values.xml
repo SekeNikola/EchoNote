@@ -7,10 +7,8 @@
     <color name="teal_200">#03DAC5</color>
     <color name="teal_700">#018786</color>
     <color name="white">#FFFFFF</color>
-    <string name="add">Add</string>
     <string name="app_name">Logion</string>
-    <string name="no_items">No items</string>
-    <string name="widget_description">Quick access to Logion features</string>
+    <string name="widget_description">Simple tasks and notes widget</string>
     <style name="Theme.Logion" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">@color/purple_500</item>
         <item name="colorPrimaryVariant">@color/purple_700</item>

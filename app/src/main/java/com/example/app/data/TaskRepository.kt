@@ -11,16 +11,32 @@ class TaskRepository(private val taskDao: TaskDao, private val context: Context?
     fun getCompletedTasks(limit: Int = 20): Flow<List<Task>> = taskDao.getCompletedTasks(limit)
     suspend fun getTaskById(id: Long): Task? = taskDao.getTaskById(id)
     
-    suspend fun insertTask(task: Task): Long = taskDao.insert(task)
-    suspend fun updateTask(task: Task) = taskDao.update(task)
-    suspend fun deleteTaskById(id: Long) = taskDao.deleteById(id)
+    suspend fun insertTask(task: Task): Long {
+        val result = taskDao.insert(task)
+        refreshWidget()
+        return result
+    }
+    
+    suspend fun updateTask(task: Task) {
+        taskDao.update(task)
+        refreshWidget()
+    }
+    
+    suspend fun deleteTaskById(id: Long) {
+        taskDao.deleteById(id)
+        refreshWidget()
+    }
     
     suspend fun markTaskCompleted(id: Long, isCompleted: Boolean) {
         taskDao.updateCompleted(id, isCompleted)
-        // Refresh widget when task completion changes
+        refreshWidget()
+    }
+    
+    private fun refreshWidget() {
+        // Refresh widget when task changes
         context?.let {
             try {
-                val widgetClass = Class.forName("com.example.app.widget.LogionListWidgetProvider")
+                val widgetClass = Class.forName("com.example.app.widget.SimpleWidgetProvider")
                 val updateMethod = widgetClass.getMethod("updateAllWidgets", Context::class.java)
                 updateMethod.invoke(null, it)
             } catch (_: Exception) { /* Widget not available */ }

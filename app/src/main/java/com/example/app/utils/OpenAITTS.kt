@@ -33,7 +33,7 @@ class OpenAITTS(private val context: Context, private val apiKey: String) {
 
         val request = Request.Builder()
             .url(url)
-            .addHeader("Authorization", "Bearer $apiKey")
+            .addHeader("Authorization", "Bearer ${apiKey.trim()}")
             .post(body)
             .build()
 

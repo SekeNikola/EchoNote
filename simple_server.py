@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple WebSocket server for EchoNote testing
+Simple WebSocket server for Logion testing
 """
 
 import asyncio
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 notes = []
 tasks = []
 
-class EchoNoteServer:
+class LogionServer:
     def __init__(self):
         self.clients = set()
         
@@ -139,13 +139,13 @@ class EchoNoteServer:
 
 def main():
     """Start the WebSocket server"""
-    server = EchoNoteServer()
+    server = LogionServer()
     
     # Add some sample data
     notes.extend([
         {
             'id': '1',
-            'title': 'Welcome to EchoNote',
+            'title': 'Welcome to Logion',
             'body': 'This is your first note! You can add, edit, and sync notes across devices.',
             'updatedAt': datetime.now().isoformat()
         },
@@ -175,7 +175,7 @@ def main():
     ])
     
     async def run_server():
-        logger.info("Starting EchoNote WebSocket server on 0.0.0.0:8080")
+        logger.info("Starting Logion WebSocket server on 0.0.0.0:8080")
         async with websockets.serve(server.handle_client, "0.0.0.0", 8080):
             await asyncio.Future()  # Run forever
     

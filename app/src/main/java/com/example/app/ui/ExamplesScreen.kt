@@ -189,7 +189,7 @@ fun ExamplesScreen(
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                 }
                 Text(
-                    text = "How to Use EchoNote",
+                    text = "How to Use Logion",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 8.dp)
@@ -208,7 +208,7 @@ fun ExamplesScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "Welcome to EchoNote! 🎉",
+                        text = "Welcome to Logion! 🎉",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer

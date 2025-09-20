@@ -153,24 +153,16 @@
             </intent-filter>
         </receiver>
 
-        <!-- (Removed) Old Logion widget provider -->
-
-        <!-- Logion list widget provider -->
-        <receiver android:name=".widget.LogionListWidgetProvider"
+        <!-- Simple widget provider -->
+        <receiver android:name=".widget.SimpleWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
             <meta-data android:name="android.appwidget.provider"
-                android:resource="@xml/widget_list_info" />
+                android:resource="@xml/widget_simple_info" />
         </receiver>
 
-        <!-- RemoteViewsService for widget list -->
-        <service
-            android:name=".widget.LogionListRemoteViewsService"
-            android:permission="android.permission.BIND_REMOTEVIEWS"
-            android:exported="true" />
-        
         <!-- FileProvider for camera functionality -->
         <provider
             android:name="androidx.core.content.FileProvider"

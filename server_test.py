@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-EchoNote Server Test Script
+Logion Server Test Script
 Tests if the Android server is accessible from the network
 """
 
@@ -10,7 +10,7 @@ import sys
 import time
 
 def test_server(base_url):
-    """Test the EchoNote server endpoints"""
+    """Test the Logion server endpoints"""
     print(f"Testing server at: {base_url}")
     print("-" * 50)
     

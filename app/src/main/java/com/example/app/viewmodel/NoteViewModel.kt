@@ -101,7 +101,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             // Build conversation messages including history
             val messages = mutableListOf<Message>()
             messages.add(Message(role = "system", content = """
-                Hi there! I'm your personal AI assistant for EchoNote - think of me as your helpful digital companion. 
+                Hi there! I'm your personal AI assistant for Logion - think of me as your helpful digital companion. 
                 
                 I'm here to chat with you naturally and help you stay organized. I can:
                 1. Have friendly conversations and answer your questions
@@ -1550,7 +1550,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             val context = getApplication<Application>().applicationContext
             
             // Create app-specific directory for images
-            val imagesDir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "EchoNote")
+            val imagesDir = File(context.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "Logion")
             if (!imagesDir.exists()) {
                 imagesDir.mkdirs()
             }
@@ -1638,7 +1638,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
 
                 val request = Request.Builder()
                     .url("https://api.openai.com/v1/chat/completions")
-                    .addHeader("Authorization", "Bearer $apiKey")
+                    .addHeader("Authorization", "Bearer ${apiKey.trim()}")
                     .addHeader("Content-Type", "application/json")
                     .post(requestBody.toString().toRequestBody("application/json".toMediaType()))
                     .build()
@@ -2000,7 +2000,7 @@ class NoteViewModel(private val repository: NoteRepository, app: Application) : 
             val hasRecentImages = currentChatMessages.any { !it.imageUri.isNullOrEmpty() }
             
             messages.add(Message(role = "system", content = """
-                Hey! I'm your personal AI companion in EchoNote - nice to meet you! 
+                Hey! I'm your personal AI companion in Logion - nice to meet you! 
                 
                 Right now it's $timeContext, and I'm here to chat and help however you need.
                 

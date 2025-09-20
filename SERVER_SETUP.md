@@ -1,4 +1,4 @@
-# EchoNote Server Setup
+# Logion Server Setup
 
 ## Prerequisites
 

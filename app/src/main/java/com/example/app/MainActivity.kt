@@ -123,9 +123,6 @@ class MainActivity : ComponentActivity() {
 		// Request overlay permission for voice assistant orb
 		requestOverlayPermission()
 
-		// Handle widget intents
-		val widgetAction = intent.getStringExtra("widget_action")
-		
 		// Handle navigation intents (from VoiceAssistantTriggerActivity)
 		val navigateTo = intent.getStringExtra("navigate_to")
 		
@@ -294,39 +291,13 @@ class MainActivity : ComponentActivity() {
 								}
 							}
 							
-							// Determine starting destination based on widget action or navigation intent
+							// Determine starting destination based on navigation intent
 							val startDestination = when {
 								navigateTo == "ai_voice" -> "ai_voice"
-								widgetAction == "record_audio" -> "recording"
-								widgetAction == "upload_audio" -> "uploadAudio"
-								widgetAction == "take_picture" -> "imageCapture"
-								widgetAction == "upload_image" -> "uploadImage"
-								widgetAction == "type_text" -> "typeText"
-								widgetAction == "videos" -> "videoUrl"
-								widgetAction == "web_page" -> "webPage"
-								widgetAction == "upload_files" -> "documentUpload"
-								widgetAction == "assistant" -> "voiceCommand"
-								widgetAction == "create_task" -> "all_tasks"
-								widgetAction == "create_note" -> "enhanced_note_creation"
 								else -> "home"
 							}
 							
 							LogionNavGraph(navController, viewModel, startDestination)
-
-							// Handle deep links from widget for opening specific items
-							LaunchedEffect(widgetAction) {
-								val openTaskId = intent.getLongExtra("open_task_id", -1L)
-								val openNoteId = intent.getLongExtra("open_note_id", -1L)
-								if (openTaskId > 0) {
-									navController.navigate("task_detail/$openTaskId")
-								} else if (openNoteId > 0) {
-									navController.navigate("noteDetail/$openNoteId")
-								} else if (widgetAction == "create_task") {
-									navController.navigate("all_tasks")
-								} else if (widgetAction == "create_note") {
-									navController.navigate("enhanced_note_creation")
-								}
-							}
 						}
 					}
 					

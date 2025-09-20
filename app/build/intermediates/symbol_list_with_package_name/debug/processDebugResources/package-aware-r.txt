@@ -3096,14 +3096,6 @@ drawable notify_panel_notification_icon_bg
 drawable test_level_drawable
 drawable tooltip_frame_dark
 drawable tooltip_frame_light
-drawable widget_background
-drawable widget_button_assistant
-drawable widget_button_background
-drawable widget_chip_high
-drawable widget_chip_low
-drawable widget_chip_medium
-drawable widget_chip_urgent
-drawable widget_preview
 id ALT
 id BOTTOM_END
 id BOTTOM_START
@@ -3196,15 +3188,6 @@ id beginning
 id blocking
 id bottom
 id bounce
-id btn_assistant
-id btn_record_audio
-id btn_take_picture
-id btn_type_text
-id btn_upload_audio
-id btn_upload_files
-id btn_upload_image
-id btn_videos
-id btn_web_page
 id buttonPanel
 id cancel_button
 id center
@@ -3581,17 +3564,8 @@ id visible
 id visible_removing_fragment_view_tag
 id wide
 id widget_add
-id widget_empty
-id widget_header
-id widget_list
-id widget_mode_label
-id widget_note_snippet
-id widget_note_title
-id widget_task_checkbox
-id widget_task_meta
-id widget_task_priority
-id widget_task_row
-id widget_task_title
+id widget_content
+id widget_mode
 id withText
 id with_icon
 id withinBounds
@@ -3793,10 +3767,7 @@ layout select_dialog_item_material
 layout select_dialog_multichoice_material
 layout select_dialog_singlechoice_material
 layout support_simple_spinner_dropdown_item
-layout widget_echo_list
-layout widget_item_note
-layout widget_item_task
-layout widget_logion
+layout widget_simple
 mipmap ic_launcher
 mipmap ic_launcher_round
 plurals mtrl_badge_content_description
@@ -3828,7 +3799,6 @@ string abc_searchview_description_voice
 string abc_shareactionprovider_share_with
 string abc_shareactionprovider_share_with_application
 string abc_toolbar_collapse_description
-string add
 string androidx_startup
 string app_name
 string appbar_scrolling_view_behavior
@@ -4039,7 +4009,6 @@ string mtrl_switch_track_path
 string mtrl_timepicker_cancel
 string mtrl_timepicker_confirm
 string navigation_menu
-string no_items
 string not_selected
 string off
 string on
@@ -5342,5 +5311,4 @@ styleable ViewBackgroundHelper android_background backgroundTint backgroundTintM
 styleable ViewPager2 android_orientation
 styleable ViewStubCompat android_id android_layout android_inflatedId
 xml file_paths
-xml widget_info
-xml widget_list_info
+xml widget_simple_info

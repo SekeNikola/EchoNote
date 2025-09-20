@@ -1,5 +1,5 @@
 /**
- * Checkbox Format Converters for EchoNote WebUI ↔ Android App
+ * Checkbox Format Converters for Logion WebUI ↔ Android App
  *
  * Android App expects JSON like:
  * {

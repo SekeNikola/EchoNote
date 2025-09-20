@@ -20,7 +20,7 @@ object RetrofitInstance {
     private fun getClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor { chain ->
-                val key = apiKey ?: ""
+                val key = (apiKey ?: "").trim()
                 val request = chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $key")
                     .build()

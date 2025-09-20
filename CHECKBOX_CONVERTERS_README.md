@@ -1,4 +1,4 @@
-# 🔄 EchoNote Checkbox Converters
+# 🔄 Logion Checkbox Converters
 
 ## Overview
 
@@ -143,7 +143,7 @@ Open `checkbox-converter-test.html` in your browser to:
 ## File Structure
 
 ```
-EchoNote/
+Logion/
 ├── checkbox-converters.js          # Main converter functions
 ├── checkbox-converter-test.html    # Testing interface
 └── CHECKBOX_CONVERTERS_README.md   # This documentation

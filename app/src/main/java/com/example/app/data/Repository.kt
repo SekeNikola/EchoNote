@@ -12,16 +12,48 @@ class NoteRepository(
     internal val reminderDao: ReminderDao
 ) {
     // Note operations
-    suspend fun insertNote(note: Note) = noteDao.insert(note)
-    suspend fun updateTranscript(id: Long, transcript: String) = noteDao.updateTranscript(id, transcript)
-    suspend fun updateNoteSnippet(id: Long, snippet: String) = noteDao.updateSnippet(id, snippet)
-    suspend fun updateChecklistState(id: Long, checklistState: String) = noteDao.updateChecklistState(id, checklistState)
+    suspend fun insertNote(note: Note) {
+        noteDao.insert(note)
+        refreshWidget()
+    }
+    
+    suspend fun updateTranscript(id: Long, transcript: String) {
+        noteDao.updateTranscript(id, transcript)
+        refreshWidget()
+    }
+    
+    suspend fun updateNoteSnippet(id: Long, snippet: String) {
+        noteDao.updateSnippet(id, snippet)
+        refreshWidget()
+    }
+    
+    suspend fun updateChecklistState(id: Long, checklistState: String) {
+        noteDao.updateChecklistState(id, checklistState)
+        refreshWidget()
+    }
     fun getAllNotes(): Flow<List<Note>> = noteDao.getAllNotes()
+    suspend fun getAllNotesOnce(): List<Note> = noteDao.getAllNotesOnce()
     fun searchNotes(query: String): Flow<List<Note>> = noteDao.searchNotes("%$query%")
     fun getNoteById(id: Long): Flow<Note?> = noteDao.getNoteById(id)
-    suspend fun toggleFavorite(note: Note) = noteDao.update(note.copy(isFavorite = !note.isFavorite))
-    suspend fun updateNoteTitle(id: Long, title: String) = noteDao.updateTitle(id, title)
-    suspend fun archiveNote(id: Long) = noteDao.archiveNote(id)
+    suspend fun toggleFavorite(note: Note) {
+        noteDao.update(note.copy(isFavorite = !note.isFavorite))
+        refreshWidget()
+    }
+    
+    suspend fun updateNoteTitle(id: Long, title: String) {
+        noteDao.updateTitle(id, title)
+        refreshWidget()
+    }
+    
+    suspend fun archiveNote(id: Long) {
+        noteDao.archiveNote(id)
+        refreshWidget()
+    }
+    
+    suspend fun deleteNote(id: Long) {
+        noteDao.deleteById(id)
+        refreshWidget()
+    }
     
     // Task operations
     fun getAllTasks(): Flow<List<Task>> = taskDao.getAllTasks()
@@ -83,6 +115,16 @@ class NoteRepository(
         // Import chat messages (create new IDs to avoid conflicts)
         exportData.chatMessages.forEach { message ->
             chatMessageDao.insert(message.copy(id = 0)) // Let Room auto-generate new ID
+        }
+    }
+    
+    private fun refreshWidget() {
+        try {
+            val widgetProviderClass = Class.forName("com.example.app.widget.SimpleWidgetProvider")
+            val updateMethod = widgetProviderClass.getDeclaredMethod("updateAllWidgets")
+            updateMethod.invoke(null)
+        } catch (e: Exception) {
+            // Widget provider not available, ignore
         }
     }
 }

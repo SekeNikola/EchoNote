@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Logion</string>
-    <string name="widget_description">Quick access to Logion features</string>
-    <string name="add">Add</string>
-    <string name="no_items">No items</string>
+    <string name="widget_description">Simple tasks and notes widget</string>
 </resources>

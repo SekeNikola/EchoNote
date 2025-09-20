@@ -895,13 +895,13 @@ object KtorServer {
             // Create unique filename
             val fileName = "web_image_${UUID.randomUUID()}.$extension"
             
-            // Use app-specific directory if context is available, fallback to Pictures/EchoNote
+            // Use app-specific directory if context is available, fallback to Pictures/Logion
             val imageFile = if (appContext != null) {
-                val imagesDir = File(appContext!!.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "EchoNote")
+                val imagesDir = File(appContext!!.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "Logion")
                 imagesDir.mkdirs()
                 File(imagesDir, fileName)
             } else {
-                val fallbackDir = File("/storage/emulated/0/Pictures/EchoNote")
+                val fallbackDir = File("/storage/emulated/0/Pictures/Logion")
                 fallbackDir.mkdirs()
                 File(fallbackDir, fileName)
             }
@@ -1370,14 +1370,14 @@ object KtorServer {
                     
                     // Add app-specific directory if context is available
                     if (appContext != null) {
-                        val appSpecificDir = File(appContext!!.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "EchoNote")
+                        val appSpecificDir = File(appContext!!.getExternalFilesDir(Environment.DIRECTORY_PICTURES), "Logion")
                         possiblePaths.add("${appSpecificDir.absolutePath}/$imagePath")
                     }
                     
                     // Add fallback paths
                     possiblePaths.addAll(listOf(
-                        "/storage/emulated/0/Pictures/EchoNote/$imagePath",
-                        "/storage/emulated/0/Android/data/com.example.app/files/Pictures/EchoNote/$imagePath",
+                        "/storage/emulated/0/Pictures/Logion/$imagePath",
+                        "/storage/emulated/0/Android/data/com.example.app/files/Pictures/Logion/$imagePath",
                         imagePath // In case it's already an absolute path
                     ))
                     
