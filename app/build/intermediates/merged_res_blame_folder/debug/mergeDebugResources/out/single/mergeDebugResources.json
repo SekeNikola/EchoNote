@@ -1,94 +1,102 @@
 [
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\layout_widget_simple.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\layout\\widget_simple.xml"
+        "merged": "com.example.app-debug-78:/mipmap_ic_launcher.xml.flat",
+        "source": "com.example.app-main-80:/mipmap/ic_launcher.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_sparkle_single.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_sparkle_single.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_language.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_language.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_image.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_image.xml"
-    },
-    {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_sparkle.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_sparkle.xml"
-    },
-    {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\xml_widget_simple_info.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\xml\\widget_simple_info.xml"
-    },
-    {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_snooze.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_snooze.xml"
-    },
-    {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_check.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_check.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_check.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_check.xml"
     },
     {
         "merged": "com.example.app-debug-78:/layout_widget_simple.xml.flat",
         "source": "com.example.app-main-80:/layout/widget_simple.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_mic.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_mic.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_sparkle_single.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_sparkle_single.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_edit.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_edit.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_photo_camera.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_photo_camera.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_sync.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_sync.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_snooze.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_snooze.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_fiber_manual_record.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_fiber_manual_record.xml"
+        "merged": "com.example.app-debug-78:/drawable_widget_preview.xml.flat",
+        "source": "com.example.app-main-80:/drawable/widget_preview.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_photo_camera.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_photo_camera.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_image.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_image.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_videocam.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_videocam.xml"
+        "merged": "com.example.app-debug-78:/drawable_widget_background.xml.flat",
+        "source": "com.example.app-main-80:/drawable/widget_background.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_error.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_error.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_description.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_description.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\xml_file_paths.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\xml\\file_paths.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_videocam.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_videocam.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_notification.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_notification.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_error.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_error.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_description.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_description.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_sparkle.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_sparkle.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\layout_activity_main.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\layout\\activity_main.xml"
+        "merged": "com.example.app-debug-78:/xml_file_paths.xml.flat",
+        "source": "com.example.app-main-80:/xml/file_paths.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\mipmap_ic_launcher_round.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\mipmap\\ic_launcher_round.xml"
+        "merged": "com.example.app-debug-78:/layout_activity_main.xml.flat",
+        "source": "com.example.app-main-80:/layout/activity_main.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\drawable_ic_language.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\drawable\\ic_language.xml"
+        "merged": "com.example.app-debug-78:/drawable_ic_notification.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_notification.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\mipmap_ic_launcher.xml.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\mipmap\\ic_launcher.xml"
+        "merged": "com.example.app-debug-78:/layout_widget_logion_list.xml.flat",
+        "source": "com.example.app-main-80:/layout/widget_logion_list.xml"
     },
     {
-        "merged": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-debug-78:\\raw_orb.json.flat",
-        "source": "C:\\Users\\T\\.gradle\\daemon\\8.13\\com.example.app-main-80:\\raw\\orb.json"
+        "merged": "com.example.app-debug-78:/drawable_ic_edit.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_edit.xml"
+    },
+    {
+        "merged": "com.example.app-debug-78:/drawable_ic_mic.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_mic.xml"
+    },
+    {
+        "merged": "com.example.app-debug-78:/xml_widget_simple_info.xml.flat",
+        "source": "com.example.app-main-80:/xml/widget_simple_info.xml"
+    },
+    {
+        "merged": "com.example.app-debug-78:/raw_orb.json.flat",
+        "source": "com.example.app-main-80:/raw/orb.json"
+    },
+    {
+        "merged": "com.example.app-debug-78:/drawable_ic_fiber_manual_record.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_fiber_manual_record.xml"
+    },
+    {
+        "merged": "com.example.app-debug-78:/mipmap_ic_launcher_round.xml.flat",
+        "source": "com.example.app-main-80:/mipmap/ic_launcher_round.xml"
+    },
+    {
+        "merged": "com.example.app-debug-78:/drawable_ic_sync.xml.flat",
+        "source": "com.example.app-main-80:/drawable/ic_sync.xml"
     }
 ]

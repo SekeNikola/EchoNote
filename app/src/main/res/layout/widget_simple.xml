@@ -6,38 +6,46 @@
     android:background="#99000000"
     android:padding="8dp">
 
-    <TextView
-        android:id="@+id/widget_mode"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Tasks"
-        android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:gravity="center"
-        android:padding="8dp"
-        android:background="#44FFFFFF"
-        android:layout_marginBottom="8dp"/>
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+
+        <TextView
+            android:id="@+id/widget_mode"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Tasks"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:gravity="center_vertical|start"
+            android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/widget_add"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="+"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:padding="8dp"
+            android:minWidth="32dp"
+            android:minHeight="32dp" />
+
+    </LinearLayout>
 
     <TextView
         android:id="@+id/widget_content"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:text="• Sample task 1&#10;• Sample task 2&#10;&#10;Tap to open app"
+        android:text="Sample task 1&#10;Sample task 2&#10;&#10;Tap to open app"
         android:textColor="#FFFFFF"
         android:textSize="12sp"
         android:gravity="top"
         android:padding="8dp" />
-
-    <TextView
-        android:id="@+id/widget_add"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="+ Add New"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
-        android:gravity="center"
-        android:padding="8dp"
-        android:background="#44FFFFFF" />
 
 </LinearLayout>

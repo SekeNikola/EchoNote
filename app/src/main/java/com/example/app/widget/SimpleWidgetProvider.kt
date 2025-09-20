@@ -55,7 +55,7 @@ class SimpleWidgetProvider : AppWidgetProvider() {
                         if (tasks.isEmpty()) {
                             "No tasks yet\n\nTap + to create your first task"
                         } else {
-                            val taskList = tasks.take(6).joinToString("\n") { "• ${it.title}" }
+                            val taskList = tasks.take(6).joinToString("\n") { it.title }
                             if (tasks.size > 6) {
                                 "$taskList\n\n...and ${tasks.size - 6} more"
                             } else {
@@ -69,7 +69,7 @@ class SimpleWidgetProvider : AppWidgetProvider() {
                         } else {
                             val noteList = notes.take(6).joinToString("\n") { 
                                 val title = it.title.ifBlank { "(Untitled)" }
-                                "• $title"
+                                title
                             }
                             if (notes.size > 6) {
                                 "$noteList\n\n...and ${notes.size - 6} more"
