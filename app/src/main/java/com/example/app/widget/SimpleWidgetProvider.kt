@@ -102,16 +102,15 @@ class SimpleWidgetProvider : AppWidgetProvider() {
             )
             views.setOnClickPendingIntent(R.id.widget_mode, togglePI)
 
-            // Plus button - opens app with bottom sheet
-            val addIntent = Intent(context, MainActivity::class.java).apply {
+            // Plus button - shows overlay for creation
+            val addIntent = Intent(context, com.example.app.service.WidgetCreationOverlayService::class.java).apply {
                 if (isTaskMode) {
-                    putExtra("open_create_task", true)
+                    action = com.example.app.service.WidgetCreationOverlayService.ACTION_SHOW_TASK_CREATOR
                 } else {
-                    putExtra("open_create_note", true)
+                    action = com.example.app.service.WidgetCreationOverlayService.ACTION_SHOW_NOTE_CREATOR
                 }
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
-            val addPI = PendingIntent.getActivity(
+            val addPI = PendingIntent.getService(
                 context,
                 appWidgetId + 1000,
                 addIntent,

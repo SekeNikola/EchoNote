@@ -140,6 +140,13 @@
             android:exported="false">
         </service>
 
+        <!-- Widget creation overlay service -->
+        <service
+            android:name=".service.WidgetCreationOverlayService"
+            android:enabled="true"
+            android:exported="false">
+        </service>
+
         <!-- Voice activation receiver -->
         <receiver
             android:name=".receiver.VoiceActivationReceiver"
